@@ -6,9 +6,23 @@ import { loadSettings, saveSettings } from "@/lib/storage/local-storage";
 import type { AppSettings } from "@/lib/types";
 
 const listeners = new Set<() => void>();
+let cachedSettings: AppSettings = DEFAULT_SETTINGS;
+let settingsLoaded = false;
+let loadQueued = false;
+
+function loadClientSettings() {
+  cachedSettings = loadSettings();
+  settingsLoaded = true;
+  loadQueued = false;
+  emitChange();
+}
 
 function subscribe(onStoreChange: () => void) {
   listeners.add(onStoreChange);
+  if (typeof window !== "undefined" && !settingsLoaded && !loadQueued) {
+    loadQueued = true;
+    queueMicrotask(loadClientSettings);
+  }
   return () => listeners.delete(onStoreChange);
 }
 
@@ -17,7 +31,7 @@ function emitChange() {
 }
 
 function getSettingsSnapshot(): AppSettings {
-  return loadSettings();
+  return cachedSettings;
 }
 
 function getServerSnapshot(): AppSettings {
@@ -32,11 +46,13 @@ export function useSettings() {
   );
 
   const setSettings = useCallback((next: AppSettings) => {
+    cachedSettings = next;
+    settingsLoaded = true;
     saveSettings(next);
     emitChange();
   }, []);
 
-  const ready = typeof window !== "undefined";
+  const ready = settingsLoaded;
 
   return { settings, setSettings, ready };
 }

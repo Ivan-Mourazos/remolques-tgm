@@ -1,4 +1,6 @@
 import { roundValue } from "@/lib/calculations/round";
+import { calculateTrailerContour } from "@/lib/calculations/trailer-contour";
+import { profileNeedsCornerRadius } from "@/components/drawings/cross-section-paths";
 import type {
   AppSettings,
   LonaCalculationResult,
@@ -33,7 +35,7 @@ function buildGomaNotes(
 
   for (const { lado, tipo } of lados) {
     if (tipo !== "GOMA") continue;
-    const inicioOreja = input.tieneCurva
+    const inicioOreja = profileNeedsCornerRadius(input.tipoPerfil)
       ? input.radioCurva
       : params.inicioOrejaSinCurva;
     notas.push(
@@ -60,11 +62,8 @@ export function calculateLonaRemolque(
     params,
   );
 
-  const contornoAjustado = r(
-    input.contornoCad +
-      (input.tieneCurva ? params.aumentoCurvaContorno : 0),
-    params,
-  );
+  const contorno = calculateTrailerContour(input, settings);
+  const contornoAjustado = contorno.value ?? 0;
 
   const demasiaContorno =
     input.bastilla === "enfundar"
@@ -101,9 +100,17 @@ export function calculateLonaRemolque(
       "Ventana indicada: no afecta al cálculo de medidas; verificar en taller.",
     );
   }
-  if (input.tieneCurva) {
+  if (contorno.source === "manual") {
+    notasAutomaticas.push(`Contorno manual: ${contornoAjustado} cm.`);
+  } else if (contorno.source === "calculado" && contorno.value != null) {
+    notasAutomaticas.push(`Contorno calculado: ${contornoAjustado} cm.`);
+  }
+  if (contorno.warning) {
+    notasAutomaticas.push(contorno.warning);
+  }
+  if (profileNeedsCornerRadius(input.tipoPerfil)) {
     notasAutomaticas.push(
-      `Curva en contorno: radio ${input.radioCurva} cm. Aumento contorno +${params.aumentoCurvaContorno} cm aplicado.`,
+      `Curva en perfil: radio ${input.radioCurva} cm.`,
     );
   }
   if (input.rotulacion) {
@@ -114,11 +121,13 @@ export function calculateLonaRemolque(
     medidaLonaHecha: { largo: largoHecho, ancho: anchoHecho },
     altoDelantero: input.altoDelantero,
     altoTrasero: input.altoTrasero,
-    contornoCad: input.contornoCad,
+    contornoCad: contornoAjustado,
     contornoAjustado,
+    contornoOrigen: contorno.source,
+    contornoAviso: contorno.warning,
     panos: {
       contorno:
-        input.contornoCad > 0
+        contorno.value != null
           ? { ancho: anchoPanoContorno, largo: largoPanoContorno }
           : null,
       delantero: panoDelantero,

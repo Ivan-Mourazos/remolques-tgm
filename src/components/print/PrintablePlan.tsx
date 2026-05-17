@@ -31,7 +31,7 @@ export function PrintablePlan(props: PrintablePlanProps) {
   const { validationIssues, settings } = props;
 
   return (
-    <article className="print-landscape-sheet print-only-content mx-auto w-full max-w-[297mm] bg-white p-4 text-black shadow-md print:max-w-none print:p-0 print:shadow-none">
+    <article className="print-landscape-sheet print-only-content mx-auto w-full max-w-[297mm] bg-white p-[6mm] text-black shadow-md print:max-w-none print:p-0 print:shadow-none">
       <div className="no-print mb-3">
         <PrintWarnings issues={validationIssues} />
       </div>
@@ -48,9 +48,6 @@ export function PrintablePlan(props: PrintablePlanProps) {
           settings={settings}
         />
       )}
-      <p className="print-break-avoid mt-2 text-right text-[8px] text-black/40">
-        remolques-tgm · esquema no a escala real
-      </p>
     </article>
   );
 }

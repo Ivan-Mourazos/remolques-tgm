@@ -43,13 +43,14 @@ export const DEFAULT_RECOGIDA_TYPES = [
 export const DEFAULT_BAQUETON_PROFILES = [
   {
     id: "estandar",
-    nombre: "Estándar",
+    nombre: "GENERAL",
     demasiaLargoPiezaFinal: 1,
     demasiaAnchoPiezaFinal: 1,
     demasiaBaquetonPicostura: 2,
     demasiaBaquetonEnLargoDelante: 1,
     demasiaBaquetonEnLargoDetras: 1,
-    demasiaAnchoExtra: 2,
+    demasiaBaquetonEnAnchoDelante: 1,
+    demasiaBaquetonEnAnchoDetras: 1,
   },
 ];
 
@@ -79,6 +80,7 @@ export const DEFAULT_OLLAO_TEMPLATES: OllaoTemplate[] = [
 export function createEmptyLonaInput(): import("@/lib/types").LonaFormInput {
   return {
     numeroPedido: "",
+    ordenFabricacion: "",
     cliente: "",
     revision: "",
     realizadoPor: "",
@@ -90,8 +92,11 @@ export function createEmptyLonaInput(): import("@/lib/types").LonaFormInput {
     altoDelantero: 0,
     altoTrasero: 0,
     contornoCad: 0,
+    contornoManualEnabled: false,
+    contornoManual: 0,
     tipoPerfil: "tipo-01",
     chaflanCm: 15,
+    alturaCumbrera: 0,
     tieneCurva: false,
     radioCurva: 0,
     recogeDelante: "NO",
@@ -99,6 +104,7 @@ export function createEmptyLonaInput(): import("@/lib/types").LonaFormInput {
     bastilla: "normal",
     ventana: false,
     rotulacion: false,
+    colocacionOllaos: "repartidos",
     observaciones: "",
     ollaosLaterales: "",
     ollaosDelante: "",
@@ -111,6 +117,7 @@ export function createEmptyBaquetonInput(
 ): import("@/lib/types").BaquetonFormInput {
   return {
     numeroPedido: "",
+    ordenFabricacion: "",
     cliente: "",
     revision: "",
     realizadoPor: "",
@@ -121,6 +128,7 @@ export function createEmptyBaquetonInput(
     anchoPedido: 0,
     baqueton: 0,
     perfilCalculoId: settings.defaultBaquetonProfileId,
+    colocacionOllaos: "repartidos",
     tipoOllaos: "",
     ollaosManuales: "",
     rotulacion: false,

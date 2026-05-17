@@ -20,7 +20,7 @@ function clamp(n: number, min: number, max: number) {
 }
 
 /**
- * Genera el path SVG del perfil visto de frente (corte transversal).
+ * Genera un perfil abierto visto de frente, como los dibujos base del Excel.
  */
 export function buildCrossSectionPath(options: ProfilePathOptions): string {
   const { tipo } = options;
@@ -37,7 +37,7 @@ export function buildCrossSectionPath(options: ProfilePathOptions): string {
 
   switch (tipo) {
     case "tipo-01":
-      return `M ${left} ${topFlat} L ${right} ${topFlat} L ${right} ${bottom} L ${left} ${bottom} Z`;
+      return `M ${left} ${bottom} L ${left} ${topFlat} L ${right} ${topFlat} L ${right} ${bottom}`;
 
     case "tipo-02":
       return [
@@ -46,7 +46,6 @@ export function buildCrossSectionPath(options: ProfilePathOptions): string {
         `L ${midX} ${topFlat}`,
         `L ${right} ${eaveY}`,
         `L ${right} ${bottom}`,
-        "Z",
       ].join(" ");
 
     case "tipo-03": {
@@ -54,14 +53,11 @@ export function buildCrossSectionPath(options: ProfilePathOptions): string {
       return [
         `M ${left} ${bottom}`,
         `L ${left} ${eaveY}`,
-        `Q ${left} ${topFlat + r * 0.3} ${left + r} ${topFlat + r * 0.5}`,
-        `L ${midX - r * 0.5} ${topFlat}`,
+        `Q ${left} ${topFlat + r * 0.35} ${left + r} ${topFlat + r * 0.55}`,
         `L ${midX} ${topFlat}`,
-        `L ${midX + r * 0.5} ${topFlat}`,
         `L ${right - r} ${topFlat + r * 0.5}`,
         `Q ${right} ${topFlat + r * 0.3} ${right} ${eaveY}`,
         `L ${right} ${bottom}`,
-        "Z",
       ].join(" ");
     }
 
@@ -72,25 +68,18 @@ export function buildCrossSectionPath(options: ProfilePathOptions): string {
         `L ${right - c} ${topFlat}`,
         `L ${right} ${topFlat + c}`,
         `L ${right} ${bottom}`,
-        `L ${left} ${bottom}`,
-        `L ${left} ${topFlat + c}`,
-        "Z",
       ].join(" ");
     }
 
     case "tipo-05": {
       const r = corner;
       return [
-        `M ${left + r} ${topFlat}`,
-        `L ${right - r} ${topFlat}`,
-        `Q ${right} ${topFlat} ${right} ${topFlat + r}`,
-        `L ${right} ${bottom - r}`,
-        `Q ${right} ${bottom} ${right - r} ${bottom}`,
-        `L ${left + r} ${bottom}`,
-        `Q ${left} ${bottom} ${left} ${bottom - r}`,
+        `M ${left} ${bottom}`,
         `L ${left} ${topFlat + r}`,
         `Q ${left} ${topFlat} ${left + r} ${topFlat}`,
-        "Z",
+        `L ${right - r} ${topFlat}`,
+        `Q ${right} ${topFlat} ${right} ${topFlat + r}`,
+        `L ${right} ${bottom}`,
       ].join(" ");
     }
 

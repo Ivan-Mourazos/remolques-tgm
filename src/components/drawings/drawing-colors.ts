@@ -1,5 +1,8 @@
 /** Colores esquemáticos alineados con planteamientos Excel / taller */
 export const DRAWING_COLORS = {
+  finishedLine: "#E91E8C",
+  allowanceLine: "#F5A623",
+  text: "#1A1A1A",
   finishedTrailer: "#E91E8C",
   cutLine: "#2E9B32",
   hemMargin: "#F5A623",

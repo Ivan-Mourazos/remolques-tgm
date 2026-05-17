@@ -42,12 +42,28 @@ function normalizeHistoryItem(item: SavedItem): SavedItem {
   };
 }
 
+function normalizeSettings(settings: AppSettings): AppSettings {
+  return {
+    ...settings,
+    baquetonProfiles: settings.baquetonProfiles.map((profile) => {
+      const legacyAnchoExtra = profile.demasiaAnchoExtra ?? 0;
+      return {
+        ...profile,
+        demasiaBaquetonEnAnchoDelante:
+          profile.demasiaBaquetonEnAnchoDelante ?? legacyAnchoExtra / 2,
+        demasiaBaquetonEnAnchoDetras:
+          profile.demasiaBaquetonEnAnchoDetras ?? legacyAnchoExtra / 2,
+      };
+    }),
+  };
+}
+
 export function loadSettings(): AppSettings {
-  return readJson(KEYS.settings, DEFAULT_SETTINGS);
+  return normalizeSettings(readJson(KEYS.settings, DEFAULT_SETTINGS));
 }
 
 export function saveSettings(settings: AppSettings): void {
-  writeJson(KEYS.settings, settings);
+  writeJson(KEYS.settings, normalizeSettings(settings));
 }
 
 export function loadHistory(): SavedItem[] {

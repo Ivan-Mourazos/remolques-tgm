@@ -1,4 +1,6 @@
 import type { BaquetonFormInput, LonaFormInput } from "@/lib/types";
+import { DEFAULT_SETTINGS } from "@/lib/defaults/default-settings";
+import { calculateTrailerContour } from "@/lib/calculations/trailer-contour";
 
 export type ValidationLevel = "warning";
 
@@ -31,14 +33,15 @@ export function validateLonaInput(input: LonaFormInput): ValidationIssue[] {
       message: "Los altos delantero y trasero deben ser mayores que 0.",
     });
   }
-  if (input.contornoCad <= 0) {
+  const contorno = calculateTrailerContour(input, DEFAULT_SETTINGS);
+  if (contorno.value == null) {
     issues.push({
       level: "warning",
-      message: "El contorno CAD debe ser mayor que 0.",
+      message: contorno.warning ?? "No se pudo calcular el contorno con los datos actuales.",
     });
   }
   if (
-    input.tieneCurva &&
+    (input.tipoPerfil === "tipo-03" || input.tipoPerfil === "tipo-05") &&
     input.radioCurva <= 0 &&
     (input.recogeDelante === "GOMA" || input.recogeAtras === "GOMA")
   ) {

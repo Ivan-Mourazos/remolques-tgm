@@ -37,8 +37,13 @@ export function calculateBaqueton(
       profile.demasiaBaquetonEnLargoDelante +
       profile.demasiaBaquetonEnLargoDetras,
   );
+  const legacyAnchoExtra = profile.demasiaAnchoExtra ?? 0;
+  const demasiaAnchoDelante =
+    profile.demasiaBaquetonEnAnchoDelante ?? legacyAnchoExtra / 2;
+  const demasiaAnchoDetras =
+    profile.demasiaBaquetonEnAnchoDetras ?? legacyAnchoExtra / 2;
   const panoAncho = r(
-    anchoHecho + baquetonCostura * 2 + profile.demasiaAnchoExtra,
+    anchoHecho + baquetonCostura * 2 + demasiaAnchoDelante + demasiaAnchoDetras,
   );
   const superficieM2 = roundValue(
     (panoLargo * panoAncho) / 10000,

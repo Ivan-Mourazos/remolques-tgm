@@ -105,6 +105,14 @@ export function BaquetonTechnicalDrawing({
         label={`${formatCm(panoUnico.largo)} × ${formatCm(panoUnico.ancho)} cm`}
       />
       <DimensionLine
+        x1={fx}
+        y1={fy - 10}
+        x2={fx + fw}
+        y2={fy - 10}
+        label={`${formatCm(medidasRemolqueHecho.largo)} cm`}
+        offset={8}
+      />
+      <DimensionLine
         x1={px + pw + 12}
         y1={fy}
         x2={px + pw + 12}
@@ -112,6 +120,14 @@ export function BaquetonTechnicalDrawing({
         label={`${formatCm(medidasRemolqueHecho.ancho)}`}
         orientation="vertical"
         offset={18}
+      />
+      <DimensionLine
+        x1={px}
+        y1={py - 12}
+        x2={fx}
+        y2={py - 12}
+        label={`${formatCm(baquetonCostura)} cm`}
+        offset={8}
       />
 
       {ollaoCount > 0 && (

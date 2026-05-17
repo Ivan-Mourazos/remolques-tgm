@@ -22,9 +22,9 @@ function ProfileThumb({
     <button
       type="button"
       onClick={onSelect}
-      className={`flex flex-col items-center rounded-lg border-2 p-2 transition ${
+      className={`flex flex-col items-center rounded border p-2 transition ${
         selected
-          ? "border-slate-800 bg-slate-50 ring-2 ring-slate-800/20"
+          ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900/20"
           : "border-slate-200 bg-white hover:border-slate-400"
       }`}
     >
@@ -33,12 +33,12 @@ function ProfileThumb({
           d={d}
           fill="none"
           stroke="#1a1a1a"
-          strokeWidth={3}
-          strokeLinecap="round"
-          strokeLinejoin="round"
+          strokeWidth={4}
+          strokeLinecap="square"
+          strokeLinejoin="miter"
         />
         {tipo === "tipo-04" && (
-          <text x={50} y={44} textAnchor="middle" fontSize={8} fontWeight="bold">
+          <text x={50} y={42} textAnchor="middle" fontSize={8} fontWeight="bold">
             CHAFLAN
           </text>
         )}

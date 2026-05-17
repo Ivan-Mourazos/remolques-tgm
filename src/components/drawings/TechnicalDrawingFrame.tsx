@@ -60,7 +60,7 @@ export function TechnicalDrawingFrame({
         </text>
         {children}
         {showLegend && (
-          <g transform="translate(8, 240)">
+          <g transform="translate(380, 18)">
             <DrawingLegend compact />
           </g>
         )}

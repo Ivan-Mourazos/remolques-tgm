@@ -71,6 +71,8 @@ export function CrossSectionProfile({
           fill="none"
           stroke={stroke}
           strokeWidth={strokeWidth}
+          strokeLinecap="square"
+          strokeLinejoin="miter"
           vectorEffect="non-scaling-stroke"
         />
         {showChaflanLabel && tipo === "tipo-04" && (

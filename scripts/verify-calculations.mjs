@@ -26,7 +26,8 @@ const baquetonProfile = {
   demasiaBaquetonPicostura: 2,
   demasiaBaquetonEnLargoDelante: 1,
   demasiaBaquetonEnLargoDetras: 1,
-  demasiaAnchoExtra: 2,
+  demasiaBaquetonEnAnchoDelante: 1,
+  demasiaBaquetonEnAnchoDetras: 1,
 };
 
 const r = (v) => roundValue(v, lonaParams.decimales, lonaParams.redondeo);
@@ -69,7 +70,10 @@ function calculateBaqueton(input) {
       baquetonProfile.demasiaBaquetonEnLargoDetras,
   );
   const panoAncho = r(
-    anchoHecho + baquetonCostura * 2 + baquetonProfile.demasiaAnchoExtra,
+    anchoHecho +
+      baquetonCostura * 2 +
+      baquetonProfile.demasiaBaquetonEnAnchoDelante +
+      baquetonProfile.demasiaBaquetonEnAnchoDetras,
   );
 
   return {

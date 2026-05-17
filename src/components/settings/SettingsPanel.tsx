@@ -127,7 +127,8 @@ function SettingsEditor({
                 "demasiaBaquetonPicostura",
                 "demasiaBaquetonEnLargoDelante",
                 "demasiaBaquetonEnLargoDetras",
-                "demasiaAnchoExtra",
+                "demasiaBaquetonEnAnchoDelante",
+                "demasiaBaquetonEnAnchoDetras",
               ] as const
             ).map((key) => (
               <label key={key} className="block text-sm">
@@ -136,7 +137,7 @@ function SettingsEditor({
                   type="number"
                   step="0.1"
                   className={inputClass}
-                  value={p[key]}
+                  value={p[key] ?? 0}
                   onChange={(e) => updateProfile(i, key, Number(e.target.value))}
                 />
               </label>

@@ -3,6 +3,7 @@ export type RoundingMode = "normal" | "up" | "down";
 export type BastillaType = "normal" | "enfundar";
 
 export type PlanteamientoType = "lona-remolque" | "baqueton";
+export type OllaoPlacement = "repartidos" | "a-la-medida";
 
 export type { TrailerProfileType } from "@/lib/drawings/trailer-profile-types";
 import type { TrailerProfileType } from "@/lib/drawings/trailer-profile-types";
@@ -35,7 +36,9 @@ export interface BaquetonProfile {
   demasiaBaquetonPicostura: number;
   demasiaBaquetonEnLargoDelante: number;
   demasiaBaquetonEnLargoDetras: number;
-  demasiaAnchoExtra: number;
+  demasiaBaquetonEnAnchoDelante: number;
+  demasiaBaquetonEnAnchoDetras: number;
+  demasiaAnchoExtra?: number;
 }
 
 export interface MaterialItem {
@@ -61,6 +64,7 @@ export interface AppSettings {
 
 export interface LonaFormInput {
   numeroPedido: string;
+  ordenFabricacion: string;
   cliente: string;
   revision: string;
   realizadoPor: string;
@@ -72,8 +76,11 @@ export interface LonaFormInput {
   altoDelantero: number;
   altoTrasero: number;
   contornoCad: number;
+  contornoManualEnabled: boolean;
+  contornoManual: number;
   tipoPerfil: TrailerProfileType;
   chaflanCm: number;
+  alturaCumbrera: number;
   tieneCurva: boolean;
   radioCurva: number;
   recogeDelante: string;
@@ -81,6 +88,7 @@ export interface LonaFormInput {
   bastilla: BastillaType;
   ventana: boolean;
   rotulacion: boolean;
+  colocacionOllaos: OllaoPlacement;
   observaciones: string;
   ollaosLaterales: string;
   ollaosDelante: string;
@@ -95,6 +103,8 @@ export interface LonaCalculationResult {
   altoTrasero: number;
   contornoCad: number;
   contornoAjustado: number;
+  contornoOrigen: "calculado" | "manual" | "pendiente";
+  contornoAviso?: string;
   panos: {
     contorno: { ancho: number; largo: number } | null;
     delantero: { ancho: number; alto: number };
@@ -111,6 +121,7 @@ export interface LonaCalculationResult {
 
 export interface BaquetonFormInput {
   numeroPedido: string;
+  ordenFabricacion: string;
   cliente: string;
   revision: string;
   realizadoPor: string;
@@ -121,6 +132,7 @@ export interface BaquetonFormInput {
   anchoPedido: number;
   baqueton: number;
   perfilCalculoId: string;
+  colocacionOllaos: OllaoPlacement;
   tipoOllaos: string;
   ollaosManuales: string;
   rotulacion: boolean;

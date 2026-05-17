@@ -8,11 +8,11 @@ export function parseOllaoText(text: string): OllaoRow[] {
   if (!trimmed) return [];
 
   return trimmed
-    .split(/\r?\n/)
+    .split(/\r?\n|;|\s+-\s+|,\s+/)
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line, index) => {
-      const parts = line.split(/\s*[|;,]\s*/);
+      const parts = line.split(/\s*\|\s*/);
       if (parts.length >= 2) {
         return { posicion: parts[0], detalle: parts.slice(1).join(" · ") };
       }
