@@ -20,8 +20,31 @@ function normalizeLonaInput(input: LonaFormInput): LonaFormInput {
     alturaCumbrera: input.alturaCumbrera ?? 0,
     contornoManualEnabled: input.contornoManualEnabled ?? false,
     contornoManual: input.contornoManual ?? input.contornoCad ?? 0,
+    fecha: input.fecha ?? input.fechaSalida ?? new Date().toISOString().slice(0, 10),
     colocacionOllaos: input.colocacionOllaos ?? "repartidos",
     bastilla: input.bastilla === "enfundar" ? "enfundar" : "normal",
+  };
+}
+
+function normalizeBaquetonInput(input: BaquetonFormInput): BaquetonFormInput {
+  const fecha =
+    input.fecha ?? input.fechaSalida ?? new Date().toISOString().slice(0, 10);
+  return {
+    ...input,
+    ordenFabricacion: input.ordenFabricacion ?? "",
+    clienteEspecifico: input.clienteEspecifico ?? "",
+    fecha,
+    fechaSalida: input.fechaSalida ?? fecha,
+    colocacionOllaos: input.colocacionOllaos ?? "repartidos",
+    tipoOllaos: input.tipoOllaos ?? "",
+    ollaosDescDelante: input.ollaosDescDelante ?? "",
+    ollaosDescLados: input.ollaosDescLados ?? "",
+    ollaosDescAtras: input.ollaosDescAtras ?? "",
+    textoRotulacion: input.textoRotulacion ?? "",
+    checkEspecifico: input.checkEspecifico ?? "",
+    ollaosLaterales: input.ollaosLaterales ?? input.ollaosManuales ?? "",
+    ollaosDelante: input.ollaosDelante ?? "",
+    ollaosAtras: input.ollaosAtras ?? "",
   };
 }
 
@@ -36,12 +59,7 @@ export function resolveBaquetonInput(editId: string | null): BaquetonFormInput {
   if (!editId) return createEmptyBaquetonInput();
   const item = getHistoryItem(editId);
   if (item?.type === "baqueton") {
-    const input = (item as SavedBaqueton).input;
-    return {
-      ...input,
-      ordenFabricacion: input.ordenFabricacion ?? "",
-      colocacionOllaos: input.colocacionOllaos ?? "repartidos",
-    };
+    return normalizeBaquetonInput((item as SavedBaqueton).input);
   }
   return createEmptyBaquetonInput();
 }

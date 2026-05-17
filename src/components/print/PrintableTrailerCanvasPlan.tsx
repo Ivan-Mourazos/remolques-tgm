@@ -7,7 +7,8 @@ import {
   formatDimension,
 } from "@/lib/format/number";
 import { getProfileDefinition } from "@/lib/drawings/trailer-profile-types";
-import { parseOllaoText, type OllaoRow } from "@/lib/print/parse-ollaos";
+import { OllaosRepartoGrid } from "@/components/ollaos/OllaosRepartoGrid";
+import { parseOllaoText } from "@/lib/print/parse-ollaos";
 import type { AppSettings, LonaCalculationResult, LonaFormInput } from "@/lib/types";
 
 function panoObsDelante(input: LonaFormInput): string {
@@ -101,14 +102,14 @@ function ExcelProfileDrawing({
       : 10;
 
   return (
-    <svg viewBox="0 0 360 210" className="h-[93mm] w-full" role="img" aria-label="Perfil remolque">
+    <svg viewBox="0 0 360 210" className="h-full min-h-[118mm] w-full" role="img" aria-label="Perfil remolque">
       <rect width="360" height="210" rx="4" fill="#f8fafc" />
       <rect x="8" y="8" width="344" height="194" rx="3" fill="#fff" stroke="#cbd5e1" />
       <CrossSectionProfile
-        x={42}
-        y={26}
-        width={276}
-        height={150}
+        x={32}
+        y={18}
+        width={296}
+        height={168}
         tipo={tipoPerfil}
         chaflanCm={input.chaflanCm}
         radioEsquinaCm={radioEsquina}
@@ -122,52 +123,6 @@ function ExcelProfileDrawing({
         PERFIL DEL REMOLQUE
       </text>
     </svg>
-  );
-}
-
-function OllaosGrid({
-  sections,
-}: {
-  sections: { title: string; rows: OllaoRow[] }[];
-}) {
-  const maxCols = 12;
-
-  return (
-    <table className="w-full table-fixed border-collapse overflow-hidden rounded-sm text-[7px] leading-tight shadow-[0_0_0_1px_#1f2937]">
-      <thead>
-        <tr>
-          <th className="w-[82mm] border border-slate-800 bg-slate-800 px-1 text-left font-black text-white">
-            REPARTIDOS
-          </th>
-          {Array.from({ length: maxCols }, (_, i) => (
-            <th key={i} className="border border-slate-800 bg-slate-700 text-center font-black text-white">
-              {i + 1}
-            </th>
-          ))}
-          <th className="w-[12mm] border border-slate-800 bg-amber-400 text-center font-black text-slate-950">TOTAL</th>
-        </tr>
-      </thead>
-      <tbody>
-        {sections.map((section, sectionIndex) => {
-          const values = section.rows.map((row) =>
-            row.detalle === row.posicion ? row.detalle : `${row.posicion} ${row.detalle}`,
-          );
-          return (
-            <tr key={section.title} className={sectionIndex % 2 === 0 ? "bg-white" : "bg-slate-50"}>
-              <td className="border border-slate-800 bg-blue-50 px-1 font-black uppercase text-slate-900">{section.title}</td>
-              {Array.from({ length: maxCols }, (_, i) => (
-                <td key={i} className="border border-slate-800 px-0.5 text-center font-bold text-slate-950">
-                  {values[i] ?? ""}
-                </td>
-              ))}
-              <td className="border border-slate-800 bg-amber-50 text-center font-black text-slate-950">
-                {values.length || ""}
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
   );
 }
 
@@ -185,6 +140,8 @@ export function PrintableTrailerCanvasPlan({
   const latRows = parseOllaoText(result.ollaos.laterales);
   const atrRows = parseOllaoText(result.ollaos.atras);
   const delRows = parseOllaoText(result.ollaos.delante);
+  const ollaoHeader =
+    input.colocacionOllaos === "a-la-medida" ? "A LA MEDIDA" : "REPARTIDOS";
   const panoContorno = result.panos.contorno
     ? `1 PAÑO DE ${formatDimension(result.panos.contorno.ancho, result.panos.contorno.largo)}`
     : null;
@@ -194,10 +151,10 @@ export function PrintableTrailerCanvasPlan({
       : result.tipoRecogidaAtras;
 
   return (
-    <section className="workshop-plan print-break-avoid flex flex-col rounded-sm border-2 border-slate-900 bg-white p-[4mm] text-slate-950 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.10)]">
+    <section className="workshop-plan print-break-avoid flex min-h-[194mm] flex-1 flex-col rounded-sm border-2 border-slate-900 bg-white p-[4mm] text-slate-950 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.10)]">
       <ExcelHeader input={input} />
-      <section className="mt-[5mm] grid flex-1 grid-cols-[78mm_1fr_34mm] gap-[6mm] text-[8px] leading-tight">
-        <section className="space-y-[1.2mm] rounded-sm border border-slate-200 bg-slate-50/70 p-[2mm]">
+      <section className="mt-[3mm] grid min-h-0 flex-1 grid-cols-[minmax(70mm,24%)_minmax(0,1fr)_minmax(26mm,11%)] items-stretch gap-[3mm] text-[8px] leading-tight">
+        <section className="flex flex-col justify-between gap-[0.8mm] rounded-sm border border-slate-200 bg-slate-50/70 p-[2mm]">
           <div className="grid grid-cols-[31mm_1fr] gap-[3mm]">
             <span className="font-black uppercase text-slate-700 underline decoration-amber-500 decoration-[1.2px] underline-offset-2">
               PAÑOS A CORTAR:
@@ -249,28 +206,31 @@ export function PrintableTrailerCanvasPlan({
           )}
         </section>
 
-        <section className="flex items-center justify-center">
+        <section className="flex min-h-0 items-stretch justify-center">
           <ExcelProfileDrawing input={input} result={result} />
         </section>
 
-        <section className="rounded-sm border border-slate-200 bg-amber-50/80 p-[2mm] pt-[10mm] text-right font-bold">
-          <span className="font-black italic text-slate-700">FECHA SALIDA:</span>
-          <span className="ml-1 inline-block min-w-[22mm] border-b-2 border-amber-500 text-slate-950">
-            {formatDate(input.fechaSalida)}
-          </span>
-          <p className="mt-[18mm] text-left text-[7px] font-bold uppercase leading-snug text-slate-800">
-            {settings.lonaParams.medidaOrejaGoma && result.notasAutomaticas.join(" · ")}
-          </p>
+        <section className="flex flex-col justify-between rounded-sm border border-slate-200 bg-amber-50/80 p-[2mm] text-right font-bold">
+          <div>
+            <span className="font-black italic text-slate-700">FECHA SALIDA:</span>
+            <span className="ml-1 inline-block min-w-[18mm] border-b-2 border-amber-500 text-slate-950">
+              {formatDate(input.fechaSalida)}
+            </span>
+          </div>
+          {result.notasAutomaticas.length > 0 && (
+            <p className="text-left text-[7px] font-bold uppercase leading-snug text-slate-800">
+              {result.notasAutomaticas.join(" · ")}
+            </p>
+          )}
         </section>
       </section>
 
-      <section className="mt-[4mm]">
-        <OllaosGrid
-          sections={[
-            { title: "Ollaos laterales de atrás a adelante", rows: latRows },
-            { title: "Ollaos atrás de izquierda a derecha", rows: atrRows },
-            { title: "Ollaos delante de izquierda a derecha", rows: delRows },
-          ]}
+      <section className="mt-auto hidden pt-[3mm] print:block">
+        <OllaosRepartoGrid
+          laterales={result.ollaos.laterales}
+          atras={result.ollaos.atras}
+          delante={result.ollaos.delante}
+          headerLabel={ollaoHeader}
         />
       </section>
 

@@ -1,7 +1,5 @@
 import { PrintableBaquetonPlan } from "@/components/print/PrintableBaquetonPlan";
 import { PrintableTrailerCanvasPlan } from "@/components/print/PrintableTrailerCanvasPlan";
-import { PrintWarnings } from "@/components/print/print-shared";
-import type { ValidationIssue } from "@/lib/validation/planteamiento";
 import type {
   AppSettings,
   BaquetonCalculationResult,
@@ -17,24 +15,19 @@ type PrintablePlanProps =
       input: LonaFormInput;
       result: LonaCalculationResult;
       settings: AppSettings;
-      validationIssues: ValidationIssue[];
     }
   | {
       type: "baqueton";
       input: BaquetonFormInput;
       result: BaquetonCalculationResult;
       settings: AppSettings;
-      validationIssues: ValidationIssue[];
     };
 
 export function PrintablePlan(props: PrintablePlanProps) {
-  const { validationIssues, settings } = props;
+  const { settings } = props;
 
   return (
-    <article className="print-landscape-sheet print-only-content mx-auto w-full max-w-[297mm] bg-white p-[6mm] text-black shadow-md print:max-w-none print:p-0 print:shadow-none">
-      <div className="no-print mb-3">
-        <PrintWarnings issues={validationIssues} />
-      </div>
+    <article className="print-landscape-sheet print-only-content mx-auto flex w-full max-w-[297mm] flex-col bg-white p-[6mm] text-black shadow-md print:max-w-none print:min-h-[210mm] print:p-0 print:shadow-none">
       {props.type === "lona-remolque" ? (
         <PrintableTrailerCanvasPlan
           input={props.input}

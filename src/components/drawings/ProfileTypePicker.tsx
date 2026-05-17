@@ -1,76 +1,32 @@
 "use client";
 
-import { buildCrossSectionPath } from "@/components/drawings/cross-section-paths";
+import { excelSelectClass } from "@/components/ui/FormExcelRow";
 import {
   TRAILER_PROFILE_CATALOG,
   type TrailerProfileType,
 } from "@/lib/drawings/trailer-profile-types";
 
-function ProfileThumb({
-  tipo,
-  selected,
-  onSelect,
-}: {
-  tipo: TrailerProfileType;
-  selected: boolean;
-  onSelect: () => void;
-}) {
-  const def = TRAILER_PROFILE_CATALOG.find((p) => p.id === tipo)!;
-  const d = buildCrossSectionPath({ tipo });
-
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className={`flex flex-col items-center rounded border p-2 transition ${
-        selected
-          ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900/20"
-          : "border-slate-200 bg-white hover:border-slate-400"
-      }`}
-    >
-      <svg viewBox="0 0 100 80" className="h-16 w-20" aria-hidden>
-        <path
-          d={d}
-          fill="none"
-          stroke="#1a1a1a"
-          strokeWidth={4}
-          strokeLinecap="square"
-          strokeLinejoin="miter"
-        />
-        {tipo === "tipo-04" && (
-          <text x={50} y={42} textAnchor="middle" fontSize={8} fontWeight="bold">
-            CHAFLAN
-          </text>
-        )}
-      </svg>
-      <span className="mt-1 text-xs font-bold text-slate-900">{def.label}</span>
-      <span className="text-[10px] text-slate-500">{def.shortLabel}</span>
-    </button>
-  );
-}
-
 export function ProfileTypePicker({
   value,
   onChange,
+  className = excelSelectClass,
 }: {
   value: TrailerProfileType;
   onChange: (tipo: TrailerProfileType) => void;
+  className?: string;
 }) {
   return (
-    <fieldset className="sm:col-span-2">
-      <legend className="mb-2 block text-sm font-medium text-slate-700">
-        Tipo de perfil (corte transversal)
-      </legend>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-        {TRAILER_PROFILE_CATALOG.map((p) => (
-          <ProfileThumb
-            key={p.id}
-            tipo={p.id}
-            selected={value === p.id}
-            onSelect={() => onChange(p.id)}
-          />
-        ))}
-      </div>
-    </fieldset>
+    <select
+      className={className}
+      value={value}
+      onChange={(e) => onChange(e.target.value as TrailerProfileType)}
+      aria-label="Tipo de perfil"
+    >
+      {TRAILER_PROFILE_CATALOG.map((profile) => (
+        <option key={profile.id} value={profile.id}>
+          {profile.label} — {profile.shortLabel}
+        </option>
+      ))}
+    </select>
   );
 }

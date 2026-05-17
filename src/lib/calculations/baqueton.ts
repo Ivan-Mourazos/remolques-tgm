@@ -51,13 +51,29 @@ export function calculateBaqueton(
     redondeo,
   );
 
-  const ollaos = [input.tipoOllaos, input.ollaosManuales]
+  const ollaos = [
+    input.tipoOllaos,
+    input.ollaosDescDelante,
+    input.ollaosDescLados,
+    input.ollaosDescAtras,
+    input.ollaosLaterales,
+    input.ollaosDelante,
+    input.ollaosAtras,
+    input.ollaosManuales,
+  ]
     .filter(Boolean)
     .join(" — ");
 
   const notasAutomaticas: string[] = [];
   if (input.rotulacion) {
-    notasAutomaticas.push("Incluye rotulación.");
+    notasAutomaticas.push(
+      input.textoRotulacion
+        ? `Rotulación: ${input.textoRotulacion}.`
+        : "Incluye rotulación.",
+    );
+  }
+  if (input.checkEspecifico.trim()) {
+    notasAutomaticas.push(`Check específico: ${input.checkEspecifico}.`);
   }
   if (input.tipoOllaos) {
     notasAutomaticas.push(`Tipo de ollaos: ${input.tipoOllaos}.`);

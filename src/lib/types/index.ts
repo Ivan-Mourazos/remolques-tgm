@@ -68,6 +68,7 @@ export interface LonaFormInput {
   cliente: string;
   revision: string;
   realizadoPor: string;
+  fecha: string;
   fechaSalida: string;
   cantidad: number;
   material: string;
@@ -123,8 +124,10 @@ export interface BaquetonFormInput {
   numeroPedido: string;
   ordenFabricacion: string;
   cliente: string;
+  clienteEspecifico: string;
   revision: string;
   realizadoPor: string;
+  fecha: string;
   fechaSalida: string;
   cantidad: number;
   material: string;
@@ -134,8 +137,16 @@ export interface BaquetonFormInput {
   perfilCalculoId: string;
   colocacionOllaos: OllaoPlacement;
   tipoOllaos: string;
+  ollaosDescDelante: string;
+  ollaosDescLados: string;
+  ollaosDescAtras: string;
   ollaosManuales: string;
+  ollaosLaterales: string;
+  ollaosDelante: string;
+  ollaosAtras: string;
   rotulacion: boolean;
+  textoRotulacion: string;
+  checkEspecifico: string;
   observaciones: string;
 }
 

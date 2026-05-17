@@ -4,40 +4,102 @@ import { calculateTrailerContour } from "@/lib/calculations/trailer-contour";
 
 export type ValidationLevel = "warning";
 
+export type LonaValidationField =
+  | "numeroPedido"
+  | "cliente"
+  | "material"
+  | "largoPedido"
+  | "anchoPedido"
+  | "altoDelantero"
+  | "altoTrasero"
+  | "contornoCad"
+  | "radioCurva";
+
+export type BaquetonValidationField =
+  | "numeroPedido"
+  | "cliente"
+  | "material"
+  | "largoPedido"
+  | "anchoPedido"
+  | "baqueton";
+
 export interface ValidationIssue {
   level: ValidationLevel;
   message: string;
+  field?: LonaValidationField | BaquetonValidationField;
+}
+
+export function issuesByField(
+  issues: ValidationIssue[],
+): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const issue of issues) {
+    if (issue.field && !map[issue.field]) {
+      map[issue.field] = issue.message;
+    }
+  }
+  return map;
 }
 
 export function validateLonaInput(input: LonaFormInput): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
 
   if (!input.numeroPedido.trim()) {
-    issues.push({ level: "warning", message: "Falta el número de pedido." });
-  }
-  if (!input.cliente.trim()) {
-    issues.push({ level: "warning", message: "Falta el cliente." });
-  }
-  if (!input.material.trim()) {
-    issues.push({ level: "warning", message: "Falta el material." });
-  }
-  if (input.largoPedido <= 0 || input.anchoPedido <= 0) {
     issues.push({
       level: "warning",
-      message: "Largo o ancho de pedido deben ser mayores que 0.",
+      field: "numeroPedido",
+      message: "Falta el número de pedido.",
     });
   }
-  if (input.altoDelantero <= 0 || input.altoTrasero <= 0) {
+  if (!input.cliente.trim()) {
     issues.push({
       level: "warning",
-      message: "Los altos delantero y trasero deben ser mayores que 0.",
+      field: "cliente",
+      message: "Falta el cliente.",
+    });
+  }
+  if (!input.material.trim()) {
+    issues.push({
+      level: "warning",
+      field: "material",
+      message: "Falta el material.",
+    });
+  }
+  if (input.largoPedido <= 0) {
+    issues.push({
+      level: "warning",
+      field: "largoPedido",
+      message: "Indica un largo mayor que 0.",
+    });
+  }
+  if (input.anchoPedido <= 0) {
+    issues.push({
+      level: "warning",
+      field: "anchoPedido",
+      message: "Indica un ancho mayor que 0.",
+    });
+  }
+  if (input.altoDelantero <= 0) {
+    issues.push({
+      level: "warning",
+      field: "altoDelantero",
+      message: "Indica el alto delantero.",
+    });
+  }
+  if (input.altoTrasero <= 0) {
+    issues.push({
+      level: "warning",
+      field: "altoTrasero",
+      message: "Indica el alto trasero.",
     });
   }
   const contorno = calculateTrailerContour(input, DEFAULT_SETTINGS);
   if (contorno.value == null) {
     issues.push({
       level: "warning",
-      message: contorno.warning ?? "No se pudo calcular el contorno con los datos actuales.",
+      field: "contornoCad",
+      message:
+        contorno.warning ?? "No se pudo calcular el contorno con los datos actuales.",
     });
   }
   if (
@@ -47,8 +109,8 @@ export function validateLonaInput(input: LonaFormInput): ValidationIssue[] {
   ) {
     issues.push({
       level: "warning",
-      message:
-        "Con curva y recoge con goma debe indicarse el radio de curva para las orejas.",
+      field: "radioCurva",
+      message: "Indica el radio de curva para las orejas de goma.",
     });
   }
 
@@ -59,24 +121,45 @@ export function validateBaquetonInput(input: BaquetonFormInput): ValidationIssue
   const issues: ValidationIssue[] = [];
 
   if (!input.numeroPedido.trim()) {
-    issues.push({ level: "warning", message: "Falta el número de pedido." });
-  }
-  if (!input.cliente.trim()) {
-    issues.push({ level: "warning", message: "Falta el cliente." });
-  }
-  if (!input.material.trim()) {
-    issues.push({ level: "warning", message: "Falta el material." });
-  }
-  if (input.largoPedido <= 0 || input.anchoPedido <= 0) {
     issues.push({
       level: "warning",
-      message: "Largo o ancho de pedido deben ser mayores que 0.",
+      field: "numeroPedido",
+      message: "Falta el número de pedido.",
+    });
+  }
+  if (!input.cliente.trim()) {
+    issues.push({
+      level: "warning",
+      field: "cliente",
+      message: "Falta el cliente.",
+    });
+  }
+  if (!input.material.trim()) {
+    issues.push({
+      level: "warning",
+      field: "material",
+      message: "Falta el material.",
+    });
+  }
+  if (input.largoPedido <= 0) {
+    issues.push({
+      level: "warning",
+      field: "largoPedido",
+      message: "Indica un largo mayor que 0.",
+    });
+  }
+  if (input.anchoPedido <= 0) {
+    issues.push({
+      level: "warning",
+      field: "anchoPedido",
+      message: "Indica un ancho mayor que 0.",
     });
   }
   if (input.baqueton <= 0) {
     issues.push({
       level: "warning",
-      message: "El baquetón debe ser mayor que 0.",
+      field: "baqueton",
+      message: "Indica el baquetón.",
     });
   }
 

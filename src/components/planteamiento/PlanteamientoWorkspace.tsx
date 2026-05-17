@@ -8,9 +8,9 @@ import {
 } from "@/components/planteamiento/planteamiento-initial";
 import { PrintablePlan } from "@/components/print/PrintablePlan";
 import { PrintActions } from "@/components/print/PrintActions";
-import { PrintWarnings } from "@/components/print/print-shared";
 import { BaquetonForm } from "@/components/forms/BaquetonForm";
 import { LonaForm } from "@/components/forms/LonaForm";
+import { OllaosEntryPanel } from "@/components/ollaos/OllaosEntryPanel";
 import { calculateBaqueton } from "@/lib/calculations/baqueton";
 import { calculateLonaRemolque } from "@/lib/calculations/lona-remolque";
 import {
@@ -18,6 +18,7 @@ import {
   createEmptyLonaInput,
 } from "@/lib/defaults/default-settings";
 import { useSettings } from "@/lib/hooks/use-settings";
+import type { OllaoSectionId } from "@/lib/print/ollaos-grid";
 import {
   addToHistory,
   createId,
@@ -34,6 +35,7 @@ import {
   type SavedLona,
 } from "@/lib/types";
 import {
+  issuesByField,
   validateBaquetonInput,
   validateLonaInput,
 } from "@/lib/validation/planteamiento";
@@ -87,9 +89,12 @@ export function PlanteamientoWorkspace({
     [baquetonInput, calculationSettings, ready],
   );
 
-  const lonaValidation = useMemo(() => validateLonaInput(lonaInput), [lonaInput]);
-  const baquetonValidation = useMemo(
-    () => validateBaquetonInput(baquetonInput),
+  const lonaFieldWarnings = useMemo(
+    () => issuesByField(validateLonaInput(lonaInput)),
+    [lonaInput],
+  );
+  const baquetonFieldWarnings = useMemo(
+    () => issuesByField(validateBaquetonInput(baquetonInput)),
     [baquetonInput],
   );
 
@@ -155,6 +160,28 @@ export function PlanteamientoWorkspace({
     alert("Duplicado. Guarda para crear una copia nueva en el historial.");
   };
 
+  const setLonaOllaoSection = useCallback(
+    (section: OllaoSectionId, text: string) => {
+      setLonaInput((prev) => {
+        if (section === "laterales") return { ...prev, ollaosLaterales: text };
+        if (section === "atras") return { ...prev, ollaosAtras: text };
+        return { ...prev, ollaosDelante: text };
+      });
+    },
+    [],
+  );
+
+  const setBaquetonOllaoSection = useCallback(
+    (section: OllaoSectionId, text: string) => {
+      setBaquetonInput((prev) => {
+        if (section === "laterales") return { ...prev, ollaosLaterales: text };
+        if (section === "atras") return { ...prev, ollaosAtras: text };
+        return { ...prev, ollaosDelante: text };
+      });
+    },
+    [],
+  );
+
   const title =
     mode === "lona-remolque" ? "Lona remolque alto" : "Baquetón";
 
@@ -169,7 +196,6 @@ export function PlanteamientoWorkspace({
         input={lonaInput}
         result={lonaResult}
         settings={calculationSettings}
-        validationIssues={lonaValidation}
       />
     ) : mode === "baqueton" && baquetonResult ? (
       <PrintablePlan
@@ -177,12 +203,27 @@ export function PlanteamientoWorkspace({
         input={baquetonInput}
         result={baquetonResult}
         settings={calculationSettings}
-        validationIssues={baquetonValidation}
       />
     ) : null;
 
-  const screenWarnings =
-    mode === "lona-remolque" ? lonaValidation : baquetonValidation;
+  const ollaosPanel =
+    mode === "lona-remolque" ? (
+      <OllaosEntryPanel
+        colocacionOllaos={lonaInput.colocacionOllaos}
+        laterales={lonaInput.ollaosLaterales}
+        atras={lonaInput.ollaosAtras}
+        delante={lonaInput.ollaosDelante}
+        onChange={setLonaOllaoSection}
+      />
+    ) : (
+      <OllaosEntryPanel
+        colocacionOllaos={baquetonInput.colocacionOllaos}
+        laterales={baquetonInput.ollaosLaterales}
+        atras={baquetonInput.ollaosAtras}
+        delante={baquetonInput.ollaosDelante}
+        onChange={setBaquetonOllaoSection}
+      />
+    );
 
   return (
     <section>
@@ -200,16 +241,14 @@ export function PlanteamientoWorkspace({
       </div>
 
       {viewMode === "edit" ? (
-        <div className="grid gap-8 xl:grid-cols-2">
-          <section className="no-print rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="mb-4 text-lg font-semibold text-slate-800">
-              Datos de entrada
-            </h2>
+        <div className="no-print grid items-start gap-6 lg:grid-cols-[minmax(300px,360px)_minmax(0,1fr)]">
+          <aside className="sticky top-4 max-h-[calc(100vh-6rem)] overflow-y-auto p-1">
             {mode === "lona-remolque" ? (
               <LonaForm
                 input={lonaInput}
                 settings={settings}
                 materials={materials}
+                fieldWarnings={lonaFieldWarnings}
                 onChange={setLonaInput}
               />
             ) : (
@@ -217,29 +256,23 @@ export function PlanteamientoWorkspace({
                 input={baquetonInput}
                 settings={settings}
                 materials={materials}
+                fieldWarnings={baquetonFieldWarnings}
                 onChange={setBaquetonInput}
               />
             )}
-          </section>
+          </aside>
 
-          <section>
-            <h2 className="no-print mb-4 text-lg font-semibold text-slate-800">
-              Vista previa del planteamiento
-            </h2>
-            <div className="no-print mb-4">
-              <PrintWarnings issues={screenWarnings} />
-            </div>
+          <section className="flex min-w-0 flex-col gap-4">
             {previewBlock}
+            {ollaosPanel}
           </section>
         </div>
       ) : (
-        <section className="flex justify-center">
+        <section className="flex flex-col items-center gap-4">
           <section className="w-full max-w-[297mm] overflow-x-auto">
-            <section className="no-print mb-4">
-              <PrintWarnings issues={screenWarnings} />
-            </section>
             {previewBlock}
           </section>
+          {ollaosPanel}
         </section>
       )}
 

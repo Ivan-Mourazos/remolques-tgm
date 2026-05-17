@@ -5,7 +5,8 @@ import {
   formatDimension,
   formatM2,
 } from "@/lib/format/number";
-import { parseOllaoText, type OllaoRow } from "@/lib/print/parse-ollaos";
+import { OllaosRepartoGrid } from "@/components/ollaos/OllaosRepartoGrid";
+import { parseOllaoText } from "@/lib/print/parse-ollaos";
 import type {
   AppSettings,
   BaquetonCalculationResult,
@@ -36,7 +37,10 @@ function BaquetonHeader({ input }: { input: BaquetonFormInput }) {
       </section>
       <section className="grid grid-cols-[90px_1fr] border-b border-slate-900">
         <span className={labelClass}>CLIENTE:</span>
-        <span className={valueClass}>{input.cliente || "—"}</span>
+        <span className={valueClass}>
+          {input.cliente || "—"}
+          {input.clienteEspecifico ? ` · ${input.clienteEspecifico}` : ""}
+        </span>
       </section>
       <section className="grid grid-cols-[70px_1fr] border-b border-slate-900">
         <span className={labelClass}>Nº PEDIDO:</span>
@@ -106,7 +110,7 @@ function BaquetonShape({
   ].join(" ");
 
   return (
-    <svg viewBox="0 0 560 330" className="h-[126mm] w-full" role="img" aria-label="Dibujo baquetón">
+    <svg viewBox="0 0 560 330" className="h-full min-h-[118mm] w-full" role="img" aria-label="Dibujo baquetón">
       <rect width="560" height="330" rx="4" fill="#f8fafc" />
       <rect x="8" y="8" width="544" height="314" rx="3" fill="#fff" stroke="#cbd5e1" />
       <path d={d} fill="#f3f4f6" stroke="#111827" strokeWidth="1.5" />
@@ -138,51 +142,6 @@ function BaquetonShape({
   );
 }
 
-function RepartidosGrid({ rows }: { rows: OllaoRow[] }) {
-  const maxCols = 12;
-  const values = rows.map((row) =>
-    row.detalle === row.posicion ? row.detalle : `${row.posicion} ${row.detalle}`,
-  );
-  const sections = [
-    "Ollaos laterales de atrás a adelante",
-    "Ollaos atrás de izquierda a derecha",
-    "Ollaos delante de izquierda a derecha",
-  ];
-
-  return (
-    <table className="w-full table-fixed border-collapse overflow-hidden rounded-sm text-[7px] leading-tight shadow-[0_0_0_1px_#1f2937]">
-      <thead>
-        <tr>
-          <th className="w-[82mm] border border-slate-800 bg-slate-800 px-1 text-left font-black text-white">
-            REPARTIDOS
-          </th>
-          {Array.from({ length: maxCols }, (_, i) => (
-            <th key={i} className="border border-slate-800 bg-slate-700 text-center font-black text-white">
-              {i + 1}
-            </th>
-          ))}
-          <th className="w-[12mm] border border-slate-800 bg-amber-400 text-center font-black text-slate-950">TOTAL</th>
-        </tr>
-      </thead>
-      <tbody>
-        {sections.map((title, rowIndex) => (
-          <tr key={title} className={rowIndex % 2 === 0 ? "bg-white" : "bg-slate-50"}>
-            <td className="border border-slate-800 bg-blue-50 px-1 font-black uppercase text-slate-900">{title}</td>
-            {Array.from({ length: maxCols }, (_, i) => (
-              <td key={i} className="border border-slate-800 px-0.5 text-center font-bold text-slate-950">
-                {rowIndex === 0 ? values[i] ?? "" : ""}
-              </td>
-            ))}
-            <td className="border border-slate-800 bg-amber-50 text-center font-black text-slate-950">
-              {rowIndex === 0 ? values.length || "" : ""}
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-}
-
 export function PrintableBaquetonPlan({
   input,
   result,
@@ -196,48 +155,78 @@ export function PrintableBaquetonPlan({
     settings.baquetonProfiles.find((p) => p.id === input.perfilCalculoId) ??
     settings.baquetonProfiles[0];
   const superficieTotal = result.superficieM2 * input.cantidad;
-  const ollaoRows = parseOllaoText(input.ollaosManuales);
+  const latRows = parseOllaoText(input.ollaosLaterales);
+  const atrRows = parseOllaoText(input.ollaosAtras);
+  const delRows = parseOllaoText(input.ollaosDelante);
+  const ollaoHeader =
+    input.colocacionOllaos === "a-la-medida" ? "A LA MEDIDA" : "REPARTIDOS";
 
   return (
-    <section className="workshop-plan print-break-avoid flex flex-col rounded-sm border-2 border-slate-900 bg-white p-[4mm] text-slate-950 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.10)]">
+    <section className="workshop-plan print-break-avoid flex min-h-[194mm] flex-1 flex-col rounded-sm border-2 border-slate-900 bg-white p-[4mm] text-slate-950 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.10)]">
       <BaquetonHeader input={input} />
-      <section className="mt-[5mm] grid flex-1 grid-cols-[82mm_1fr] gap-[6mm] text-[8px] leading-tight">
-        <section className="space-y-[3mm] rounded-sm border border-slate-200 bg-slate-50/70 p-[3mm]">
-          <DataLine
-            label="Paños a cortar"
-            value={`1 PAÑO DE ${formatDimension(result.panoUnico.largo, result.panoUnico.ancho)}`}
-          />
-          <DataLine label="Material" value={input.material} />
-          <DataLine label="Ollaos" value={input.colocacionOllaos === "a-la-medida" ? "SEGÚN SE INDICA" : "REPARTIDOS"} />
-          <DataLine label="Rotulación" value={formatBoolean(input.rotulacion)} />
-          <DataLine
-            label="Superficie de tele"
-            value={
-              input.cantidad > 1
-                ? `${formatM2(superficieTotal)} m² total`
-                : `${formatM2(result.superficieM2)} m² / unidad`
-            }
-          />
-          <div className="pt-[10mm]">
-            <DataLine label="Medidas remolque hecho" value="" />
-            <DataLine label="Largo" value={formatCm(result.medidasRemolqueHecho.largo)} />
-            <DataLine label="Ancho" value={formatCm(result.medidasRemolqueHecho.ancho)} />
+      <section className="mt-[3mm] grid min-h-0 flex-1 grid-cols-[minmax(70mm,24%)_minmax(0,1fr)_minmax(26mm,11%)] items-stretch gap-[3mm] text-[8px] leading-tight">
+        <section className="flex flex-col justify-between gap-[0.8mm] rounded-sm border border-slate-200 bg-slate-50/70 p-[2mm]">
+          <div className="space-y-[0.8mm]">
+            <DataLine
+              label="Paños a cortar"
+              value={`1 PAÑO DE ${formatDimension(result.panoUnico.largo, result.panoUnico.ancho)}`}
+            />
+            <DataLine label="Material" value={input.material} />
+            <DataLine
+              label="Ollaos"
+              value={
+                latRows.length || atrRows.length || delRows.length
+                  ? "SEGÚN SE INDICA"
+                  : input.colocacionOllaos === "a-la-medida"
+                    ? "A LA MEDIDA"
+                    : "REPARTIDOS"
+              }
+            />
+            <DataLine label="Rotulación" value={formatBoolean(input.rotulacion)} />
+            <DataLine
+              label="Superficie de tele"
+              value={
+                input.cantidad > 1
+                  ? `${formatM2(superficieTotal)} m² total`
+                  : `${formatM2(result.superficieM2)} m² / unidad`
+              }
+            />
+          </div>
+          <div className="space-y-[0.8mm] border-t border-slate-200 pt-[1mm]">
+            <DataLine label="Largo hecho" value={formatCm(result.medidasRemolqueHecho.largo)} />
+            <DataLine label="Ancho hecho" value={formatCm(result.medidasRemolqueHecho.ancho)} />
             <DataLine label="Baquetón" value={`${formatCm(input.baqueton)} EN LÍNEA`} />
             <DataLine label="Baquetón costura" value={formatCm(result.baquetonCostura)} />
             <DataLine label="Perfil" value={profile?.nombre ?? "—"} />
           </div>
         </section>
 
-        <section className="relative">
-          <p className="absolute right-1 top-1 z-10 text-[8px] font-black italic text-slate-700">
-            FECHA SALIDA: {formatDate(input.fechaSalida)}
-          </p>
+        <section className="flex min-h-0 items-stretch justify-center">
           <BaquetonShape result={result} />
+        </section>
+
+        <section className="flex flex-col justify-between rounded-sm border border-slate-200 bg-amber-50/80 p-[2mm] text-right font-bold">
+          <div>
+            <span className="font-black italic text-slate-700">FECHA SALIDA:</span>
+            <span className="ml-1 inline-block min-w-[18mm] border-b-2 border-amber-500 text-slate-950">
+              {formatDate(input.fechaSalida)}
+            </span>
+          </div>
+          {result.notasAutomaticas.length > 0 && (
+            <p className="text-left text-[7px] font-bold uppercase leading-snug text-slate-800">
+              {result.notasAutomaticas.join(" · ")}
+            </p>
+          )}
         </section>
       </section>
 
-      <section className="mt-[4mm]">
-        <RepartidosGrid rows={ollaoRows} />
+      <section className="mt-auto hidden pt-[3mm] print:block">
+        <OllaosRepartoGrid
+          laterales={input.ollaosLaterales}
+          atras={input.ollaosAtras}
+          delante={input.ollaosDelante}
+          headerLabel={ollaoHeader}
+        />
       </section>
 
       {result.observaciones.trim() && (

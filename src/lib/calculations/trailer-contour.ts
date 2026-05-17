@@ -34,6 +34,13 @@ export function calculateTrailerContour(
     };
   }
 
+  if (hasPositive(input.contornoCad)) {
+    return {
+      value: roundContour(input.contornoCad, settings),
+      source: "calculado",
+    };
+  }
+
   const anchoTerminado =
     input.anchoPedido + settings.lonaParams.demasiaLargoAnchoLonaHecha;
   const alto = input.altoDelantero;

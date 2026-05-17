@@ -6,36 +6,36 @@ import {
   profileNeedsCornerRadius,
   profileNeedsPeak,
 } from "@/components/drawings/cross-section-paths";
-import { FormField, inputClass, selectClass, textareaClass } from "@/components/ui/FormField";
-import { calculateTrailerContour } from "@/lib/calculations/trailer-contour";
-import { formatCm } from "@/lib/format/number";
+import { textareaClass } from "@/components/ui/FormField";
+import {
+  excelInputClass,
+  excelReadonlyClass,
+  excelSelectClass,
+  FormExcelRow,
+  FormExcelSection,
+  SiNoSelect,
+} from "@/components/ui/FormExcelRow";
+import { getProfileDefinition } from "@/lib/drawings/trailer-profile-types";
 import type { AppSettings, LonaFormInput } from "@/lib/types";
 
 type Props = {
   input: LonaFormInput;
   settings: AppSettings;
   materials: string[];
+  fieldWarnings?: Record<string, string>;
   onChange: (next: LonaFormInput) => void;
 };
 
-function AdvancedSection({ children }: { children: React.ReactNode }) {
-  return (
-    <details className="sm:col-span-2 rounded-lg border border-slate-200 bg-slate-50">
-      <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-slate-800">
-        Opciones avanzadas
-      </summary>
-      <div className="grid gap-4 border-t border-slate-200 p-4 sm:grid-cols-2">
-        {children}
-      </div>
-    </details>
-  );
+function aguasLabel(tipo: LonaFormInput["tipoPerfil"]) {
+  const def = getProfileDefinition(tipo ?? "tipo-01");
+  if (def.shortLabel.toLowerCase().includes("aguas")) return def.shortLabel.toUpperCase();
+  return "—";
 }
 
-export function LonaForm({ input, settings, materials, onChange }: Props) {
+export function LonaForm({ input, settings, materials, fieldWarnings = {}, onChange }: Props) {
   const set = <K extends keyof LonaFormInput>(key: K, value: LonaFormInput[K]) =>
     onChange({ ...input, [key]: value });
-  const setAlto = (value: number) =>
-    onChange({ ...input, altoDelantero: value, altoTrasero: value });
+
   const setPerfil = (tipo: LonaFormInput["tipoPerfil"]) =>
     onChange({
       ...input,
@@ -43,167 +43,271 @@ export function LonaForm({ input, settings, materials, onChange }: Props) {
       tieneCurva: profileNeedsCornerRadius(tipo),
     });
 
-  const contour = calculateTrailerContour(input, settings);
-  const needsChaflan = profileNeedsChaflan(input.tipoPerfil ?? "tipo-01");
-  const needsRadius = profileNeedsCornerRadius(input.tipoPerfil ?? "tipo-01");
-  const needsPeak = profileNeedsPeak(input.tipoPerfil ?? "tipo-01");
-  const showManualOllaos = input.colocacionOllaos === "a-la-medida";
+  const setContornoScad = (value: number) =>
+    onChange({
+      ...input,
+      contornoCad: value,
+      contornoManual: value,
+      contornoManualEnabled: value > 0,
+    });
+
+  const tipo = input.tipoPerfil ?? "tipo-01";
+  const needsChaflan = profileNeedsChaflan(tipo);
+  const needsRadius = profileNeedsCornerRadius(tipo);
+  const needsPeak = profileNeedsPeak(tipo);
+  const w = fieldWarnings;
 
   return (
-    <form className="grid gap-4 sm:grid-cols-2" onSubmit={(e) => e.preventDefault()}>
-      <section className="sm:col-span-2">
-        <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">
-          Datos del planteamiento
-        </h3>
-        <div className="grid gap-4 sm:grid-cols-3">
-          <FormField label="Pedido">
-            <input className={inputClass} value={input.numeroPedido} onChange={(e) => set("numeroPedido", e.target.value)} />
-          </FormField>
-          <FormField label="O.F.">
-            <input className={inputClass} value={input.ordenFabricacion} onChange={(e) => set("ordenFabricacion", e.target.value)} />
-          </FormField>
-          <FormField label="Cliente">
-            <input className={inputClass} value={input.cliente} onChange={(e) => set("cliente", e.target.value)} />
-          </FormField>
-          <FormField label="Técnico">
-            <input className={inputClass} value={input.realizadoPor} onChange={(e) => set("realizadoPor", e.target.value)} />
-          </FormField>
-          <FormField label="Revisión">
-            <input className={inputClass} value={input.revision} onChange={(e) => set("revision", e.target.value)} />
-          </FormField>
-          <FormField label="Fecha planificación">
-            <input type="date" className={inputClass} value={input.fechaSalida} onChange={(e) => set("fechaSalida", e.target.value)} />
-          </FormField>
-          <FormField label="Material" className="sm:col-span-3">
-            <select className={selectClass} value={input.material} onChange={(e) => set("material", e.target.value)}>
-              {materials.map((m) => (
-                <option key={m} value={m}>{m}</option>
-              ))}
-            </select>
-          </FormField>
-        </div>
-      </section>
+    <form
+      className="overflow-hidden rounded border border-slate-300 bg-white"
+      onSubmit={(e) => e.preventDefault()}
+    >
+      <FormExcelRow label="Nº pedido" tone="pedido" warn={w.numeroPedido}>
+        <input
+          className={excelInputClass}
+          value={input.numeroPedido}
+          onChange={(e) => set("numeroPedido", e.target.value)}
+        />
+      </FormExcelRow>
+      <FormExcelRow label="Cliente general" tone="pedido" warn={w.cliente}>
+        <input
+          className={excelInputClass}
+          value={input.cliente}
+          onChange={(e) => set("cliente", e.target.value)}
+        />
+      </FormExcelRow>
+      <FormExcelRow label="Revisión" tone="pedido">
+        <input
+          className={excelInputClass}
+          value={input.revision}
+          onChange={(e) => set("revision", e.target.value)}
+        />
+      </FormExcelRow>
+      <FormExcelRow label="O.F." tone="pedido">
+        <input
+          className={excelInputClass}
+          value={input.ordenFabricacion}
+          onChange={(e) => set("ordenFabricacion", e.target.value)}
+        />
+      </FormExcelRow>
+      <FormExcelRow label="Realizado por" tone="pedido">
+        <input
+          className={excelInputClass}
+          value={input.realizadoPor}
+          onChange={(e) => set("realizadoPor", e.target.value)}
+        />
+      </FormExcelRow>
+      <FormExcelRow label="Fecha" tone="pedido">
+        <input
+          type="date"
+          className={excelInputClass}
+          value={input.fecha}
+          onChange={(e) => set("fecha", e.target.value)}
+        />
+      </FormExcelRow>
 
-      <section className="sm:col-span-2">
-        <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">
-          Datos técnicos
-        </h3>
-        <div className="grid gap-4 sm:grid-cols-3">
-          <ProfileTypePicker
-            value={input.tipoPerfil ?? "tipo-01"}
-            onChange={setPerfil}
+      <FormExcelRow label="Cantidad" tone="medida">
+        <input
+          type="number"
+          min={1}
+          className={excelInputClass}
+          value={input.cantidad}
+          onChange={(e) => set("cantidad", Number(e.target.value))}
+        />
+      </FormExcelRow>
+      <FormExcelRow label="Largo" tone="medida" warn={w.largoPedido}>
+        <input
+          type="number"
+          step="0.1"
+          className={excelInputClass}
+          value={input.largoPedido || ""}
+          onChange={(e) => set("largoPedido", Number(e.target.value))}
+        />
+      </FormExcelRow>
+      <FormExcelRow label="Ancho" tone="medida" warn={w.anchoPedido}>
+        <input
+          type="number"
+          step="0.1"
+          className={excelInputClass}
+          value={input.anchoPedido || ""}
+          onChange={(e) => set("anchoPedido", Number(e.target.value))}
+        />
+      </FormExcelRow>
+      <FormExcelRow label="Alto delante" tone="medida" warn={w.altoDelantero}>
+        <input
+          type="number"
+          step="0.1"
+          className={excelInputClass}
+          value={input.altoDelantero || ""}
+          onChange={(e) => set("altoDelantero", Number(e.target.value))}
+        />
+      </FormExcelRow>
+      <FormExcelRow label="Alto detrás" tone="medida" warn={w.altoTrasero}>
+        <input
+          type="number"
+          step="0.1"
+          className={excelInputClass}
+          value={input.altoTrasero || ""}
+          onChange={(e) => set("altoTrasero", Number(e.target.value))}
+        />
+      </FormExcelRow>
+
+      {needsChaflan && (
+        <FormExcelRow label="Chaflán" tone="medida">
+          <input
+            type="number"
+            step="0.1"
+            min={0}
+            className={excelInputClass}
+            value={input.chaflanCm || ""}
+            onChange={(e) => set("chaflanCm", Number(e.target.value))}
           />
-          <FormField label="Largo (cm)">
-            <input type="number" step="0.1" className={inputClass} value={input.largoPedido || ""} onChange={(e) => set("largoPedido", Number(e.target.value))} />
-          </FormField>
-          <FormField label="Ancho (cm)">
-            <input type="number" step="0.1" className={inputClass} value={input.anchoPedido || ""} onChange={(e) => set("anchoPedido", Number(e.target.value))} />
-          </FormField>
-          <FormField label="Alto (cm)">
-            <input type="number" step="0.1" className={inputClass} value={input.altoDelantero || ""} onChange={(e) => setAlto(Number(e.target.value))} />
-          </FormField>
-          {needsChaflan && (
-            <FormField label="Chaflán cm">
-              <input type="number" step="0.1" min={0} className={inputClass} value={input.chaflanCm || ""} onChange={(e) => set("chaflanCm", Number(e.target.value))} />
-            </FormField>
-          )}
-          {needsRadius && (
-            <FormField label="Radio curva cm">
-              <input type="number" step="0.1" min={0} className={inputClass} value={input.radioCurva || ""} onChange={(e) => set("radioCurva", Number(e.target.value))} />
-            </FormField>
-          )}
-          {needsPeak && (
-            <FormField label="Altura cumbrera">
-              <input type="number" step="0.1" min={0} className={inputClass} value={input.alturaCumbrera || ""} onChange={(e) => set("alturaCumbrera", Number(e.target.value))} />
-            </FormField>
-          )}
-          <FormField label="Contorno calculado">
-            <input
-              className={`${inputClass} bg-slate-100 font-semibold`}
-              readOnly
-              value={contour.value == null ? contour.warning ?? "No se pudo calcular" : `${formatCm(contour.value)} cm`}
-            />
-          </FormField>
-          <FormField label="Recoge delante">
-            <select className={selectClass} value={input.recogeDelante} onChange={(e) => set("recogeDelante", e.target.value)}>
-              {settings.recogidaTypes.map((t) => (
-                <option key={t.nombre} value={t.nombre}>{t.nombre}</option>
-              ))}
-            </select>
-          </FormField>
-          <FormField label="Recoge detrás">
-            <select className={selectClass} value={input.recogeAtras} onChange={(e) => set("recogeAtras", e.target.value)}>
-              {settings.recogidaTypes.map((t) => (
-                <option key={t.nombre} value={t.nombre}>{t.nombre}</option>
-              ))}
-            </select>
-          </FormField>
-          <FormField label="Bastilla de enfundar">
-            <select className={selectClass} value={input.bastilla === "enfundar" ? "si" : "no"} onChange={(e) => set("bastilla", e.target.value === "si" ? "enfundar" : "normal")}>
-              <option value="no">No</option>
-              <option value="si">Sí</option>
-            </select>
-          </FormField>
-          <FormField label="Ventana">
-            <select className={selectClass} value={input.ventana ? "si" : "no"} onChange={(e) => set("ventana", e.target.value === "si")}>
-              <option value="no">No</option>
-              <option value="si">Sí</option>
-            </select>
-          </FormField>
-          <FormField label="Rotulación">
-            <select className={selectClass} value={input.rotulacion ? "si" : "no"} onChange={(e) => set("rotulacion", e.target.value === "si")}>
-              <option value="no">No</option>
-              <option value="si">Sí</option>
-            </select>
-          </FormField>
-          <FormField label="Colocación ollaos">
-            <select className={selectClass} value={input.colocacionOllaos} onChange={(e) => set("colocacionOllaos", e.target.value as LonaFormInput["colocacionOllaos"])}>
-              <option value="repartidos">REPARTIDOS</option>
-              <option value="a-la-medida">A LA MEDIDA</option>
-            </select>
-          </FormField>
-        </div>
-      </section>
-
-      {showManualOllaos && (
-        <section className="sm:col-span-2 grid gap-4 sm:grid-cols-3">
-          <FormField label="Ollaos laterales">
-            <input className={inputClass} value={input.ollaosLaterales} onChange={(e) => set("ollaosLaterales", e.target.value)} />
-          </FormField>
-          <FormField label="Ollaos atrás">
-            <input className={inputClass} value={input.ollaosAtras} onChange={(e) => set("ollaosAtras", e.target.value)} />
-          </FormField>
-          <FormField label="Ollaos delante">
-            <input className={inputClass} value={input.ollaosDelante} onChange={(e) => set("ollaosDelante", e.target.value)} />
-          </FormField>
-        </section>
+        </FormExcelRow>
+      )}
+      {needsRadius && (
+        <FormExcelRow label="Radio curva" tone="medida" warn={w.radioCurva}>
+          <input
+            type="number"
+            step="0.1"
+            min={0}
+            className={excelInputClass}
+            value={input.radioCurva || ""}
+            onChange={(e) => set("radioCurva", Number(e.target.value))}
+          />
+        </FormExcelRow>
+      )}
+      {needsPeak && (
+        <FormExcelRow label="Cumbrera" tone="medida">
+          <input
+            type="number"
+            step="0.1"
+            min={0}
+            className={excelInputClass}
+            value={input.alturaCumbrera || ""}
+            onChange={(e) => set("alturaCumbrera", Number(e.target.value))}
+          />
+        </FormExcelRow>
       )}
 
-      <AdvancedSection>
-        <FormField label="Cantidad">
-          <input type="number" min={1} className={inputClass} value={input.cantidad} onChange={(e) => set("cantidad", Number(e.target.value))} />
-        </FormField>
-        <FormField label="Sobrescribir contorno manualmente">
-          <select className={selectClass} value={input.contornoManualEnabled ? "si" : "no"} onChange={(e) => set("contornoManualEnabled", e.target.value === "si")}>
-            <option value="no">No</option>
-            <option value="si">Sí</option>
-          </select>
-        </FormField>
-        {input.contornoManualEnabled && (
-          <FormField label="Contorno manual (cm)">
-            <input type="number" step="0.1" className={inputClass} value={input.contornoManual || ""} onChange={(e) => set("contornoManual", Number(e.target.value))} />
-          </FormField>
-        )}
-        <FormField label="Alto delantero (cm)">
-          <input type="number" step="0.1" className={inputClass} value={input.altoDelantero || ""} onChange={(e) => set("altoDelantero", Number(e.target.value))} />
-        </FormField>
-        <FormField label="Alto trasero (cm)">
-          <input type="number" step="0.1" className={inputClass} value={input.altoTrasero || ""} onChange={(e) => set("altoTrasero", Number(e.target.value))} />
-        </FormField>
-        <FormField label="Observaciones técnicas internas" className="sm:col-span-2">
-          <textarea className={textareaClass} rows={3} value={input.observaciones} onChange={(e) => set("observaciones", e.target.value)} />
-        </FormField>
-      </AdvancedSection>
+      <FormExcelRow label="Aguas" tone="tecnico">
+        <input className={excelReadonlyClass} readOnly value={aguasLabel(tipo)} />
+      </FormExcelRow>
+      <FormExcelRow label="Reparto ollaos" tone="tecnico">
+        <select
+          className={excelSelectClass}
+          value={input.colocacionOllaos}
+          onChange={(e) =>
+            set(
+              "colocacionOllaos",
+              e.target.value as LonaFormInput["colocacionOllaos"],
+            )
+          }
+        >
+          <option value="repartidos">REPARTIDOS</option>
+          <option value="a-la-medida">A LA MEDIDA</option>
+        </select>
+      </FormExcelRow>
+      <FormExcelRow label="Recoge delante" tone="tecnico">
+        <select
+          className={excelSelectClass}
+          value={input.recogeDelante}
+          onChange={(e) => set("recogeDelante", e.target.value)}
+        >
+          {settings.recogidaTypes.map((t) => (
+            <option key={t.nombre} value={t.nombre}>
+              {t.nombre}
+            </option>
+          ))}
+        </select>
+      </FormExcelRow>
+      <FormExcelRow label="Recoge atrás" tone="tecnico">
+        <select
+          className={excelSelectClass}
+          value={input.recogeAtras}
+          onChange={(e) => set("recogeAtras", e.target.value)}
+        >
+          {settings.recogidaTypes.map((t) => (
+            <option key={t.nombre} value={t.nombre}>
+              {t.nombre}
+            </option>
+          ))}
+        </select>
+      </FormExcelRow>
+      <FormExcelRow label="Bastilla enfundar" tone="tecnico">
+        <select
+          className={excelSelectClass}
+          value={input.bastilla === "enfundar" ? "si" : "no"}
+          onChange={(e) =>
+            set("bastilla", e.target.value === "si" ? "enfundar" : "normal")
+          }
+        >
+          <option value="no">NO</option>
+          <option value="si">SÍ</option>
+        </select>
+      </FormExcelRow>
+      <FormExcelRow label="Ventana" tone="tecnico">
+        <SiNoSelect value={input.ventana} onChange={(v) => set("ventana", v)} />
+      </FormExcelRow>
+      <FormExcelRow label="Texto rotulac." tone="tecnico">
+        <SiNoSelect
+          value={input.rotulacion}
+          onChange={(v) => set("rotulacion", v)}
+        />
+      </FormExcelRow>
+
+      <FormExcelRow label="Perfil" tone="tecnico">
+        <ProfileTypePicker value={tipo} onChange={setPerfil} />
+      </FormExcelRow>
+
+      <FormExcelRow label="Fecha salida" tone="tecnico">
+        <input
+          type="date"
+          className={excelInputClass}
+          value={input.fechaSalida}
+          onChange={(e) => set("fechaSalida", e.target.value)}
+        />
+      </FormExcelRow>
+
+      <FormExcelSection title="Cálculo" />
+      <FormExcelRow label="Contorno SCAD" tone="calculo" warn={w.contornoCad}>
+        <input
+          type="number"
+          step="0.1"
+          className={excelInputClass}
+          value={input.contornoCad || ""}
+          onChange={(e) => setContornoScad(Number(e.target.value))}
+          placeholder="cm"
+        />
+      </FormExcelRow>
+
+      <FormExcelSection title="Material" />
+      <FormExcelRow label="Lona" tone="material" warn={w.material}>
+        <select
+          className={`${excelSelectClass} font-semibold`}
+          value={input.material}
+          onChange={(e) => set("material", e.target.value)}
+        >
+          {materials.map((m) => (
+            <option key={m} value={m}>
+              {m}
+            </option>
+          ))}
+        </select>
+      </FormExcelRow>
+
+      <details className="border-t border-slate-200 text-xs">
+        <summary className="cursor-pointer bg-slate-50 px-2 py-1.5 font-semibold text-slate-600">
+          Observaciones
+        </summary>
+        <div className="p-2">
+          <textarea
+            className={textareaClass}
+            rows={2}
+            value={input.observaciones}
+            onChange={(e) => set("observaciones", e.target.value)}
+          />
+        </div>
+      </details>
     </form>
   );
 }
