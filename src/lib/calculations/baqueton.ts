@@ -50,6 +50,15 @@ export function calculateBaqueton(
     .filter(Boolean)
     .join(" — ");
 
+  const notasAutomaticas: string[] = [];
+  if (input.rotulacion) {
+    notasAutomaticas.push("Incluye rotulación.");
+  }
+  if (input.tipoOllaos) {
+    notasAutomaticas.push(`Tipo de ollaos: ${input.tipoOllaos}.`);
+  }
+  notasAutomaticas.push(`Perfil de cálculo: ${profile.nombre}.`);
+
   return {
     medidasRemolqueHecho: { largo: largoHecho, ancho: anchoHecho },
     baquetonCostura,
@@ -58,5 +67,6 @@ export function calculateBaqueton(
     material: input.material,
     ollaos,
     observaciones: input.observaciones,
+    notasAutomaticas,
   };
 }

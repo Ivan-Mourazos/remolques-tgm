@@ -90,6 +90,8 @@ export function createEmptyLonaInput(): import("@/lib/types").LonaFormInput {
     altoDelantero: 0,
     altoTrasero: 0,
     contornoCad: 0,
+    tipoPerfil: "tipo-01",
+    chaflanCm: 15,
     tieneCurva: false,
     radioCurva: 0,
     recogeDelante: "NO",

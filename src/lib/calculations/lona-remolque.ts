@@ -96,6 +96,16 @@ export function calculateLonaRemolque(
   };
 
   const notasAutomaticas = buildGomaNotes(input, params);
+  if (input.ventana) {
+    notasAutomaticas.push(
+      "Ventana indicada: no afecta al cálculo de medidas; verificar en taller.",
+    );
+  }
+  if (input.tieneCurva) {
+    notasAutomaticas.push(
+      `Curva en contorno: radio ${input.radioCurva} cm. Aumento contorno +${params.aumentoCurvaContorno} cm aplicado.`,
+    );
+  }
   if (input.rotulacion) {
     notasAutomaticas.push("Incluye rotulación.");
   }
@@ -104,6 +114,8 @@ export function calculateLonaRemolque(
     medidaLonaHecha: { largo: largoHecho, ancho: anchoHecho },
     altoDelantero: input.altoDelantero,
     altoTrasero: input.altoTrasero,
+    contornoCad: input.contornoCad,
+    contornoAjustado,
     panos: {
       contorno:
         input.contornoCad > 0

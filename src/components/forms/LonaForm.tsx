@@ -1,6 +1,8 @@
 "use client";
 
+import { ProfileTypePicker } from "@/components/drawings/ProfileTypePicker";
 import { FormField, inputClass, selectClass, textareaClass } from "@/components/ui/FormField";
+import { profileNeedsChaflan } from "@/components/drawings/cross-section-paths";
 import type { AppSettings, LonaFormInput } from "@/lib/types";
 
 type Props = {
@@ -56,6 +58,22 @@ export function LonaForm({ input, settings, materials, onChange }: Props) {
       <FormField label="Contorno CAD (cm)">
         <input type="number" step="0.1" className={inputClass} value={input.contornoCad || ""} onChange={(e) => set("contornoCad", Number(e.target.value))} />
       </FormField>
+      <ProfileTypePicker
+        value={input.tipoPerfil ?? "tipo-01"}
+        onChange={(tipo) => set("tipoPerfil", tipo)}
+      />
+      {profileNeedsChaflan(input.tipoPerfil ?? "tipo-01") && (
+        <FormField label="Chaflán (cm)">
+          <input
+            type="number"
+            step="0.1"
+            min={0}
+            className={inputClass}
+            value={input.chaflanCm || ""}
+            onChange={(e) => set("chaflanCm", Number(e.target.value))}
+          />
+        </FormField>
+      )}
       <FormField label="Tiene curva">
         <select className={selectClass} value={input.tieneCurva ? "si" : "no"} onChange={(e) => set("tieneCurva", e.target.value === "si")}>
           <option value="no">No</option>

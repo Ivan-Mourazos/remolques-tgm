@@ -1,21 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { BtnPrimary } from "@/components/ui/ActionBar";
 import { inputClass } from "@/components/ui/FormField";
-import { DEFAULT_SETTINGS } from "@/lib/defaults/default-settings";
 import { useSettings } from "@/lib/hooks/use-settings";
 import type { AppSettings, BaquetonProfile, RecogidaType } from "@/lib/types";
 
-export function SettingsPanel() {
-  const { settings, setSettings, ready } = useSettings();
-  const [draft, setDraft] = useState<AppSettings>(DEFAULT_SETTINGS);
-
-  useEffect(() => {
-    if (ready) setDraft(settings);
-  }, [ready, settings]);
-
-  if (!ready) return <p>Cargando…</p>;
+function SettingsEditor({
+  initialSettings,
+  onSave,
+}: {
+  initialSettings: AppSettings;
+  onSave: (next: AppSettings) => void;
+}) {
+  const [draft, setDraft] = useState(initialSettings);
 
   const updateLona = (key: keyof AppSettings["lonaParams"], value: number | string) => {
     setDraft({
@@ -142,7 +140,15 @@ export function SettingsPanel() {
         ))}
       </fieldset>
 
-      <BtnPrimary onClick={() => setSettings(draft)}>Guardar parámetros</BtnPrimary>
+      <BtnPrimary onClick={() => onSave(draft)}>Guardar parámetros</BtnPrimary>
     </section>
   );
+}
+
+export function SettingsPanel() {
+  const { settings, setSettings, ready } = useSettings();
+
+  if (!ready) return <p>Cargando…</p>;
+
+  return <SettingsEditor initialSettings={settings} onSave={setSettings} />;
 }

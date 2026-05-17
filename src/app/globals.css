@@ -17,21 +17,103 @@ body {
   color: var(--foreground);
 }
 
+/* Vista previa A4 horizontal en pantalla */
+.print-landscape-sheet {
+  color: #000;
+  background: #fff;
+  aspect-ratio: 297 / 210;
+  max-width: 297mm;
+  min-height: 210mm;
+  border: 1px solid #cbd5e1;
+  box-shadow:
+    0 4px 6px -1px rgb(0 0 0 / 0.08),
+    0 2px 4px -2px rgb(0 0 0 / 0.06);
+}
+
+.print-sheet {
+  color: #000;
+}
+
+.print-break-avoid {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.landscape-plan-layout .compact-pano-table th,
+.landscape-plan-layout .compact-pano-table td {
+  padding: 2px 4px !important;
+  font-size: 8px !important;
+}
+
 @media print {
+  @page {
+    size: A4 landscape;
+    margin: 8mm;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+    color: #000 !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
   .no-print {
     display: none !important;
   }
 
-  body {
-    background: white;
+  aside,
+  nav {
+    display: none !important;
   }
 
   main {
     padding: 0 !important;
+    overflow: visible !important;
   }
 
-  .print-area {
+  .print-landscape-sheet,
+  .print-sheet {
+    max-width: none !important;
+    width: 100% !important;
+    min-height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
     border: none !important;
     box-shadow: none !important;
+    background: #fff !important;
+    aspect-ratio: auto;
+    page-break-after: avoid;
+    page-break-inside: avoid;
+  }
+
+  .landscape-plan-layout {
+    page-break-inside: avoid;
+  }
+
+  .print-only-content,
+  .print-only-content * {
+    color: #000 !important;
+  }
+
+  .print-break-avoid,
+  .technical-drawing-frame,
+  .landscape-plan-layout > section {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  svg {
+    max-width: 100% !important;
   }
 }

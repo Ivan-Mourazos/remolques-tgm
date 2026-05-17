@@ -4,6 +4,9 @@ export type BastillaType = "normal" | "enfundar" | "personalizada";
 
 export type PlanteamientoType = "lona-remolque" | "baqueton";
 
+export type { TrailerProfileType } from "@/lib/drawings/trailer-profile-types";
+import type { TrailerProfileType } from "@/lib/drawings/trailer-profile-types";
+
 export interface LonaParams {
   demasiaLargoAnchoLonaHecha: number;
   demasiaAlto: number;
@@ -69,6 +72,8 @@ export interface LonaFormInput {
   altoDelantero: number;
   altoTrasero: number;
   contornoCad: number;
+  tipoPerfil: TrailerProfileType;
+  chaflanCm: number;
   tieneCurva: boolean;
   radioCurva: number;
   recogeDelante: string;
@@ -82,10 +87,14 @@ export interface LonaFormInput {
   ollaosAtras: string;
 }
 
+export const PLANTEAMIENTO_SCHEMA_VERSION = "1.0";
+
 export interface LonaCalculationResult {
   medidaLonaHecha: { largo: number; ancho: number };
   altoDelantero: number;
   altoTrasero: number;
+  contornoCad: number;
+  contornoAjustado: number;
   panos: {
     contorno: { ancho: number; largo: number } | null;
     delantero: { ancho: number; alto: number };
@@ -126,11 +135,13 @@ export interface BaquetonCalculationResult {
   material: string;
   ollaos: string;
   observaciones: string;
+  notasAutomaticas: string[];
 }
 
 export interface SavedPlanteamiento<TInput, TResult> {
   id: string;
   type: PlanteamientoType;
+  schemaVersion: string;
   createdAt: string;
   updatedAt: string;
   input: TInput;

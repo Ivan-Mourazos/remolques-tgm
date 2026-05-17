@@ -1,18 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { deleteHistoryItem, loadHistory } from "@/lib/storage/local-storage";
 import type { SavedItem } from "@/lib/types";
 
 export function HistoryList() {
-  const [items, setItems] = useState<SavedItem[]>([]);
+  const [items, setItems] = useState<SavedItem[]>(() => loadHistory());
 
   const refresh = () => setItems(loadHistory());
-
-  useEffect(() => {
-    refresh();
-  }, []);
 
   const handleDelete = (id: string) => {
     if (!confirm("¿Eliminar este planteamiento?")) return;

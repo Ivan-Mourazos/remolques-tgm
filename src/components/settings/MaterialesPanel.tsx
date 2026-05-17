@@ -1,18 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { BtnPrimary, BtnSecondary } from "@/components/ui/ActionBar";
 import { inputClass } from "@/components/ui/FormField";
-import { DEFAULT_MATERIALS } from "@/lib/defaults/default-settings";
 import { createId, loadMaterials, saveMaterials } from "@/lib/storage/local-storage";
 import type { MaterialItem } from "@/lib/types";
 
 export function MaterialesPanel() {
-  const [items, setItems] = useState<MaterialItem[]>(DEFAULT_MATERIALS);
-
-  useEffect(() => {
-    setItems(loadMaterials());
-  }, []);
+  const [items, setItems] = useState<MaterialItem[]>(() => loadMaterials());
 
   const persist = (next: MaterialItem[]) => {
     setItems(next);

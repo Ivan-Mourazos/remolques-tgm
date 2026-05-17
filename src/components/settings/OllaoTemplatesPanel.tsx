@@ -1,18 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { BtnPrimary, BtnSecondary } from "@/components/ui/ActionBar";
 import { inputClass, textareaClass } from "@/components/ui/FormField";
-import { DEFAULT_OLLAO_TEMPLATES } from "@/lib/defaults/default-settings";
 import { createId, loadOllaoTemplates, saveOllaoTemplates } from "@/lib/storage/local-storage";
 import type { OllaoTemplate } from "@/lib/types";
 
 export function OllaoTemplatesPanel() {
-  const [items, setItems] = useState<OllaoTemplate[]>(DEFAULT_OLLAO_TEMPLATES);
-
-  useEffect(() => {
-    setItems(loadOllaoTemplates());
-  }, []);
+  const [items, setItems] = useState<OllaoTemplate[]>(() => loadOllaoTemplates());
 
   const persist = (next: OllaoTemplate[]) => {
     setItems(next);

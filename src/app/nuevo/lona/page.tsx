@@ -1,10 +1,10 @@
 import { Suspense } from "react";
-import { PlanteamientoWorkspace } from "@/components/planteamiento/PlanteamientoWorkspace";
+import { PlanteamientoPageLoader } from "@/components/planteamiento/PlanteamientoPageLoader";
 
 export default function LonaPage() {
   return (
     <Suspense fallback={<p>Cargando…</p>}>
-      <PlanteamientoWorkspace mode="lona-remolque" />
+      <PlanteamientoPageLoader mode="lona-remolque" />
     </Suspense>
   );
 }

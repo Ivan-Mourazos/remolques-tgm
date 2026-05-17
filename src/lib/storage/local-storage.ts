@@ -5,11 +5,12 @@ import {
   DEFAULT_OLLAO_TEMPLATES,
   DEFAULT_SETTINGS,
 } from "@/lib/defaults/default-settings";
-import type {
-  AppSettings,
-  MaterialItem,
-  OllaoTemplate,
-  SavedItem,
+import {
+  PLANTEAMIENTO_SCHEMA_VERSION,
+  type AppSettings,
+  type MaterialItem,
+  type OllaoTemplate,
+  type SavedItem,
 } from "@/lib/types";
 
 const KEYS = {
@@ -34,6 +35,13 @@ function writeJson<T>(key: string, value: T): void {
   localStorage.setItem(key, JSON.stringify(value));
 }
 
+function normalizeHistoryItem(item: SavedItem): SavedItem {
+  return {
+    ...item,
+    schemaVersion: item.schemaVersion ?? PLANTEAMIENTO_SCHEMA_VERSION,
+  };
+}
+
 export function loadSettings(): AppSettings {
   return readJson(KEYS.settings, DEFAULT_SETTINGS);
 }
@@ -43,20 +51,22 @@ export function saveSettings(settings: AppSettings): void {
 }
 
 export function loadHistory(): SavedItem[] {
-  return readJson<SavedItem[]>(KEYS.history, []);
+  return readJson<SavedItem[]>(KEYS.history, []).map(normalizeHistoryItem);
 }
 
 export function saveHistory(items: SavedItem[]): void {
-  writeJson(KEYS.history, items);
+  writeJson(KEYS.history, items.map(normalizeHistoryItem));
 }
 
 export function addToHistory(item: SavedItem): void {
   const history = loadHistory();
-  saveHistory([item, ...history]);
+  saveHistory([normalizeHistoryItem(item), ...history]);
 }
 
 export function updateHistoryItem(item: SavedItem): void {
-  const history = loadHistory().map((h) => (h.id === item.id ? item : h));
+  const history = loadHistory().map((h) =>
+    h.id === item.id ? normalizeHistoryItem(item) : h,
+  );
   saveHistory(history);
 }
 

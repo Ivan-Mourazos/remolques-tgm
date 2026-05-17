@@ -17,11 +17,6 @@ const lonaParams = {
   redondeo: "normal",
 };
 
-const recogidaTypes = [
-  { nombre: "NO", delante: 3, atras: 3 },
-  { nombre: "GOMA", delante: 27, atras: 27 },
-];
-
 const r = (v) => roundValue(v, lonaParams.decimales, lonaParams.redondeo);
 
 const largoPedido = 250;
