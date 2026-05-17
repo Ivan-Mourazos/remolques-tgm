@@ -28,6 +28,7 @@ import {
 import {
   PLANTEAMIENTO_SCHEMA_VERSION,
   type BaquetonFormInput,
+  type AppSettings,
   type LonaFormInput,
   type SavedBaqueton,
   type SavedLona,
@@ -39,6 +40,11 @@ import {
 
 type Mode = "lona-remolque" | "baqueton";
 type ViewMode = "edit" | "preview";
+
+function resolveSettingsSnapshot(editId: string | null): AppSettings | null {
+  if (!editId) return null;
+  return getHistoryItem(editId)?.settingsSnapshot ?? null;
+}
 
 export function PlanteamientoWorkspace({
   mode,
@@ -58,6 +64,10 @@ export function PlanteamientoWorkspace({
   );
   const [savedId, setSavedId] = useState<string | null>(editId);
   const [viewMode, setViewMode] = useState<ViewMode>("edit");
+  const [settingsSnapshot, setSettingsSnapshot] = useState<AppSettings | null>(() =>
+    resolveSettingsSnapshot(editId),
+  );
+  const calculationSettings = settingsSnapshot ?? settings;
 
   const materials = useMemo(
     () =>
@@ -68,13 +78,13 @@ export function PlanteamientoWorkspace({
   );
 
   const lonaResult = useMemo(
-    () => (ready ? calculateLonaRemolque(lonaInput, settings) : null),
-    [lonaInput, settings, ready],
+    () => (ready ? calculateLonaRemolque(lonaInput, calculationSettings) : null),
+    [lonaInput, calculationSettings, ready],
   );
 
   const baquetonResult = useMemo(
-    () => (ready ? calculateBaqueton(baquetonInput, settings) : null),
-    [baquetonInput, settings, ready],
+    () => (ready ? calculateBaqueton(baquetonInput, calculationSettings) : null),
+    [baquetonInput, calculationSettings, ready],
   );
 
   const lonaValidation = useMemo(() => validateLonaInput(lonaInput), [lonaInput]);
@@ -96,7 +106,7 @@ export function PlanteamientoWorkspace({
         updatedAt: now,
         input: lonaInput,
         result: lonaResult,
-        settingsSnapshot: settings,
+        settingsSnapshot: calculationSettings,
       };
       if (savedId) updateHistoryItem(item);
       else addToHistory(item);
@@ -113,7 +123,7 @@ export function PlanteamientoWorkspace({
         updatedAt: now,
         input: baquetonInput,
         result: baquetonResult,
-        settingsSnapshot: settings,
+        settingsSnapshot: calculationSettings,
       };
       if (savedId) updateHistoryItem(item);
       else addToHistory(item);
@@ -126,7 +136,7 @@ export function PlanteamientoWorkspace({
     baquetonResult,
     lonaInput,
     baquetonInput,
-    settings,
+    calculationSettings,
     savedId,
   ]);
 
@@ -134,6 +144,7 @@ export function PlanteamientoWorkspace({
     if (mode === "lona-remolque") setLonaInput(createEmptyLonaInput());
     else setBaquetonInput(createEmptyBaquetonInput(settings));
     setSavedId(null);
+    setSettingsSnapshot(null);
     setViewMode("edit");
     router.replace(mode === "lona-remolque" ? "/nuevo/lona" : "/nuevo/baqueton");
   };
@@ -157,7 +168,7 @@ export function PlanteamientoWorkspace({
         type="lona-remolque"
         input={lonaInput}
         result={lonaResult}
-        settings={settings}
+        settings={calculationSettings}
         validationIssues={lonaValidation}
       />
     ) : mode === "baqueton" && baquetonResult ? (
@@ -165,7 +176,7 @@ export function PlanteamientoWorkspace({
         type="baqueton"
         input={baquetonInput}
         result={baquetonResult}
-        settings={settings}
+        settings={calculationSettings}
         validationIssues={baquetonValidation}
       />
     ) : null;

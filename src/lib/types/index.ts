@@ -1,6 +1,6 @@
 export type RoundingMode = "normal" | "up" | "down";
 
-export type BastillaType = "normal" | "enfundar" | "personalizada";
+export type BastillaType = "normal" | "enfundar";
 
 export type PlanteamientoType = "lona-remolque" | "baqueton";
 

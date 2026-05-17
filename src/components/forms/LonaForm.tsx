@@ -103,7 +103,6 @@ export function LonaForm({ input, settings, materials, onChange }: Props) {
         <select className={selectClass} value={input.bastilla} onChange={(e) => set("bastilla", e.target.value as LonaFormInput["bastilla"])}>
           <option value="normal">Normal</option>
           <option value="enfundar">Enfundar</option>
-          <option value="personalizada">Personalizada</option>
         </select>
       </FormField>
       <FormField label="Ventana">

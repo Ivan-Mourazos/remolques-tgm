@@ -16,6 +16,7 @@ function normalizeLonaInput(input: LonaFormInput): LonaFormInput {
     ...input,
     tipoPerfil: (input.tipoPerfil ?? "tipo-01") as TrailerProfileType,
     chaflanCm: input.chaflanCm ?? 15,
+    bastilla: input.bastilla === "enfundar" ? "enfundar" : "normal",
   };
 }
 

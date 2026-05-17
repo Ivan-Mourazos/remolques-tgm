@@ -1,10 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { BtnPrimary } from "@/components/ui/ActionBar";
+import { BtnPrimary, BtnSecondary } from "@/components/ui/ActionBar";
 import { inputClass } from "@/components/ui/FormField";
+import { DEFAULT_SETTINGS } from "@/lib/defaults/default-settings";
 import { useSettings } from "@/lib/hooks/use-settings";
 import type { AppSettings, BaquetonProfile, RecogidaType } from "@/lib/types";
+
+function cloneSettings(settings: AppSettings): AppSettings {
+  return JSON.parse(JSON.stringify(settings)) as AppSettings;
+}
 
 function SettingsEditor({
   initialSettings,
@@ -13,7 +18,7 @@ function SettingsEditor({
   initialSettings: AppSettings;
   onSave: (next: AppSettings) => void;
 }) {
-  const [draft, setDraft] = useState(initialSettings);
+  const [draft, setDraft] = useState(() => cloneSettings(initialSettings));
 
   const updateLona = (key: keyof AppSettings["lonaParams"], value: number | string) => {
     setDraft({
@@ -140,7 +145,12 @@ function SettingsEditor({
         ))}
       </fieldset>
 
-      <BtnPrimary onClick={() => onSave(draft)}>Guardar parámetros</BtnPrimary>
+      <div className="flex flex-wrap gap-3">
+        <BtnPrimary onClick={() => onSave(draft)}>Guardar parámetros</BtnPrimary>
+        <BtnSecondary onClick={() => setDraft(cloneSettings(DEFAULT_SETTINGS))}>
+          Restaurar valores por defecto
+        </BtnSecondary>
+      </div>
     </section>
   );
 }
