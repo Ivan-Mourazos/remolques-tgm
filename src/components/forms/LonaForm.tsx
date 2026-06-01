@@ -22,8 +22,10 @@ type Props = {
   input: LonaFormInput;
   settings: AppSettings;
   materials: string[];
+  customers: Array<{ id: string; name: string }>;
   fieldWarnings?: Record<string, string>;
   onChange: (next: LonaFormInput) => void;
+  onCustomerChange: (customerId: string | null, name: string) => void;
 };
 
 function aguasLabel(tipo: LonaFormInput["tipoPerfil"]) {
@@ -32,7 +34,7 @@ function aguasLabel(tipo: LonaFormInput["tipoPerfil"]) {
   return "—";
 }
 
-export function LonaForm({ input, settings, materials, fieldWarnings = {}, onChange }: Props) {
+export function LonaForm({ input, settings, materials, customers, fieldWarnings = {}, onChange, onCustomerChange }: Props) {
   const set = <K extends keyof LonaFormInput>(key: K, value: LonaFormInput[K]) =>
     onChange({ ...input, [key]: value });
 
@@ -57,6 +59,10 @@ export function LonaForm({ input, settings, materials, fieldWarnings = {}, onCha
   const needsPeak = profileNeedsPeak(tipo);
   const w = fieldWarnings;
 
+  // Determinar si el valor del cliente actual coincide con un cliente en la lista
+  const matchedCustomer = customers.find(c => c.name === input.cliente);
+  const isCustomMode = input.cliente !== "" && !matchedCustomer;
+
   return (
     <form
       className="overflow-hidden rounded border border-slate-300 bg-white"
@@ -70,11 +76,41 @@ export function LonaForm({ input, settings, materials, fieldWarnings = {}, onCha
         />
       </FormExcelRow>
       <FormExcelRow label="Cliente general" tone="pedido" warn={w.cliente}>
-        <input
-          className={excelInputClass}
-          value={input.cliente}
-          onChange={(e) => set("cliente", e.target.value)}
-        />
+        <div className="flex flex-col gap-1 w-full p-0.5">
+          <select
+            className={excelSelectClass}
+            value={matchedCustomer ? matchedCustomer.id : (isCustomMode ? "custom" : "")}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val === "custom") {
+                onCustomerChange(null, "");
+              } else if (val === "") {
+                onCustomerChange(null, "");
+              } else {
+                const cust = customers.find(c => c.id === val);
+                if (cust) {
+                  onCustomerChange(cust.id, cust.name);
+                }
+              }
+            }}
+          >
+            <option value="">-- Selecciona --</option>
+            {customers.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+            <option value="custom">-- Otro / Nuevo cliente --</option>
+          </select>
+          {(isCustomMode || input.cliente === "") && (
+            <input
+              placeholder="Escribe nombre del cliente..."
+              className={excelInputClass}
+              value={input.cliente}
+              onChange={(e) => onCustomerChange(null, e.target.value)}
+            />
+          )}
+        </div>
       </FormExcelRow>
       <FormExcelRow label="Revisión" tone="pedido">
         <input

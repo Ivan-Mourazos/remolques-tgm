@@ -18,16 +18,20 @@ type Props = {
   input: BaquetonFormInput;
   settings: AppSettings;
   materials: string[];
+  customers: Array<{ id: string; name: string }>;
   fieldWarnings?: Record<string, string>;
   onChange: (next: BaquetonFormInput) => void;
+  onCustomerChange: (customerId: string | null, name: string) => void;
 };
 
 export function BaquetonForm({
   input,
   settings,
   materials,
+  customers,
   fieldWarnings = {},
   onChange,
+  onCustomerChange,
 }: Props) {
   const set = <K extends keyof BaquetonFormInput>(key: K, value: BaquetonFormInput[K]) =>
     onChange({ ...input, [key]: value });
@@ -37,6 +41,10 @@ export function BaquetonForm({
     () => calculateBaqueton(input, settings),
     [input, settings],
   );
+
+  // Determinar si el valor del cliente actual coincide con un cliente en la lista
+  const matchedCustomer = customers.find(c => c.name === input.cliente);
+  const isCustomMode = input.cliente !== "" && !matchedCustomer;
 
   return (
     <form
@@ -55,11 +63,41 @@ export function BaquetonForm({
         />
       </FormExcelRow>
       <FormExcelRow label="Cliente general" tone="pedido" warn={w.cliente}>
-        <input
-          className={excelInputClass}
-          value={input.cliente}
-          onChange={(e) => set("cliente", e.target.value)}
-        />
+        <div className="flex flex-col gap-1 w-full p-0.5">
+          <select
+            className={excelSelectClass}
+            value={matchedCustomer ? matchedCustomer.id : (isCustomMode ? "custom" : "")}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val === "custom") {
+                onCustomerChange(null, "");
+              } else if (val === "") {
+                onCustomerChange(null, "");
+              } else {
+                const cust = customers.find(c => c.id === val);
+                if (cust) {
+                  onCustomerChange(cust.id, cust.name);
+                }
+              }
+            }}
+          >
+            <option value="">-- Selecciona --</option>
+            {customers.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+            <option value="custom">-- Otro / Nuevo cliente --</option>
+          </select>
+          {(isCustomMode || input.cliente === "") && (
+            <input
+              placeholder="Escribe nombre del cliente..."
+              className={excelInputClass}
+              value={input.cliente}
+              onChange={(e) => onCustomerChange(null, e.target.value)}
+            />
+          )}
+        </div>
       </FormExcelRow>
       <FormExcelRow label="Cliente específico" tone="pedido">
         <input
