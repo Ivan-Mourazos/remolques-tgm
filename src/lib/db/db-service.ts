@@ -137,12 +137,62 @@ export const dbService = {
     return request<Customer[]>('customers', {
       method: 'POST',
       headers: { 'Prefer': 'return=representation' },
-      body: JSON.stringify({ name })
+      body: JSON.stringify({ name, active: true })
     }).then(res => res[0]);
   },
 
+  async updateCustomer(id: string, name: string, active: boolean): Promise<Customer> {
+    return request<Customer[]>(`customers?id=eq.${id}`, {
+      method: 'PATCH',
+      headers: { 'Prefer': 'return=representation' },
+      body: JSON.stringify({ name, active })
+    }).then(res => res[0]);
+  },
+
+  async deleteCustomer(id: string): Promise<void> {
+    await request<void>(`trailer_canvas_settings?customer_id=eq.${id}`, { method: 'DELETE' });
+    await request<void>(`baqueton_profiles?customer_id=eq.${id}`, { method: 'DELETE' });
+    await request<void>(`customers?id=eq.${id}`, { method: 'DELETE' });
+  },
+
+  async saveTrailerCanvasSettings(settings: Omit<TrailerCanvasSettings, 'created_at' | 'updated_at'>): Promise<TrailerCanvasSettings> {
+    const dbPayload = {
+      ...settings,
+      redondeo: settings.redondeo?.toUpperCase()
+    };
+    return request<TrailerCanvasSettings[]>('trailer_canvas_settings', {
+      method: 'POST',
+      headers: { 'Prefer': 'resolution=merge-duplicates,return=representation' },
+      body: JSON.stringify(dbPayload)
+    }).then(res => {
+      const saved = res[0];
+      return {
+        ...saved,
+        redondeo: saved.redondeo?.toLowerCase()
+      };
+    });
+  },
+
+  async saveBaquetonProfile(profile: Omit<BaquetonProfileDb, 'created_at' | 'updated_at'>): Promise<BaquetonProfileDb> {
+    return request<BaquetonProfileDb[]>('baqueton_profiles', {
+      method: 'POST',
+      headers: { 'Prefer': 'resolution=merge-duplicates,return=representation' },
+      body: JSON.stringify(profile)
+    }).then(res => res[0]);
+  },
+
+  async deleteBaquetonProfile(id: string): Promise<void> {
+    await request<void>(`baqueton_profiles?id=eq.${id}`, {
+      method: 'DELETE'
+    });
+  },
+
   async getTrailerCanvasSettings(customerId: string): Promise<TrailerCanvasSettings[]> {
-    return request<TrailerCanvasSettings[]>(`trailer_canvas_settings?customer_id=eq.${customerId}&active=eq.true`);
+    return request<TrailerCanvasSettings[]>(`trailer_canvas_settings?customer_id=eq.${customerId}&active=eq.true`)
+      .then(settingsList => settingsList.map(settings => ({
+        ...settings,
+        redondeo: settings.redondeo?.toLowerCase()
+      })));
   },
 
   async getBaquetonProfiles(customerId: string): Promise<BaquetonProfileDb[]> {

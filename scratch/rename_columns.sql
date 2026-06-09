@@ -1,0 +1,19 @@
+-- 1. Renombrar columnas en tgm.trailer_canvas_settings
+ALTER TABLE tgm.trailer_canvas_settings RENAME COLUMN allowance_finished_size_cm TO demasia_largo_ancho_lona_hecha;
+ALTER TABLE tgm.trailer_canvas_settings RENAME COLUMN allowance_height_cm TO demasia_alto;
+ALTER TABLE tgm.trailer_canvas_settings RENAME COLUMN allowance_contour_length_normal_cm TO demasia_largo_contorno_normal;
+ALTER TABLE tgm.trailer_canvas_settings RENAME COLUMN allowance_contour_length_sleeve_cm TO demasia_largo_contorno_enfundar;
+ALTER TABLE tgm.trailer_canvas_settings RENAME COLUMN curve_contour_extra_cm TO aumento_curva_contorno;
+ALTER TABLE tgm.trailer_canvas_settings RENAME COLUMN eyelet_start_without_curve_cm TO inicio_oreja_sin_curva;
+ALTER TABLE tgm.trailer_canvas_settings RENAME COLUMN rubber_ear_width_cm TO medida_oreja_goma;
+ALTER TABLE tgm.trailer_canvas_settings RENAME COLUMN decimals TO decimales;
+ALTER TABLE tgm.trailer_canvas_settings RENAME COLUMN rounding_mode TO redondeo;
+
+-- 2. Renombrar columnas en tgm.baqueton_profiles
+ALTER TABLE tgm.baqueton_profiles RENAME COLUMN allowance_finished_length_cm TO demasia_largo_pieza_final;
+ALTER TABLE tgm.baqueton_profiles RENAME COLUMN allowance_finished_width_cm TO demasia_ancho_pieza_final;
+ALTER TABLE tgm.baqueton_profiles RENAME COLUMN allowance_baqueton_seam_cm TO demasia_baqueton_picostura;
+ALTER TABLE tgm.baqueton_profiles RENAME COLUMN allowance_extra_length_front_cm TO demasia_baqueton_en_largo_delante;
+ALTER TABLE tgm.baqueton_profiles RENAME COLUMN allowance_extra_length_back_cm TO demasia_baqueton_en_largo_detras;
+ALTER TABLE tgm.baqueton_profiles RENAME COLUMN allowance_extra_width_left_cm TO demasia_baqueton_en_ancho_delante;
+ALTER TABLE tgm.baqueton_profiles RENAME COLUMN allowance_extra_width_right_cm TO demasia_baqueton_en_ancho_detras;

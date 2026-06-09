@@ -7,6 +7,7 @@ const links = [
   { href: "/", label: "Inicio" },
   { href: "/nuevo", label: "Nuevo planteamiento" },
   { href: "/historial", label: "Historial" },
+  { href: "/clientes", label: "Clientes" },
   { href: "/parametros", label: "Parámetros" },
   { href: "/materiales", label: "Materiales" },
   { href: "/plantillas-ollaos", label: "Plantillas ollaos" },
