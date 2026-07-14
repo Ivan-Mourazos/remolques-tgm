@@ -1,5 +1,8 @@
 "use client";
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
+import type { Material } from "@/lib/calc/materiales-seed";
+
+const control = "rounded-md border border-neutral-300 bg-white px-2 py-1.5 text-sm transition-colors hover:border-neutral-400 focus-visible:border-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-700/15";
 
 export function Grupo({ titulo, children }: { titulo: string; children: ReactNode }) {
   return (
@@ -18,7 +21,7 @@ export function CampoNum(props: {
       <span className="text-neutral-600">{props.label}</span>
       <input
         type="number" inputMode="decimal" step="0.1"
-        className="rounded-md border border-neutral-300 px-2 py-1.5 text-sm tabular-nums"
+        className={`${control} tabular-nums`}
         value={props.value === 0 ? "" : props.value}
         onChange={(e) => props.onChange(e.target.value === "" ? 0 : Number(e.target.value))}
       />
@@ -33,7 +36,7 @@ export function CampoTexto(props: {
     <label className={`flex flex-col gap-0.5 text-xs ${props.ancho ? "col-span-2" : ""}`}>
       <span className="text-neutral-600">{props.label}</span>
       <input
-        className="rounded-md border border-neutral-300 px-2 py-1.5 text-sm"
+        className={control}
         value={props.value} onChange={(e) => props.onChange(e.target.value)}
       />
     </label>
@@ -47,11 +50,43 @@ export function CampoSelect(props: {
     <label className={`flex flex-col gap-0.5 text-xs ${props.ancho ? "col-span-2" : ""}`}>
       <span className="text-neutral-600">{props.label}</span>
       <select
-        className="rounded-md border border-neutral-300 px-2 py-1.5 text-sm"
+        className={control}
         value={props.value} onChange={(e) => props.onChange(e.target.value)}
       >
         {props.opciones.map((o) => <option key={o} value={o}>{o}</option>)}
       </select>
+    </label>
+  );
+}
+
+export function CampoMaterial(props: {
+  value: string; opciones: Material[]; onChange: (v: string) => void;
+}) {
+  const listId = useId();
+  return (
+    <label className="col-span-2 flex min-w-0 flex-col gap-0.5 text-xs">
+      <span className="text-neutral-600">Material</span>
+      <input
+        className={`${control} w-full`}
+        list={listId}
+        name="material"
+        autoComplete="off"
+        placeholder="Escribe para buscar o introducir otra lona…"
+        value={props.value}
+        onChange={(event) => props.onChange(event.target.value)}
+      />
+      <datalist id={listId}>
+        {props.opciones.map((material) => (
+          <option
+            key={material.codigoBobina}
+            value={material.nombre}
+            label={`${material.codigoBobina}${material.stockArzua == null ? "" : ` · stock ${material.stockArzua}`}`}
+          />
+        ))}
+      </datalist>
+      <span className="mt-0.5 text-[11px] text-neutral-500">
+        Lonas PVC 580/650 de RPS · se admite texto manual
+      </span>
     </label>
   );
 }

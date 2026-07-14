@@ -1,4 +1,9 @@
-export interface Material { nombre: string; codigoBobina: string }
+export interface Material {
+  nombre: string;
+  codigoBobina: string;
+  /** Stock en la Nueva sede de Arzúa (null si no se pudo leer de RPS). */
+  stockArzua?: number | null;
+}
 
 export const MATERIALES_SEED: Material[] = [
   { nombre: "LONA ALPHA 1L 580 :AMARILLO RAL1003 :250 AN", codigoBobina: "ALPHAAM03P250" },

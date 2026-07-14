@@ -15,6 +15,8 @@ export interface LonaInput {
   cabecera: CabeceraInput;
   cantidad: number; largo: number; ancho: number;
   altoDelante: number; altoAtras: number;
+  /** Caída desde la cumbrera hasta los hombros del perfil. */
+  aguas?: number;
   contornoScad: number; llevaCurva: boolean;
   tipoPerfil: TipoPerfil;
   recogeDelante: string; recogeAtras: string;
@@ -79,7 +81,7 @@ export function calcLona(input: LonaInput, params: CalcParams): LonaResult {
         }
       : null;
 
-  const ollaos = calcOllaos(input.largo, lonaHecha.ancho, input.pasoOllaos, params);
+  const ollaos = calcOllaos(lonaHecha.largo, lonaHecha.ancho, input.pasoOllaos, params);
   const reparto =
     input.modoOllaos === "SEGUN SE INDICA"
       ? input.ollaosManuales

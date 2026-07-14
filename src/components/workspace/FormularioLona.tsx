@@ -1,12 +1,13 @@
 "use client";
 import type { LonaInput } from "@/lib/calc/lona";
+import type { Material } from "@/lib/calc/materiales-seed";
 import { DEFAULT_PARAMS, TIPOS_PERFIL, type CalcParams } from "@/lib/calc/params";
-import { CampoCheck, CampoNum, CampoSelect, CampoTexto, Grupo, PosicionesManuales } from "@/components/workspace/campos";
+import { CampoCheck, CampoMaterial, CampoNum, CampoSelect, CampoTexto, Grupo, PosicionesManuales } from "@/components/workspace/campos";
 
 export function FormularioLona({
   input, materiales, params, onChange,
 }: {
-  input: LonaInput; materiales: string[]; params?: CalcParams; onChange: (i: LonaInput) => void;
+  input: LonaInput; materiales: Material[]; params?: CalcParams; onChange: (i: LonaInput) => void;
 }) {
   const RECOGIDAS = (params ?? DEFAULT_PARAMS).recogidas.map((r) => r.nombre);
   const set = <K extends keyof LonaInput>(k: K, v: LonaInput[K]) => onChange({ ...input, [k]: v });
@@ -28,6 +29,7 @@ export function FormularioLona({
         <CampoNum label="Ancho" value={input.ancho} onChange={(v) => set("ancho", v)} />
         <CampoNum label="Alto delante" value={input.altoDelante} onChange={(v) => set("altoDelante", v)} />
         <CampoNum label="Alto detrás" value={input.altoAtras} onChange={(v) => set("altoAtras", v)} />
+        <CampoNum label="Aguas" value={input.aguas ?? 0} onChange={(v) => set("aguas", v)} />
         <CampoNum label="Contorno SCAD" value={input.contornoScad} onChange={(v) => set("contornoScad", v)} />
         <CampoCheck label="Lleva curva (+1,5 al contorno)" value={input.llevaCurva} onChange={(v) => set("llevaCurva", v)} />
       </Grupo>
@@ -61,7 +63,7 @@ export function FormularioLona({
         )}
       </Grupo>
       <Grupo titulo="Material y observaciones">
-        <CampoSelect label="Material" ancho value={input.material} opciones={["", ...materiales]}
+        <CampoMaterial value={input.material} opciones={materiales}
           onChange={(v) => set("material", v)} />
         <CampoTexto label="Observaciones" ancho value={input.observaciones} onChange={(v) => set("observaciones", v)} />
       </Grupo>

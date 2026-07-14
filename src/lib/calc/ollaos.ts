@@ -6,15 +6,20 @@ export interface OllaosResult { largo: EjeOllaos; ancho: EjeOllaos }
 
 function eje(medida: number, paso: number, params: CalcParams): EjeOllaos {
   if (!(medida > 0) || !(paso > 0)) return { n: 0, dist: 0, posiciones: [] };
-  const n = excelRound(medida / paso, 0);
-  if (n <= 0) return { n: 0, dist: 0, posiciones: [] };
-  const dist = excelRound(medida / n, 1);
-  const posiciones: number[] = [];
-  let p = params.primerOllao;
-  for (let i = 0; i < Math.min(n, params.maxPosicionesOllaos); i++) {
-    posiciones.push(excelRound(p, 1));
-    p += dist;
-  }
+  const primero = params.primerOllao;
+  const ultimo = medida - params.primerOllao;
+  const recorrido = ultimo - primero;
+  if (!(recorrido > 0)) return { n: 0, dist: 0, posiciones: [] };
+  // Se fijan exactamente el primer y el último ollao; los intermedios se
+  // reparten uniformemente buscando el paso objetivo indicado por producción.
+  const intervalos = Math.max(1, excelRound(recorrido / paso, 0));
+  const distanciaExacta = recorrido / intervalos;
+  const n = intervalos + 1;
+  const posiciones = Array.from(
+    { length: Math.min(n, params.maxPosicionesOllaos) },
+    (_, indice) => excelRound(primero + distanciaExacta * indice, 1),
+  );
+  const dist = excelRound(distanciaExacta, 1);
   return { n, dist, posiciones };
 }
 

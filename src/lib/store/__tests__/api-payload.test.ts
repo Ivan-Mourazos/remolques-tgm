@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildRecord } from "@/app/api/planteamientos/build-record";
 import { DEFAULT_PARAMS } from "@/lib/calc/params";
+import type { LonaInput } from "@/lib/calc/lona";
 
 describe("buildRecord", () => {
   it("lona: recalcula el resultado en servidor y extrae cabecera", () => {
@@ -13,7 +14,7 @@ describe("buildRecord", () => {
       modoOllaos: "REPARTIDOS", pasoOllaos: 35,
       ollaosManuales: { laterales: [], atras: [], delante: [] },
       material: "", observaciones: "",
-    };
+    } satisfies LonaInput;
     const rec = buildRecord("lona", input, DEFAULT_PARAMS);
     expect(rec.numeroPedido).toBe("AR1");
     expect(rec.cliente).toBe("YAGÜE");

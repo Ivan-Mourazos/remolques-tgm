@@ -22,7 +22,9 @@ function arco(cx: number, cy: number, r: number, a0: number, a1: number, n: numb
 export function perfilPuntos(tipo: TipoPerfil, opts: PerfilOpts): Pt[] {
   const w = opts.ancho;
   const h = opts.altoDelante;
-  const pico = opts.alturaPico ?? w * 0.12;
+  // `altoDelante` es la altura total. `alturaPico` (aguas) indica cuánto
+  // descienden los hombros respecto a la cumbrera, no una altura adicional.
+  const pico = Math.min(Math.max(opts.alturaPico ?? w * 0.12, 0), h);
   const ch = Math.min(opts.chaflan ?? 15, w / 2, h);
   const r = Math.min(opts.radio ?? 15, w / 2, h);
 
@@ -30,18 +32,19 @@ export function perfilPuntos(tipo: TipoPerfil, opts: PerfilOpts): Pt[] {
     case "TIPO 01":
       return [[0, 0], [0, h], [w, h], [w, 0]];
     case "TIPO 02":
-      return [[0, 0], [0, h], [w / 2, h + pico], [w, h], [w, 0]];
+      return [[0, 0], [0, h - pico], [w / 2, h], [w, h - pico], [w, 0]];
     case "TIPO 03": {
-      // Dos aguas suavizado: hombros y pico con pequeños arcos.
-      const sub = Math.min(r, pico);
+      if (pico === 0) return [[0, 0], [0, h], [w, h], [w, 0]];
+      // Dos aguas suavizado dentro de la altura total.
+      const sub = Math.min(r, pico, w / 4);
+      const hombro = h - pico;
       return [
-        [0, 0], [0, h - sub],
-        ...arco(sub, h - sub, sub, Math.PI, Math.PI / 2, 3).slice(1),
-        [w / 2 - sub, h + pico - sub / 2],
-        ...arco(w / 2, h + pico - sub, sub, (3 * Math.PI) / 4, Math.PI / 4, 3),
-        [w / 2 + sub, h + pico - sub / 2],
-        ...arco(w - sub, h - sub, sub, Math.PI / 2, 0, 3).slice(0, -1),
-        [w, h - sub], [w, 0],
+        [0, 0], [0, Math.max(0, hombro - sub)],
+        [sub * 0.3, hombro - sub * 0.3], [sub, hombro],
+        [w / 2 - sub, h - sub * 0.3], [w / 2, h],
+        [w / 2 + sub, h - sub * 0.3], [w - sub, hombro],
+        [w - sub * 0.3, hombro - sub * 0.3], [w, Math.max(0, hombro - sub)],
+        [w, 0],
       ];
     }
     case "TIPO 04":

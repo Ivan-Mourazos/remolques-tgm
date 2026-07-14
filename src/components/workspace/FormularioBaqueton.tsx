@@ -1,12 +1,13 @@
 "use client";
 import type { BaquetonInput } from "@/lib/calc/baqueton";
+import type { Material } from "@/lib/calc/materiales-seed";
 import { DEFAULT_PARAMS, type CalcParams } from "@/lib/calc/params";
-import { CampoCheck, CampoNum, CampoSelect, CampoTexto, Grupo, PosicionesManuales } from "@/components/workspace/campos";
+import { CampoCheck, CampoMaterial, CampoNum, CampoSelect, CampoTexto, Grupo, PosicionesManuales } from "@/components/workspace/campos";
 
 export function FormularioBaqueton({
   input, materiales, params, onChange,
 }: {
-  input: BaquetonInput; materiales: string[]; params?: CalcParams; onChange: (i: BaquetonInput) => void;
+  input: BaquetonInput; materiales: Material[]; params?: CalcParams; onChange: (i: BaquetonInput) => void;
 }) {
   const CLIENTES = (params ?? DEFAULT_PARAMS).clientesBaqueton.map((c) => c.nombre);
   const set = <K extends keyof BaquetonInput>(k: K, v: BaquetonInput[K]) => onChange({ ...input, [k]: v });
@@ -50,7 +51,7 @@ export function FormularioBaqueton({
         )}
       </Grupo>
       <Grupo titulo="Material y observaciones">
-        <CampoSelect label="Material" ancho value={input.material} opciones={["", ...materiales]}
+        <CampoMaterial value={input.material} opciones={materiales}
           onChange={(v) => set("material", v)} />
         <CampoTexto label="Observaciones" ancho value={input.observaciones} onChange={(v) => set("observaciones", v)} />
       </Grupo>

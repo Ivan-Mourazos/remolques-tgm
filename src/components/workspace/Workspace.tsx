@@ -29,8 +29,9 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
   const [materiales, setMateriales] = useState<Material[]>([]);
   const [params, setParams] = useState<CalcParams>(DEFAULT_PARAMS);
   const [aviso, setAviso] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const snapshotRef = useRef<(() => string) | null>(null);
+  const [accion, setAccion] = useState<"guardar" | "pdf" | "excel" | null>(null);
+  const busy = accion !== null;
+  const snapshotRef = useRef<(() => Promise<string | null>) | null>(null);
 
   useEffect(() => {
     fetch("/api/materiales").then((r) => r.json()).then(setMateriales).catch(() => setMateriales([]));
@@ -43,7 +44,7 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
   const resLona = useMemo(() => calcLona(lona, params), [lona, params]);
   const resBaq = useMemo(() => calcBaqueton(baq, params), [baq, params]);
   const input = tipo === "lona" ? lona : baq;
-  const codigoBobina = materiales.find((m) => m.nombre === input.material)?.codigoBobina;
+  const materialSel = materiales.find((m) => m.nombre === input.material);
 
   async function doGuardar(): Promise<string | null> {
     try {
@@ -75,66 +76,99 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
 
   async function guardar(): Promise<string | null> {
     if (busy) return null;
-    setBusy(true);
+    setAccion("guardar");
     try {
       return await doGuardar();
     } finally {
-      setBusy(false);
+      setAccion(null);
     }
+  }
+
+  // «Guardar como» (File System Access API) con descarga de respaldo.
+  async function guardarComo(
+    blob: Blob, nombre: string, descripcion: string, mime: string, ext: string,
+  ): Promise<void> {
+    type SaveFilePicker = (opts: {
+      suggestedName?: string;
+      types?: Array<{ description: string; accept: Record<string, string[]> }>;
+    }) => Promise<{ createWritable(): Promise<{ write(b: Blob): Promise<void>; close(): Promise<void> }> }>;
+    const picker = (window as { showSaveFilePicker?: SaveFilePicker }).showSaveFilePicker;
+    if (picker) {
+      try {
+        const handle = await picker({
+          suggestedName: nombre,
+          types: [{ description: descripcion, accept: { [mime]: [ext] } }],
+        });
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        setAviso(`${descripcion} guardado como ${nombre}.`);
+        return;
+      } catch (e) {
+        if ((e as DOMException).name === "AbortError") {
+          setAviso("Guardado cancelado.");
+          return;
+        }
+        // si el picker falla por otra causa, caemos a descarga normal
+      }
+    }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = nombre;
+    a.click();
+    URL.revokeObjectURL(url);
+    setAviso(`${descripcion} descargado (${nombre}).`);
   }
 
   async function generarPdf() {
     if (busy) return;
-    setBusy(true);
+    setAccion("pdf");
     try {
       const savedId = await doGuardar();
       if (!savedId) return;
       const res = await fetch("/api/pdf", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: savedId, snapshot: snapshotRef.current?.() ?? null }),
+        body: JSON.stringify({ id: savedId, snapshot: await snapshotRef.current?.() ?? null }),
       });
       if (!res.ok) {
         setAviso(`Error al generar PDF: ${res.status}`);
         return;
       }
       const nombre = res.headers.get("X-Nombre-Pdf") ?? "planteamiento.pdf";
-      const blob = await res.blob();
-      type SaveFilePicker = (opts: {
-        suggestedName?: string;
-        types?: Array<{ description: string; accept: Record<string, string[]> }>;
-      }) => Promise<{ createWritable(): Promise<{ write(b: Blob): Promise<void>; close(): Promise<void> }> }>;
-      const picker = (window as { showSaveFilePicker?: SaveFilePicker }).showSaveFilePicker;
-      if (picker) {
-        try {
-          const handle = await picker({
-            suggestedName: nombre,
-            types: [{ description: "PDF", accept: { "application/pdf": [".pdf"] } }],
-          });
-          const writable = await handle.createWritable();
-          await writable.write(blob);
-          await writable.close();
-          setAviso(`PDF guardado como ${nombre}.`);
-          return;
-        } catch (e) {
-          if ((e as DOMException).name === "AbortError") {
-            setAviso("Guardado cancelado.");
-            return;
-          }
-          // si el picker falla por otra causa, caemos a descarga normal
-        }
-      }
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = nombre;
-      a.click();
-      URL.revokeObjectURL(url);
-      setAviso(`PDF descargado (${nombre}).`);
+      await guardarComo(await res.blob(), nombre, "PDF", "application/pdf", ".pdf");
     } catch {
       setAviso("Error de red al generar PDF");
     } finally {
-      setBusy(false);
+      setAccion(null);
+    }
+  }
+
+  async function generarExcel() {
+    if (busy) return;
+    setAccion("excel");
+    try {
+      const savedId = await doGuardar();
+      if (!savedId) return;
+      const res = await fetch("/api/excel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: savedId, snapshot: await snapshotRef.current?.() ?? null }),
+      });
+      if (!res.ok) {
+        setAviso(`Error al generar Excel: ${res.status}`);
+        return;
+      }
+      const nombre = res.headers.get("X-Nombre-Excel") ?? "planteamiento.xlsx";
+      await guardarComo(
+        await res.blob(), nombre, "Excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", ".xlsx",
+      );
+    } catch {
+      setAviso("Error de red al generar Excel");
+    } finally {
+      setAccion(null);
     }
   }
 
@@ -144,30 +178,35 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
         <div className="mb-3 flex gap-1 rounded-lg bg-neutral-100 p-1">
           {(["lona", "baqueton"] as const).map((t) => (
             <button key={t} onClick={() => { if (t !== tipo) { setTipo(t); setId(undefined); setAviso(null); } }}
-              className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium ${tipo === t ? "bg-white shadow" : "text-neutral-500"}`}>
+              aria-pressed={tipo === t}
+              className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-700/30 ${tipo === t ? "bg-white text-slate-900 shadow-sm" : "text-neutral-500 hover:bg-white/60 hover:text-slate-800"}`}>
               {t === "lona" ? "Lona remolque" : "Baquetón"}
             </button>
           ))}
         </div>
         {tipo === "lona" ? (
-          <FormularioLona input={lona} materiales={materiales.map((m) => m.nombre)} params={params} onChange={setLona} />
+          <FormularioLona input={lona} materiales={materiales} params={params} onChange={setLona} />
         ) : (
-          <FormularioBaqueton input={baq} materiales={materiales.map((m) => m.nombre)} params={params} onChange={setBaq} />
+          <FormularioBaqueton input={baq} materiales={materiales} params={params} onChange={setBaq} />
         )}
-        <div className="mt-3 flex gap-2">
-          <button onClick={guardar} disabled={busy} className="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium disabled:opacity-50">
-            Guardar
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button onClick={guardar} disabled={busy} className="rounded-lg border border-neutral-300 bg-white px-4 py-2 text-sm font-medium transition-colors hover:border-neutral-400 hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-700/25 disabled:cursor-wait disabled:opacity-50">
+            {accion === "guardar" ? "Guardando…" : "Guardar"}
           </button>
-          <button onClick={generarPdf} disabled={busy} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
-            Generar PDF
+          <button onClick={generarPdf} disabled={busy} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-neutral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/30 focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-50">
+            {accion === "pdf" ? "Generando PDF…" : "Generar PDF"}
+          </button>
+          <button onClick={generarExcel} disabled={busy} className="rounded-lg border border-neutral-300 bg-white px-4 py-2 text-sm font-medium transition-colors hover:border-neutral-400 hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-700/25 disabled:cursor-wait disabled:opacity-50">
+            {accion === "excel" ? "Generando Excel…" : "Generar Excel"}
           </button>
         </div>
-        {aviso && <p className="mt-2 text-xs text-neutral-600">{aviso}</p>}
+        {aviso && <p role="status" aria-live="polite" className="mt-2 text-xs text-neutral-600">{aviso}</p>}
       </div>
       <div className="flex flex-col gap-4">
         {tipo === "lona" ? (
           <Escena3D modo="lona" largo={lona.largo} ancho={lona.ancho}
             altoDelante={lona.altoDelante} altoAtras={lona.altoAtras}
+            aguas={lona.aguas}
             tipoPerfil={lona.tipoPerfil} llevaCurva={lona.llevaCurva}
             onSnapshotReady={(fn) => { snapshotRef.current = fn; }} />
         ) : (
@@ -177,8 +216,8 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
             onSnapshotReady={(fn) => { snapshotRef.current = fn; }} />
         )}
         {tipo === "lona"
-          ? <ResultadosLona res={resLona} codigoBobina={codigoBobina} />
-          : <ResultadosBaqueton res={resBaq} codigoBobina={codigoBobina} />}
+          ? <ResultadosLona res={resLona} material={materialSel} />
+          : <ResultadosBaqueton res={resBaq} material={materialSel} />}
       </div>
     </div>
   );

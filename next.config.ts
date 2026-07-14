@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // ExcelJS usa APIs nativas de Node en el Route Handler. Evitamos que
+  // Webpack intente reempaquetarlo y lo cargamos directamente en el servidor.
+  serverExternalPackages: ["exceljs"],
 };
 
 export default nextConfig;

@@ -37,9 +37,9 @@ describe("calcBaqueton — caso real AR2602796", () => {
   it("metros de tela 2,32", () => {
     expect(res.metrosTela).toBe(2.32);
   });
-  it("ollaos sobre medidas hechas: largo 182 → 5 uds a 36,4", () => {
-    expect(res.ollaos.largo.n).toBe(5);
-    expect(res.ollaos.largo.dist).toBe(36.4);
+  it("ollaos sobre medidas hechas: fija extremos y reparte el tramo", () => {
+    expect(res.ollaos.largo.n).toBe(6);
+    expect(res.ollaos.largo.dist).toBe(35.4);
   });
 });
 

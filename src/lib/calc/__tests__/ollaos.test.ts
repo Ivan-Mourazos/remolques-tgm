@@ -3,20 +3,20 @@ import { DEFAULT_PARAMS } from "@/lib/calc/params";
 import { calcOllaos } from "@/lib/calc/ollaos";
 
 describe("calcOllaos", () => {
-  it("caso largo 246 paso 35 (verificado en Excel)", () => {
+  it("fija primer y último ollao y reparte uniformemente los intermedios", () => {
     const res = calcOllaos(246, 0, 35, DEFAULT_PARAMS);
-    expect(res.largo.n).toBe(7);
-    expect(res.largo.dist).toBe(35.1);
-    expect(res.largo.posiciones).toEqual([2.5, 37.6, 72.7, 107.8, 142.9, 178, 213.1]);
+    expect(res.largo.n).toBe(8);
+    expect(res.largo.dist).toBe(34.4);
+    expect(res.largo.posiciones).toEqual([2.5, 36.9, 71.4, 105.8, 140.2, 174.6, 209.1, 243.5]);
   });
 
   it("ambos ejes y acumulado con dist decimal", () => {
     const res = calcOllaos(250, 152, 35, DEFAULT_PARAMS);
-    expect(res.largo.n).toBe(7);
-    expect(res.largo.dist).toBe(35.7);
-    expect(res.ancho.n).toBe(4);
-    expect(res.ancho.dist).toBe(38);
-    expect(res.ancho.posiciones).toEqual([2.5, 40.5, 78.5, 116.5]);
+    expect(res.largo.n).toBe(8);
+    expect(res.largo.dist).toBe(35);
+    expect(res.ancho.n).toBe(5);
+    expect(res.ancho.dist).toBe(36.8);
+    expect(res.ancho.posiciones).toEqual([2.5, 39.3, 76, 112.8, 149.5]);
   });
 
   it("medida 0 o paso 0 devuelve vacío", () => {

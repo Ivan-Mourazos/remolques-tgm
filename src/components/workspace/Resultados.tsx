@@ -1,8 +1,15 @@
 "use client";
 import type { LonaResult } from "@/lib/calc/lona";
 import type { BaquetonResult } from "@/lib/calc/baqueton";
+import type { Material } from "@/lib/calc/materiales-seed";
 
 const fmt = (n: number) => n.toLocaleString("es-ES", { maximumFractionDigits: 2 });
+
+function stockValor(material?: Material): string {
+  if (!material) return "—";
+  const s = material.stockArzua;
+  return s == null ? "sin dato" : `${fmt(s)} · ${material.codigoBobina}`;
+}
 
 function Dato({ label, valor }: { label: string; valor: string }) {
   return (
@@ -45,13 +52,13 @@ function TablaReparto({ reparto }: { reparto: { laterales: number[]; atras: numb
   );
 }
 
-export function ResultadosLona({ res, codigoBobina }: { res: LonaResult; codigoBobina?: string }) {
+export function ResultadosLona({ res, material }: { res: LonaResult; material?: Material }) {
   return (
     <div className="flex flex-col gap-3">
       <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
         <Dato label="Medida lona hecha" valor={`${fmt(res.lonaHecha.largo)} × ${fmt(res.lonaHecha.ancho)}`} />
         <Dato label="Contorno ajustado" valor={res.contornoAjustado ? fmt(res.contornoAjustado) : "—"} />
-        <Dato label="Metros de tela" valor={res.metrosTela ? `${fmt(res.metrosTela)} m${codigoBobina ? ` · ${codigoBobina}` : ""}` : "—"} />
+        <Dato label="Stock Arzúa" valor={stockValor(material)} />
         <Dato label="Paño delantero" valor={`${fmt(res.panoDelantero.ancho)} × ${fmt(res.panoDelantero.alto)}`} />
         <Dato label="Paño trasero" valor={`${fmt(res.panoTrasero.ancho)} × ${fmt(res.panoTrasero.alto)}`} />
         <Dato label="Paño contorno" valor={res.panoContorno ? `${fmt(res.panoContorno.ancho)} × ${fmt(res.panoContorno.alto)}` : "—"} />
@@ -68,7 +75,7 @@ export function ResultadosLona({ res, codigoBobina }: { res: LonaResult; codigoB
   );
 }
 
-export function ResultadosBaqueton({ res, codigoBobina }: { res: BaquetonResult; codigoBobina?: string }) {
+export function ResultadosBaqueton({ res, material }: { res: BaquetonResult; material?: Material }) {
   return (
     <div className="flex flex-col gap-3">
       <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
@@ -78,7 +85,7 @@ export function ResultadosBaqueton({ res, codigoBobina }: { res: BaquetonResult;
         <Dato label="Esquinas (del./tras.)" valor={`${fmt(res.esquinaDelante)} / ${fmt(res.esquinaDetras)}`} />
         <Dato label="Baquetón" valor={res.baquetonTrasero ? `Trasero ${fmt(res.baquetonTrasero)} · NO EN LÍNEA` : "EN LÍNEA"} />
         <Dato label="Superficie" valor={`${fmt(res.superficieM2)} m²/ud`} />
-        <Dato label="Metros de tela" valor={res.metrosTela ? `${fmt(res.metrosTela)} m${codigoBobina ? ` · ${codigoBobina}` : ""}` : "—"} />
+        <Dato label="Stock Arzúa" valor={stockValor(material)} />
       </div>
       <TablaReparto reparto={res.reparto} />
       {res.notas.length > 0 && (
