@@ -31,7 +31,7 @@ const bordeNegro = {
 const num = (n: number) => Number(n.toFixed(2));
 const siNo = (v: boolean) => (v ? "SÍ" : "NO");
 
-function valor(cell: Cell, value: string | number, negrita = false) {
+function valor(cell: Cell, value: string | number | null, negrita = false) {
   cell.value = value;
   cell.font = { name: "Arial", size: 8, bold: negrita, color: { argb: C.negro } };
   cell.alignment = { vertical: "middle", wrapText: true };
@@ -75,14 +75,22 @@ function seccion(ws: Worksheet, row: number, titulo: string) {
   cell.border = bordeNegro;
 }
 
-function cabecera(ws: Worksheet, rec: PlanteamientoRecord) {
+function cabecera(ws: Worksheet, wb: Workbook, rec: PlanteamientoRecord, logoTgm?: string | null) {
   const i = rec.input;
   ws.mergeCells("A1:C3");
   const marca = ws.getCell("A1");
-  marca.value = "TGM\nTOLDOS GÓMEZ";
+  marca.value = logoTgm ? null : "TGM\nTOLDOS GÓMEZ";
   marca.font = { name: "Arial", size: 17, bold: true, color: { argb: C.ambar } };
   marca.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
   marca.border = bordeNegro;
+  if (logoTgm?.startsWith("data:image/png;base64,")) {
+    const imageId = wb.addImage({ base64: logoTgm, extension: "png" });
+    ws.addImage(imageId, {
+      tl: { col: 1.05, row: 0.12 },
+      ext: { width: 76, height: 58 },
+      editAs: "oneCell",
+    });
+  }
 
   const filas: Array<[number, string, string, string, string]> = [
     [1, "CLIENTE", i.cabecera.cliente || "-", "Nº PEDIDO", i.cabecera.numeroPedido || "-"],
@@ -211,7 +219,7 @@ function tablaOllaos(ws: Worksheet, reparto: { laterales: number[]; atras: numbe
     valor(ws.getCell(`A${row}`), nombre, true);
     for (let col = 6; col <= 17; col += 1) {
       const v = posiciones[col - 6];
-      valor(ws.getCell(row, col), v == null ? "" : num(v));
+      valor(ws.getCell(row, col), v == null ? null : num(v));
       ws.getCell(row, col).alignment = { horizontal: "center", vertical: "middle" };
     }
     valor(ws.getCell(`R${row}`), posiciones.length, true);
@@ -245,6 +253,7 @@ export async function buildPlanteamientoWorkbook(
   rec: PlanteamientoRecord,
   snapshotPng: string | null = null,
   material?: Material,
+  logoTgm?: string | null,
 ): Promise<Buffer> {
   const wb = new Workbook();
   wb.creator = "TGM · Remolques";
@@ -253,7 +262,7 @@ export async function buildPlanteamientoWorkbook(
   wb.calcProperties.fullCalcOnLoad = true;
   const ws = wb.addWorksheet("Planteamiento");
   prepararHoja(ws);
-  cabecera(ws, rec);
+  cabecera(ws, wb, rec, logoTgm);
   if (rec.tipo === "lona") datosLona(ws, rec, material);
   else datosBaqueton(ws, rec, material);
   plano(ws, wb, snapshotPng, rec.input.material);

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 
 const links = [
@@ -14,11 +15,21 @@ export function AppNav() {
 
   return (
     <nav className="flex flex-col gap-1 p-4">
-      <div className="mb-4 px-2">
-        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-          Remolques TGM
-        </p>
-        <p className="text-sm text-slate-400">Planteamientos</p>
+      <div className="mb-5 flex items-center gap-3 px-1">
+        <Image
+          src="/logo-tgm.png"
+          alt="TGM Toldos Gómez"
+          width={72}
+          height={55}
+          className="h-11 w-[58px] shrink-0 object-contain"
+          priority
+        />
+        <div>
+          <p className="text-sm font-extrabold uppercase tracking-[0.08em] text-white">
+            Remolques
+          </p>
+          <p className="text-sm font-medium text-slate-400">Planteamientos</p>
+        </div>
       </div>
       {links.map((link) => {
         const active =

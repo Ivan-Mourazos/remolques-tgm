@@ -6,53 +6,54 @@ import type { LonaInput, LonaResult } from "@/lib/calc/lona";
 import type { BaquetonInput, BaquetonResult } from "@/lib/calc/baqueton";
 
 const s = StyleSheet.create({
-  page: { padding: 20, fontSize: 8, fontFamily: "Helvetica", color: "#171717" },
+  page: { padding: 16, fontSize: 8.5, fontFamily: "Helvetica", color: "#171717" },
   marco: { border: "1 solid #171717" },
-  cabecera: { height: 62, flexDirection: "row" },
+  cabecera: { height: 66, flexDirection: "row" },
   logo: {
-    width: 125, borderRight: "1 solid #171717", alignItems: "center", justifyContent: "center",
+    width: 122, borderRight: "1 solid #171717", alignItems: "center", justifyContent: "center",
   },
+  logoImagen: { width: 78, height: 58, objectFit: "contain" },
   logoMarca: { fontSize: 24, fontFamily: "Helvetica-Bold", color: "#f3a000" },
   logoSub: { marginTop: 1, fontSize: 6.5, fontFamily: "Helvetica-Bold" },
   cabCentro: { flex: 1 },
-  cabDerecha: { width: 190, borderLeft: "1 solid #171717" },
-  cabFila: { minHeight: 20.7, flexDirection: "row", borderBottom: "0.6 solid #171717" },
+  cabDerecha: { width: 192, borderLeft: "1 solid #171717" },
+  cabFila: { minHeight: 22, flexDirection: "row", borderBottom: "0.6 solid #171717" },
   cabFilaUltima: { borderBottom: 0 },
   cabEtiqueta: {
-    width: 74, padding: 4, fontSize: 7, fontStyle: "italic", color: "#404040",
+    width: 78, padding: 4.5, fontSize: 7.8, fontStyle: "italic", color: "#404040",
     borderRight: "0.6 solid #171717",
   },
-  cabValor: { flex: 1, padding: 4, fontSize: 8, fontFamily: "Helvetica-Bold" },
+  cabValor: { flex: 1, padding: 4.5, fontSize: 9, fontFamily: "Helvetica-Bold" },
   banda: {
     height: 28, alignItems: "center", justifyContent: "center",
     borderTop: "1 solid #171717", borderBottom: "1 solid #171717",
   },
-  bandaTexto: { fontSize: 9, fontFamily: "Helvetica-Bold" },
-  cuerpo: { height: 342, flexDirection: "row", padding: 12 },
-  datos: { width: 322, paddingRight: 8, justifyContent: "center" },
+  bandaTexto: { fontSize: 10, fontFamily: "Helvetica-Bold" },
+  cuerpo: { height: 350, flexDirection: "row", padding: 13 },
+  datos: { width: 350, paddingRight: 10, justifyContent: "center" },
   dibujo: { flex: 1, alignItems: "center", justifyContent: "center", paddingLeft: 4 },
-  foto: { width: 445, height: 294, objectFit: "contain" },
+  foto: { width: 430, height: 310, objectFit: "contain" },
   sinPlano: { color: "#a3a3a3" },
-  filaDato: { flexDirection: "row", marginBottom: 3 },
+  filaDato: { flexDirection: "row", marginBottom: 4 },
   etiqueta: {
-    width: 105, fontSize: 7.2, fontFamily: "Helvetica-Bold", textDecoration: "underline",
+    width: 118, fontSize: 8.2, fontFamily: "Helvetica-Bold", textDecoration: "underline",
   },
-  valor: { flex: 1, fontSize: 7.5, fontFamily: "Helvetica-Bold", lineHeight: 1.18 },
-  bloque: { flexDirection: "row", marginBottom: 4 },
+  valor: { flex: 1, fontSize: 8.8, fontFamily: "Helvetica-Bold", lineHeight: 1.2 },
+  bloque: { flexDirection: "row", marginBottom: 5 },
   bloqueValores: { flex: 1 },
-  valorLinea: { fontSize: 7.5, fontFamily: "Helvetica-Bold", marginBottom: 2 },
+  valorLinea: { fontSize: 8.8, fontFamily: "Helvetica-Bold", marginBottom: 2.5 },
   separacion: { height: 5 },
-  tablaTitulo: { marginTop: 9, marginBottom: 2, fontSize: 7.5, fontFamily: "Helvetica-Bold" },
+  tablaTitulo: { marginTop: 8, marginBottom: 2, fontSize: 8.4, fontFamily: "Helvetica-Bold" },
   tabla: { border: "0.8 solid #171717" },
-  tr: { minHeight: 17, flexDirection: "row", borderBottom: "0.6 solid #171717" },
+  tr: { minHeight: 18, flexDirection: "row", borderBottom: "0.6 solid #171717" },
   trUltima: { borderBottom: 0 },
   th: {
     flex: 1, padding: 3, backgroundColor: "#d4d4d4", fontFamily: "Helvetica-Bold",
-    fontSize: 6.6, textAlign: "center", borderRight: "0.6 solid #171717",
+    fontSize: 7.2, textAlign: "center", borderRight: "0.6 solid #171717",
   },
   thNombre: { flex: 7.5, textAlign: "left" },
-  td: { flex: 1, padding: 3, fontSize: 6.6, textAlign: "center", borderRight: "0.6 solid #171717" },
-  tdNombre: { flex: 7.5, padding: 3, fontSize: 6.6, fontFamily: "Helvetica-Bold", borderRight: "0.6 solid #171717" },
+  td: { flex: 1, padding: 3, fontSize: 7.2, textAlign: "center", borderRight: "0.6 solid #171717" },
+  tdNombre: { flex: 7.5, padding: 3, fontSize: 7.2, fontFamily: "Helvetica-Bold", borderRight: "0.6 solid #171717" },
   total: { borderRight: 0, fontFamily: "Helvetica-Bold" },
 });
 
@@ -170,8 +171,8 @@ function DatosBaqueton({ rec }: { rec: PlanteamientoRecord }) {
 }
 
 /** Hoja completa de taller: datos de producción, dibujo y reparto de ollaos. */
-export function PlanteamientoPdf({ rec, snapshotPng }: {
-  rec: PlanteamientoRecord; snapshotPng: string | null;
+export function PlanteamientoPdf({ rec, snapshotPng, logoTgm }: {
+  rec: PlanteamientoRecord; snapshotPng: string | null; logoTgm?: string | null;
 }) {
   const input = rec.input;
   const resultado = rec.result as LonaResult | BaquetonResult;
@@ -181,8 +182,15 @@ export function PlanteamientoPdf({ rec, snapshotPng }: {
         <View style={s.marco}>
           <View style={s.cabecera}>
             <View style={s.logo}>
-              <Text style={s.logoMarca}>TGM</Text>
-              <Text style={s.logoSub}>TOLDOS GÓMEZ</Text>
+              {logoTgm ? (
+                /* eslint-disable-next-line jsx-a11y/alt-text */
+                <Image src={logoTgm} style={s.logoImagen} />
+              ) : (
+                <>
+                  <Text style={s.logoMarca}>TGM</Text>
+                  <Text style={s.logoSub}>TOLDOS GÓMEZ</Text>
+                </>
+              )}
             </View>
             <View style={s.cabCentro}>
               <CabFila etiqueta="CLIENTE:" valor={input.cabecera.cliente} />

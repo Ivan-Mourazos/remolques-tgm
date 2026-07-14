@@ -13,9 +13,12 @@ export default async function PlanteamientoPage({
     if (rec) inicial = { tipo: rec.tipo, input: rec.input }; // sin id: copia nueva
   }
   return (
-    <main className="p-4">
-      <h1 className="mb-4 text-lg font-semibold">Planteamiento</h1>
+    <section>
+      <div className="mb-6">
+        <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-amber-600">Oficina técnica</p>
+        <h1 className="mt-1 text-[28px] font-bold tracking-[-0.035em] text-slate-950">Nuevo planteamiento</h1>
+      </div>
       <Workspace inicial={inicial} key={desde ?? "nuevo"} />
-    </main>
+    </section>
   );
 }

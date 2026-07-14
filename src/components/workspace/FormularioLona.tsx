@@ -21,7 +21,7 @@ export function FormularioLona({
         <CampoTexto label="O.F." value={input.cabecera.ordenFabricacion ?? ""} onChange={(v) => setCab("ordenFabricacion", v)} />
         <CampoTexto label="Cliente" ancho value={input.cabecera.cliente} onChange={(v) => setCab("cliente", v)} />
         <CampoTexto label="Revisión" value={input.cabecera.revision} onChange={(v) => setCab("revision", v)} />
-        <CampoTexto label="Realizado por" ancho value={input.cabecera.realizadoPor} onChange={(v) => setCab("realizadoPor", v)} />
+        <CampoTexto label="Realizado por" value={input.cabecera.realizadoPor} onChange={(v) => setCab("realizadoPor", v)} />
       </Grupo>
       <Grupo titulo="Medidas (cm)">
         <CampoNum label="Cantidad" value={input.cantidad} onChange={(v) => set("cantidad", v)} />

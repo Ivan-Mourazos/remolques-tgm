@@ -1,21 +1,14 @@
 "use client";
 import type { LonaResult } from "@/lib/calc/lona";
 import type { BaquetonResult } from "@/lib/calc/baqueton";
-import type { Material } from "@/lib/calc/materiales-seed";
 
 const fmt = (n: number) => n.toLocaleString("es-ES", { maximumFractionDigits: 2 });
 
-function stockValor(material?: Material): string {
-  if (!material) return "—";
-  const s = material.stockArzua;
-  return s == null ? "sin dato" : `${fmt(s)} · ${material.codigoBobina}`;
-}
-
 function Dato({ label, valor }: { label: string; valor: string }) {
   return (
-    <div className="rounded-lg bg-neutral-50 px-3 py-2">
-      <div className="text-[11px] uppercase tracking-wide text-neutral-500">{label}</div>
-      <div className="text-sm font-semibold tabular-nums">{valor}</div>
+    <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-[0_1px_2px_rgb(15_23_42/0.04)]">
+      <div className="text-xs font-bold uppercase tracking-[0.08em] text-slate-500">{label}</div>
+      <div className="mt-0.5 text-base font-extrabold tabular-nums text-slate-900">{valor}</div>
     </div>
   );
 }
@@ -27,23 +20,23 @@ function TablaReparto({ reparto }: { reparto: { laterales: number[]; atras: numb
     ["OLLAOS DELANTE DE IZQUIERDA A DERECHA", reparto.delante],
   ];
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-xs tabular-nums">
+    <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+      <table className="w-full text-sm tabular-nums">
         <thead>
           <tr className="bg-neutral-100 text-neutral-600">
-            <th className="p-1 text-left font-medium">Reparto</th>
-            {Array.from({ length: 12 }, (_, i) => <th key={i} className="p-1 font-medium">{i + 1}</th>)}
-            <th className="p-1 font-medium">TOTAL</th>
+            <th className="px-3 py-2 text-left font-bold">Reparto</th>
+            {Array.from({ length: 12 }, (_, i) => <th key={i} className="px-2 py-2 font-bold">{i + 1}</th>)}
+            <th className="px-3 py-2 font-bold">TOTAL</th>
           </tr>
         </thead>
         <tbody>
           {filas.map(([nombre, pos]) => (
             <tr key={nombre} className="border-b border-neutral-100">
-              <td className="p-1">{nombre}</td>
+              <td className="whitespace-nowrap px-3 py-2 font-semibold">{nombre}</td>
               {Array.from({ length: 12 }, (_, i) => (
-                <td key={i} className="p-1 text-center">{pos[i] != null ? fmt(pos[i]) : "–"}</td>
+                <td key={i} className="px-2 py-2 text-center">{pos[i] != null ? fmt(pos[i]) : "–"}</td>
               ))}
-              <td className="p-1 text-center font-semibold">{pos.length}</td>
+              <td className="px-3 py-2 text-center font-extrabold">{pos.length}</td>
             </tr>
           ))}
         </tbody>
@@ -52,13 +45,12 @@ function TablaReparto({ reparto }: { reparto: { laterales: number[]; atras: numb
   );
 }
 
-export function ResultadosLona({ res, material }: { res: LonaResult; material?: Material }) {
+export function ResultadosLona({ res }: { res: LonaResult }) {
   return (
     <div className="flex flex-col gap-3">
       <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
         <Dato label="Medida lona hecha" valor={`${fmt(res.lonaHecha.largo)} × ${fmt(res.lonaHecha.ancho)}`} />
         <Dato label="Contorno ajustado" valor={res.contornoAjustado ? fmt(res.contornoAjustado) : "—"} />
-        <Dato label="Stock Arzúa" valor={stockValor(material)} />
         <Dato label="Paño delantero" valor={`${fmt(res.panoDelantero.ancho)} × ${fmt(res.panoDelantero.alto)}`} />
         <Dato label="Paño trasero" valor={`${fmt(res.panoTrasero.ancho)} × ${fmt(res.panoTrasero.alto)}`} />
         <Dato label="Paño contorno" valor={res.panoContorno ? `${fmt(res.panoContorno.ancho)} × ${fmt(res.panoContorno.alto)}` : "—"} />
@@ -75,7 +67,7 @@ export function ResultadosLona({ res, material }: { res: LonaResult; material?: 
   );
 }
 
-export function ResultadosBaqueton({ res, material }: { res: BaquetonResult; material?: Material }) {
+export function ResultadosBaqueton({ res }: { res: BaquetonResult }) {
   return (
     <div className="flex flex-col gap-3">
       <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
@@ -85,7 +77,6 @@ export function ResultadosBaqueton({ res, material }: { res: BaquetonResult; mat
         <Dato label="Esquinas (del./tras.)" valor={`${fmt(res.esquinaDelante)} / ${fmt(res.esquinaDetras)}`} />
         <Dato label="Baquetón" valor={res.baquetonTrasero ? `Trasero ${fmt(res.baquetonTrasero)} · NO EN LÍNEA` : "EN LÍNEA"} />
         <Dato label="Superficie" valor={`${fmt(res.superficieM2)} m²/ud`} />
-        <Dato label="Stock Arzúa" valor={stockValor(material)} />
       </div>
       <TablaReparto reparto={res.reparto} />
       {res.notas.length > 0 && (

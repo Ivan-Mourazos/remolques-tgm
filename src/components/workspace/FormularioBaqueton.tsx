@@ -23,7 +23,7 @@ export function FormularioBaqueton({
         <CampoSelect label="Cliente específico" ancho value={input.clienteEspecifico} opciones={CLIENTES}
           onChange={(v) => set("clienteEspecifico", v)} />
         <CampoTexto label="Revisión" value={input.cabecera.revision} onChange={(v) => setCab("revision", v)} />
-        <CampoTexto label="Realizado por" ancho value={input.cabecera.realizadoPor} onChange={(v) => setCab("realizadoPor", v)} />
+        <CampoTexto label="Realizado por" value={input.cabecera.realizadoPor} onChange={(v) => setCab("realizadoPor", v)} />
       </Grupo>
       <Grupo titulo="Medidas (cm)">
         <CampoNum label="Cantidad" value={input.cantidad} onChange={(v) => set("cantidad", v)} />

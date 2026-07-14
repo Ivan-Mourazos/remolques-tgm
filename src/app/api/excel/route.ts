@@ -3,6 +3,7 @@ import { getStore } from "@/lib/store";
 import { nombreExcel } from "@/lib/excel/nombre-excel";
 import { buildPlanteamientoWorkbook } from "@/lib/excel/planteamiento-excel";
 import { getMateriales } from "@/lib/store/rps-materiales";
+import { getLogoTgmDataUri } from "@/lib/assets/logo-tgm";
 
 // Genera y devuelve el .xlsx del planteamiento. NO escribe en disco ni en red:
 // el cliente lo guarda con «Guardar como» en la carpeta de oficina técnica.
@@ -20,7 +21,9 @@ export async function POST(req: NextRequest) {
   try {
     const materiales = await getMateriales();
     const material = materiales.find((m) => m.nombre === rec.input.material);
-    const buffer = await buildPlanteamientoWorkbook(rec, snapshot, material);
+    const buffer = await buildPlanteamientoWorkbook(
+      rec, snapshot, material, getLogoTgmDataUri(),
+    );
     const nombre = nombreExcel(rec.numeroPedido, rec.version || "10");
     return new NextResponse(new Uint8Array(buffer), {
       headers: {

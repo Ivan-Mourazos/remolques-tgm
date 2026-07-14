@@ -3,6 +3,7 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import { getStore } from "@/lib/store";
 import { nombrePdf } from "@/lib/pdf/ruta-pdf";
 import { PlanteamientoPdf } from "@/lib/pdf/PlanteamientoPdf";
+import { getLogoTgmDataUri } from "@/lib/assets/logo-tgm";
 
 export async function POST(req: NextRequest) {
   let id: string;
@@ -15,7 +16,13 @@ export async function POST(req: NextRequest) {
   const rec = await getStore().get(id);
   if (!rec) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
-  const doc = <PlanteamientoPdf rec={rec} snapshotPng={snapshot ?? null} />;
+  const doc = (
+    <PlanteamientoPdf
+      rec={rec}
+      snapshotPng={snapshot ?? null}
+      logoTgm={getLogoTgmDataUri()}
+    />
+  );
 
   try {
     const buffer = await renderToBuffer(doc);

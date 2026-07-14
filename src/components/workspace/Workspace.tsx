@@ -44,7 +44,6 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
   const resLona = useMemo(() => calcLona(lona, params), [lona, params]);
   const resBaq = useMemo(() => calcBaqueton(baq, params), [baq, params]);
   const input = tipo === "lona" ? lona : baq;
-  const materialSel = materiales.find((m) => m.nombre === input.material);
 
   async function doGuardar(): Promise<string | null> {
     try {
@@ -173,13 +172,13 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[380px_1fr]">
+    <div className="grid gap-6 xl:grid-cols-[460px_1fr]">
       <div>
-        <div className="mb-3 flex gap-1 rounded-lg bg-neutral-100 p-1">
+        <div className="mb-4 flex gap-1 rounded-2xl border border-slate-200/70 bg-slate-200/60 p-1.5 shadow-inner">
           {(["lona", "baqueton"] as const).map((t) => (
             <button key={t} onClick={() => { if (t !== tipo) { setTipo(t); setId(undefined); setAviso(null); } }}
               aria-pressed={tipo === t}
-              className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-700/30 ${tipo === t ? "bg-white text-slate-900 shadow-sm" : "text-neutral-500 hover:bg-white/60 hover:text-slate-800"}`}>
+              className={`flex-1 rounded-xl px-3 py-2.5 text-sm font-bold transition-all focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-500/15 ${tipo === t ? "bg-white text-slate-950 shadow-[0_3px_12px_rgb(15_23_42/0.08)]" : "text-slate-500 hover:bg-white/50 hover:text-slate-800"}`}>
               {t === "lona" ? "Lona remolque" : "Baquetón"}
             </button>
           ))}
@@ -189,14 +188,14 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
         ) : (
           <FormularioBaqueton input={baq} materiales={materiales} params={params} onChange={setBaq} />
         )}
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button onClick={guardar} disabled={busy} className="rounded-lg border border-neutral-300 bg-white px-4 py-2 text-sm font-medium transition-colors hover:border-neutral-400 hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-700/25 disabled:cursor-wait disabled:opacity-50">
+        <div className="mt-4 flex flex-wrap gap-2.5">
+          <button onClick={guardar} disabled={busy} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition-all hover:-translate-y-px hover:border-slate-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-slate-700/10 disabled:cursor-wait disabled:opacity-50">
             {accion === "guardar" ? "Guardando…" : "Guardar"}
           </button>
-          <button onClick={generarPdf} disabled={busy} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-neutral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/30 focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-50">
+          <button onClick={generarPdf} disabled={busy} className="rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white shadow-[0_6px_18px_rgb(15_23_42/0.18)] transition-all hover:-translate-y-px hover:bg-slate-800 hover:shadow-lg focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-slate-900/20 disabled:cursor-wait disabled:opacity-50">
             {accion === "pdf" ? "Generando PDF…" : "Generar PDF"}
           </button>
-          <button onClick={generarExcel} disabled={busy} className="rounded-lg border border-neutral-300 bg-white px-4 py-2 text-sm font-medium transition-colors hover:border-neutral-400 hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-700/25 disabled:cursor-wait disabled:opacity-50">
+          <button onClick={generarExcel} disabled={busy} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition-all hover:-translate-y-px hover:border-slate-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-slate-700/10 disabled:cursor-wait disabled:opacity-50">
             {accion === "excel" ? "Generando Excel…" : "Generar Excel"}
           </button>
         </div>
@@ -216,8 +215,8 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
             onSnapshotReady={(fn) => { snapshotRef.current = fn; }} />
         )}
         {tipo === "lona"
-          ? <ResultadosLona res={resLona} material={materialSel} />
-          : <ResultadosBaqueton res={resBaq} material={materialSel} />}
+          ? <ResultadosLona res={resLona} />
+          : <ResultadosBaqueton res={resBaq} />}
       </div>
     </div>
   );

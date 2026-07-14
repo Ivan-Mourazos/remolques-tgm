@@ -40,8 +40,8 @@ function Cota({
         stroke="currentColor" strokeWidth="1.2" markerStart="url(#cota)" markerEnd="url(#cota)"
       />
       <text
-        x={cx} y={cy} textAnchor="middle" fontSize="12" fontWeight="700"
-        fill="currentColor" stroke="#f8fafc" strokeWidth="5" paintOrder="stroke"
+        x={cx} y={cy} textAnchor="middle" fontSize="13" fontWeight="800"
+        fill="currentColor" stroke="#ffffff" strokeWidth="6" paintOrder="stroke"
         strokeLinejoin="round" transform={`rotate(${rotacion} ${cx} ${cy})`}
       >
         {texto}
@@ -89,15 +89,15 @@ export function Escena3D(props: Escena3DProps) {
       (mejor, [, y], indice) => y > delantero[mejor][1] ? indice : mejor,
       0,
     );
-    const techo = [...frente.slice(1, -1), ...fondo.slice(1, -1).reverse()];
+    const cubierta = [...frente.slice(1, -1), ...fondo.slice(1, -1).reverse()];
     const lateralDcha = [frente.at(-2)!, frente.at(-1)!, fondo.at(-1)!, fondo.at(-2)!];
-    const contornoFrente = frente.slice(0, -1);
-    const contornoTechoFondo = fondo.slice(1, -1);
+    const contornoFrente = frente;
+    const coronacionFondo = fondo.slice(1, -1);
     const hombroDerecho = frente.at(-2)!;
     const picoFrente = frente[indicePico];
     const xCotaAguas = frente.at(-1)!.x + 34;
     return {
-      frente, fondo, techo, lateralDcha, contornoFrente, contornoTechoFondo,
+      frente, fondo, cubierta, lateralDcha, contornoFrente, coronacionFondo,
       anchoDesde: { x: frente[0].x, y: baseY + 35 },
       anchoHasta: { x: frente.at(-1)!.x, y: baseY + 35 },
       altoDesde: { x: frente[0].x - 42, y: baseY },
@@ -150,12 +150,12 @@ export function Escena3D(props: Escena3DProps) {
   }, [onSnapshotReady]);
 
   return (
-    <div className="relative h-[clamp(330px,40vw,500px)] w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-50 shadow-sm">
-      <div className="absolute left-4 top-4 z-10">
-        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-amber-600">
+    <div className="relative h-[clamp(380px,43vw,540px)] w-full overflow-hidden rounded-[24px] border border-white/80 bg-white shadow-[0_18px_50px_rgb(15_23_42/0.09),0_2px_8px_rgb(15_23_42/0.04)] ring-1 ring-slate-200/70">
+      <div className="absolute left-6 top-5 z-10 rounded-2xl border border-white/80 bg-white/80 px-3.5 py-2.5 shadow-[0_8px_24px_rgb(15_23_42/0.06)] backdrop-blur-md">
+        <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-amber-600">
           Vista Técnica
         </p>
-        <p className="text-sm font-semibold text-slate-800">Perspectiva fija · cotas en cm</p>
+        <p className="text-base font-bold text-slate-900">Perspectiva fija · cotas en cm</p>
       </div>
       {dibujo ? (
         <svg
@@ -167,44 +167,62 @@ export function Escena3D(props: Escena3DProps) {
         >
           <title>Perspectiva técnica acotada</title>
           <defs>
+            <linearGradient id="lienzo" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stopColor="#fbfcfd" />
+              <stop offset="0.55" stopColor="#f5f7f9" />
+              <stop offset="1" stopColor="#eef2f5" />
+            </linearGradient>
             <linearGradient id="cara" x1="0" y1="0" x2="0.9" y2="1">
-              <stop offset="0" stopColor="#e8f1fb" />
-              <stop offset="1" stopColor="#bfd7f3" />
+              <stop offset="0" stopColor="#ffffff" />
+              <stop offset="0.6" stopColor="#eef2f6" />
+              <stop offset="1" stopColor="#dce4eb" />
             </linearGradient>
             <linearGradient id="lateral" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor="#c9ddf5" />
-              <stop offset="1" stopColor="#9ebfe5" />
+              <stop offset="0" stopColor="#d8e2ea" />
+              <stop offset="1" stopColor="#b8c7d3" />
+            </linearGradient>
+            <linearGradient id="cubierta" x1="0" y1="1" x2="1" y2="0">
+              <stop offset="0" stopColor="#eef3f7" />
+              <stop offset="1" stopColor="#d4dee7" />
             </linearGradient>
             <marker id="cota" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto-start-reverse">
               <path d="M 7 0 L 0 3.5 L 7 7 z" fill="#475569" />
             </marker>
-            <pattern id="rejilla" width="22" height="22" patternUnits="userSpaceOnUse">
-              <path d="M 22 0 L 0 0 0 22" fill="none" stroke="#e2e8f0" strokeWidth="0.7" />
-            </pattern>
+            <filter id="sombraLona" x="-25%" y="-25%" width="160%" height="180%">
+              <feDropShadow dx="0" dy="10" stdDeviation="10" floodColor="#0f172a" floodOpacity="0.16" />
+            </filter>
           </defs>
-          <rect width="760" height="440" fill="#f8fafc" />
-          <rect x="18" y="68" width="724" height="350" rx="8" fill="url(#rejilla)" stroke="#e2e8f0" />
-          {/* Volumen cerrado: paños opacos y solo las aristas visibles. */}
-          <polygon points={puntosSvg(dibujo.fondo)} fill="#edf4fb" stroke="none" />
-          <polygon points={puntosSvg(dibujo.techo)} fill="#d9e8f8" stroke="none" />
-          <polygon points={puntosSvg(dibujo.lateralDcha)} fill="url(#lateral)" stroke="none" />
-          <polygon points={puntosSvg(dibujo.frente)} fill="url(#cara)" stroke="none" />
-          <polyline points={puntosSvg(dibujo.contornoTechoFondo)} fill="none" stroke="#64748b" strokeWidth="1.6" strokeLinejoin="round" />
+          <rect width="760" height="440" fill="url(#lienzo)" />
+          <rect x="18" y="68" width="724" height="350" rx="18" fill="#ffffff" fillOpacity="0.64" stroke="#ffffff" />
+          {/* Envolvente de lona opaca: sin estructura ni líneas interiores. */}
+          <g filter="url(#sombraLona)">
+            <polygon points={puntosSvg(dibujo.cubierta)} fill="url(#cubierta)" stroke="none" />
+            <polygon points={puntosSvg(dibujo.lateralDcha)} fill="url(#lateral)" stroke="none" />
+            <polygon points={puntosSvg(dibujo.frente)} fill="url(#cara)" stroke="none" />
+          </g>
+
+          {/* Únicamente se conservan los bordes visibles de la lona. */}
+          <polyline points={puntosSvg(dibujo.coronacionFondo)} fill="none" stroke="#64748b" strokeWidth="2" strokeLinejoin="round" />
+          <line
+            x1={dibujo.frente[1].x} y1={dibujo.frente[1].y}
+            x2={dibujo.fondo[1].x} y2={dibujo.fondo[1].y}
+            stroke="#64748b" strokeWidth="2"
+          />
           <line
             x1={dibujo.fondo.at(-2)!.x} y1={dibujo.fondo.at(-2)!.y}
             x2={dibujo.fondo.at(-1)!.x} y2={dibujo.fondo.at(-1)!.y}
-            stroke="#64748b" strokeWidth="1.6"
+            stroke="#64748b" strokeWidth="2"
           />
           <line
             x1={dibujo.frente.at(-2)!.x} y1={dibujo.frente.at(-2)!.y}
             x2={dibujo.fondo.at(-2)!.x} y2={dibujo.fondo.at(-2)!.y}
-            stroke="#64748b" strokeWidth="1.8"
+            stroke="#64748b" strokeWidth="2"
           />
-          <polyline points={puntosSvg(dibujo.contornoFrente)} fill="none" stroke="#0f172a" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+          <polyline points={puntosSvg(dibujo.contornoFrente)} fill="none" stroke="#0f172a" strokeWidth="3.6" strokeLinecap="round" strokeLinejoin="round" />
           {props.modo === "baqueton" && (
             <polyline
-              points={puntosSvg(dibujo.techo)} fill="none" stroke="#f59e0b"
-              strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"
+              points={puntosSvg(dibujo.contornoFrente)} fill="none" stroke="#f59e0b"
+              strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round"
             />
           )}
 
@@ -238,18 +256,15 @@ export function Escena3D(props: Escena3DProps) {
               />
               <Cota
                 desde={dibujo.aguasDesde} hasta={dibujo.aguasHasta}
-                texto={`AGUAS ${fmt(props.aguas ?? 0)}`} textoDx={48} textoDy={4}
+                texto={`AGUAS ${fmt(props.aguas ?? 0)}`} rotacion={-90} textoDx={18} textoDy={0}
               />
             </g>
           )}
           {props.modo === "lona" && altoAtras !== altoDelante && (
-            <text x="592" y="105" textAnchor="middle" fontSize="12" fontWeight="700" fill="#475569">
+            <text x="592" y="105" textAnchor="middle" fontSize="13" fontWeight="800" fill="#475569">
               ALTO TRAS. {fmt(altoAtras)}
             </text>
           )}
-          <text x="725" y="400" textAnchor="end" fontSize="10" fontWeight="700" fill="#94a3b8">
-            {props.modo === "lona" ? props.tipoPerfil : "BAQUETÓN"}
-          </text>
         </svg>
       ) : (
         <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
