@@ -18,12 +18,12 @@ export function FormularioBaqueton({
     <div className="flex flex-col gap-3">
       <Grupo titulo="Pedido">
         <CampoTexto label="Nº pedido" value={input.cabecera.numeroPedido} onChange={(v) => setCab("numeroPedido", v)} />
-        <CampoTexto label="Versión" value={input.cabecera.version} onChange={(v) => setCab("version", v)} />
+        <CampoTexto label="O.F." value={input.cabecera.ordenFabricacion ?? ""} onChange={(v) => setCab("ordenFabricacion", v)} />
         <CampoTexto label="Cliente" ancho value={input.cabecera.cliente} onChange={(v) => setCab("cliente", v)} />
         <CampoSelect label="Cliente específico" ancho value={input.clienteEspecifico} opciones={CLIENTES}
           onChange={(v) => set("clienteEspecifico", v)} />
         <CampoTexto label="Revisión" value={input.cabecera.revision} onChange={(v) => setCab("revision", v)} />
-        <CampoTexto label="Realizado por" value={input.cabecera.realizadoPor} onChange={(v) => setCab("realizadoPor", v)} />
+        <CampoTexto label="Realizado por" ancho value={input.cabecera.realizadoPor} onChange={(v) => setCab("realizadoPor", v)} />
       </Grupo>
       <Grupo titulo="Medidas (cm)">
         <CampoNum label="Cantidad" value={input.cantidad} onChange={(v) => set("cantidad", v)} />

@@ -5,7 +5,7 @@ import { DEFAULT_PARAMS } from "@/lib/calc/params";
 // La versión empieza en "10" (nº de remolque dentro del pedido: 10, 11, 12…).
 const cabecera = () => ({
   numeroPedido: "", version: "10", cliente: "", revision: "", realizadoPor: "",
-  fecha: new Date().toISOString().slice(0, 10), fechaSalida: "",
+  ordenFabricacion: "", fecha: new Date().toISOString().slice(0, 10), fechaSalida: "",
 });
 const sinOllaos = () => ({ laterales: [], atras: [], delante: [] });
 

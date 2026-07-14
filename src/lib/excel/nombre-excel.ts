@@ -1,7 +1,8 @@
 const INVALIDOS = /[<>:"/\\|?*]/g;
 
-/** Nombre del Excel del planteamiento: solo el nº de pedido (sin versión). */
-export function nombreExcel(numeroPedido: string): string {
+/** Nombre del Excel del planteamiento: pedido + sufijo interno (10 por defecto). */
+export function nombreExcel(numeroPedido: string, sufijo = "10"): string {
   const pedido = (numeroPedido || "SIN-PEDIDO").replace(INVALIDOS, "_");
-  return `${pedido}.xlsx`;
+  const parte = (sufijo || "10").replace(INVALIDOS, "_");
+  return `${pedido}-${parte}.xlsx`;
 }

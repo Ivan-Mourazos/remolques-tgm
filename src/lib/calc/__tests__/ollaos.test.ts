@@ -19,6 +19,12 @@ describe("calcOllaos", () => {
     expect(res.ancho.posiciones).toEqual([2.5, 39.3, 76, 112.8, 149.5]);
   });
 
+  it("caso AR2603456: reproduce exactamente el reparto del Excel histórico", () => {
+    const res = calcOllaos(161, 141, 35, DEFAULT_PARAMS);
+    expect(res.largo.posiciones).toEqual([2.5, 33.7, 64.9, 96.1, 127.3, 158.5]);
+    expect(res.ancho.posiciones).toEqual([2.5, 36.5, 70.5, 104.5, 138.5]);
+  });
+
   it("medida 0 o paso 0 devuelve vacío", () => {
     expect(calcOllaos(0, 100, 35, DEFAULT_PARAMS).largo).toEqual({ n: 0, dist: 0, posiciones: [] });
     expect(calcOllaos(100, 100, 0, DEFAULT_PARAMS).largo.posiciones).toEqual([]);
@@ -26,7 +32,7 @@ describe("calcOllaos", () => {
 
   it("tope de 12 posiciones", () => {
     const res = calcOllaos(1000, 0, 35, DEFAULT_PARAMS);
-    expect(res.largo.n).toBe(29);
+    expect(res.largo.n).toBe(30);
     expect(res.largo.posiciones).toHaveLength(12);
   });
 });

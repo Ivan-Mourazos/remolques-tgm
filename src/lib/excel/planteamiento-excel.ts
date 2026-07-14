@@ -86,7 +86,7 @@ function cabecera(ws: Worksheet, rec: PlanteamientoRecord) {
 
   const filas: Array<[number, string, string, string, string]> = [
     [1, "CLIENTE", i.cabecera.cliente || "-", "Nº PEDIDO", i.cabecera.numeroPedido || "-"],
-    [2, "REVISIÓN", i.cabecera.revision || "-", "VERSIÓN", i.cabecera.version || "-"],
+    [2, "REVISIÓN", i.cabecera.revision || "-", "O.F.", i.cabecera.ordenFabricacion || "-"],
     [3, "REALIZADO", i.cabecera.realizadoPor || "-", "FECHA", i.cabecera.fecha || "-"],
   ];
   for (const [row, l1, v1, l2, v2] of filas) {

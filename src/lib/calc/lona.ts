@@ -9,6 +9,8 @@ export const USAR_COLUMNA_ATRAS = false;
 export interface CabeceraInput {
   numeroPedido: string; version: string; cliente: string; revision: string;
   realizadoPor: string; fecha: string; fechaSalida: string;
+  /** Orden de fabricación, introducida manualmente por oficina técnica. */
+  ordenFabricacion?: string;
 }
 
 export interface LonaInput {

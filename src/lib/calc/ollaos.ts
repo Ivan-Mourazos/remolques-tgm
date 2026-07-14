@@ -12,7 +12,9 @@ function eje(medida: number, paso: number, params: CalcParams): EjeOllaos {
   if (!(recorrido > 0)) return { n: 0, dist: 0, posiciones: [] };
   // Se fijan exactamente el primer y el último ollao; los intermedios se
   // reparten uniformemente buscando el paso objetivo indicado por producción.
-  const intervalos = Math.max(1, excelRound(recorrido / paso, 0));
+  // El Excel histórico decide el nº de intervalos con la medida completa y,
+  // después, reparte el tramo útil entre el primer y el último ollao.
+  const intervalos = Math.max(1, excelRound(medida / paso, 0));
   const distanciaExacta = recorrido / intervalos;
   const n = intervalos + 1;
   const posiciones = Array.from(

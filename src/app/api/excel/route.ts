@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     const materiales = await getMateriales();
     const material = materiales.find((m) => m.nombre === rec.input.material);
     const buffer = await buildPlanteamientoWorkbook(rec, snapshot, material);
-    const nombre = nombreExcel(rec.numeroPedido);
+    const nombre = nombreExcel(rec.numeroPedido, rec.version || "10");
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
