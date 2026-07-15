@@ -13,7 +13,7 @@ export function emptyLona(): LonaInput {
   return {
     cabecera: cabecera(),
     cantidad: 1, largo: 0, ancho: 0, altoDelante: 0, altoAtras: 0, aguas: 0,
-    contornoScad: 0, llevaCurva: false, tipoPerfil: "TIPO 01",
+    llevaCurva: false, tipoPerfil: "TIPO 01",
     recogeDelante: "NO", recogeAtras: "NO",
     bastillaEnfundar: false, ventana: false, rotulacion: false, textoRotulacion: "",
     modoOllaos: "REPARTIDOS", pasoOllaos: DEFAULT_PARAMS.pasoOllaosDefecto,

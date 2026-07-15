@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
+import { controlesCatmullRom, type Punto2D } from "@/lib/geometry/curva";
 import { perfilPuntos } from "@/lib/geometry/perfil";
 import { calcularVentanaFrontal } from "@/lib/geometry/ventana";
 import type { TipoPerfil } from "@/lib/calc/params";
 
-type Punto = { x: number; y: number };
+type Punto = Punto2D;
 
 export interface Escena3DProps {
   modo: "lona" | "baqueton";
@@ -35,20 +36,9 @@ function caminoCurvo(puntos: Punto[], mover = true): string {
   if (puntos.length === 0) return "";
   let d = mover ? `M ${puntoSvg(puntos[0])}` : "";
   if (puntos.length === 1) return d;
-  const tension = 0.62;
   for (let i = 0; i < puntos.length - 1; i += 1) {
-    const p0 = puntos[i - 1] ?? puntos[i];
-    const p1 = puntos[i];
     const p2 = puntos[i + 1];
-    const p3 = puntos[i + 2] ?? p2;
-    const c1 = {
-      x: p1.x + ((p2.x - p0.x) * tension) / 6,
-      y: p1.y + ((p2.y - p0.y) * tension) / 6,
-    };
-    const c2 = {
-      x: p2.x - ((p3.x - p1.x) * tension) / 6,
-      y: p2.y - ((p3.y - p1.y) * tension) / 6,
-    };
+    const { c1, c2 } = controlesCatmullRom(puntos, i);
     d += ` C ${puntoSvg(c1)} ${puntoSvg(c2)} ${puntoSvg(p2)}`;
   }
   return d;

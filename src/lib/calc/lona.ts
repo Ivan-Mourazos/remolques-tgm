@@ -1,6 +1,7 @@
 import { excelRound, roundUpToMm } from "@/lib/calc/redondeo";
 import { findRecogida, type CalcParams, type TipoPerfil } from "@/lib/calc/params";
 import { calcOllaos, type OllaosResult } from "@/lib/calc/ollaos";
+import { longitudContornoTerminado } from "@/lib/geometry/contorno";
 
 // P1 del spec: el Excel (G11 y RPS D7) usa la columna DELANTE también para el
 // paño trasero. Cambiar a true si oficina técnica confirma que era un descuido.
@@ -19,7 +20,7 @@ export interface LonaInput {
   altoDelante: number; altoAtras: number;
   /** Caída desde la cumbrera hasta los hombros del perfil. */
   aguas?: number;
-  contornoScad: number; llevaCurva: boolean;
+  llevaCurva: boolean;
   tipoPerfil: TipoPerfil;
   recogeDelante: string; recogeAtras: string;
   bastillaEnfundar: boolean; ventana: boolean;
@@ -54,10 +55,17 @@ export function calcLona(input: LonaInput, params: CalcParams): LonaResult {
     ancho: r1(input.ancho + params.demasiaLonaHecha),
   };
 
-  const contornoAjustado =
-    input.contornoScad > 0
-      ? roundUpToMm(input.contornoScad + (input.llevaCurva ? params.aumentoCurvaContorno : 0))
-      : 0;
+  const aguas = input.aguas ?? 0;
+  const contornoDelantero = longitudContornoTerminado(
+    input.tipoPerfil, input.ancho, input.altoDelante, aguas,
+  );
+  const contornoTrasero = longitudContornoTerminado(
+    input.tipoPerfil, input.ancho, input.altoAtras, aguas,
+  );
+  const contornoMayor = Math.max(contornoDelantero, contornoTrasero);
+  const contornoAjustado = contornoMayor > 0
+    ? roundUpToMm(contornoMayor + (input.llevaCurva ? params.aumentoCurvaContorno : 0))
+    : 0;
 
   const panoDelantero: Pano = {
     ancho: r1(input.ancho + recDel.delante),

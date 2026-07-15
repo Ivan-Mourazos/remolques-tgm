@@ -30,7 +30,6 @@ export function FormularioLona({
         <CampoNum label="Alto delante" value={input.altoDelante} onChange={(v) => set("altoDelante", v)} />
         <CampoNum label="Alto detrás" value={input.altoAtras} onChange={(v) => set("altoAtras", v)} />
         <CampoNum label="Aguas" value={input.aguas ?? 0} onChange={(v) => set("aguas", v)} />
-        <CampoNum label="Contorno SCAD" value={input.contornoScad} onChange={(v) => set("contornoScad", v)} />
         <CampoCheck label="Lleva curva (+1,5 al contorno)" value={input.llevaCurva} onChange={(v) => set("llevaCurva", v)} />
       </Grupo>
       <Grupo titulo="Configuración">

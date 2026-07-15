@@ -8,8 +8,8 @@ const base: LonaInput = {
     revision: "JAIME", realizadoPor: "ADRIAN", fecha: "2026-06-11", fechaSalida: "",
   },
   cantidad: 1, largo: 250, ancho: 151,
-  altoDelante: 62, altoAtras: 62,
-  contornoScad: 270, llevaCurva: false,
+  altoDelante: 62, altoAtras: 62, aguas: 0,
+  llevaCurva: false,
   tipoPerfil: "TIPO 02",
   recogeDelante: "NO", recogeAtras: "CREMALLERA",
   bastillaEnfundar: false, ventana: false,
@@ -30,8 +30,8 @@ describe("calcLona — caso real AR2602796", () => {
     expect(res.panoDelantero).toMatchObject({ ancho: 154, alto: 66.5 });
     expect(res.panoTrasero).toMatchObject({ ancho: 154, alto: 66.5 });
   });
-  it("paño contorno 253 x 270", () => {
-    expect(res.panoContorno).toMatchObject({ ancho: 253, alto: 270 });
+  it("calcula el paño contorno 253 x 275 desde el perfil terminado", () => {
+    expect(res.panoContorno).toMatchObject({ ancho: 253, alto: 275 });
   });
   it("textos de recogida", () => {
     expect(res.recogeDelanteTexto).toBe("NO RECOGE");
@@ -49,9 +49,9 @@ describe("calcLona — variantes", () => {
     expect(res.notas.join(" ")).toContain("enfundar");
   });
   it("curva suma 1,5 al contorno y redondea hacia arriba al mm", () => {
-    const res = calcLona({ ...base, llevaCurva: true, contornoScad: 270.02 }, DEFAULT_PARAMS);
-    expect(res.contornoAjustado).toBe(271.6);
-    expect(res.panoContorno?.alto).toBe(271.6);
+    const res = calcLona({ ...base, llevaCurva: true }, DEFAULT_PARAMS);
+    expect(res.contornoAjustado).toBe(276.5);
+    expect(res.panoContorno?.alto).toBe(276.5);
   });
   it("PUENTES LATERALES: paño trasero usa columna DELANTE (paridad Excel, P1)", () => {
     const res = calcLona({ ...base, recogeAtras: "PUENTES LATERALES" }, DEFAULT_PARAMS);
@@ -63,10 +63,15 @@ describe("calcLona — variantes", () => {
     expect(res.panoDelantero.ancho).toBe(178);
     expect(res.notas.join(" ")).toContain("GOMA");
   });
-  it("sin contorno: paño contorno null y metros tela 0", () => {
-    const res = calcLona({ ...base, contornoScad: 0 }, DEFAULT_PARAMS);
+  it("sin alturas: paño contorno null y metros tela 0", () => {
+    const res = calcLona({ ...base, altoDelante: 0, altoAtras: 0 }, DEFAULT_PARAMS);
     expect(res.panoContorno).toBeNull();
     expect(res.metrosTela).toBe(0);
+  });
+  it("si los contornos delantero y trasero difieren usa el mayor", () => {
+    const res = calcLona({ ...base, altoAtras: 64 }, DEFAULT_PARAMS);
+    expect(res.contornoAjustado).toBe(279);
+    expect(res.panoContorno?.alto).toBe(279);
   });
   it("modo SEGUN SE INDICA usa las posiciones manuales", () => {
     const manuales = { laterales: [2.5, 37.6], atras: [2.5], delante: [2.5] };

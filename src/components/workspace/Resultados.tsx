@@ -50,7 +50,7 @@ export function ResultadosLona({ res }: { res: LonaResult }) {
     <div className="flex flex-col gap-3">
       <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
         <Dato label="Medida lona hecha" valor={`${fmt(res.lonaHecha.largo)} × ${fmt(res.lonaHecha.ancho)}`} />
-        <Dato label="Contorno ajustado" valor={res.contornoAjustado ? fmt(res.contornoAjustado) : "—"} />
+        <Dato label="Contorno calculado" valor={res.contornoAjustado ? fmt(res.contornoAjustado) : "—"} />
         <Dato label="Paño delantero" valor={`${fmt(res.panoDelantero.ancho)} × ${fmt(res.panoDelantero.alto)}`} />
         <Dato label="Paño trasero" valor={`${fmt(res.panoTrasero.ancho)} × ${fmt(res.panoTrasero.alto)}`} />
         <Dato label="Paño contorno" valor={res.panoContorno ? `${fmt(res.panoContorno.ancho)} × ${fmt(res.panoContorno.alto)}` : "—"} />
