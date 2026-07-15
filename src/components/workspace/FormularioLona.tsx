@@ -29,9 +29,9 @@ export function FormularioLona({
 
       <div className="space-y-2 rounded-2xl border border-[#d4dfdb] bg-[#fbfcfb]/95 p-2.5 shadow-[0_12px_32px_rgb(14_45_49/0.055)] backdrop-blur-sm">
         <PasoFormulario numero={1} titulo="Forma del remolque">
-          <CampoSelect label="Tipo" span={2} value={input.tipoPerfil} opciones={[...PERFILES]}
+          <CampoSelect label="Tipo" span={1} value={input.tipoPerfil} opciones={[...PERFILES]}
             onChange={(v) => set("tipoPerfil", v as LonaInput["tipoPerfil"])} />
-          <CampoMaterial compacto span={1} value={input.material} opciones={materiales}
+          <CampoMaterial compacto span={2} value={input.material} opciones={materiales}
             onChange={(v) => set("material", v)} />
         </PasoFormulario>
         <PasoFormulario numero={2} titulo="Recogidas">

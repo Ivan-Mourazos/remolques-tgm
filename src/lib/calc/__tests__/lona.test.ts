@@ -34,8 +34,8 @@ describe("calcLona — caso real AR2602796", () => {
     expect(res.panoContorno).toMatchObject({ ancho: 253, alto: 282 });
   });
   it("textos de recogida", () => {
-    expect(res.recogeDelanteTexto).toBe("NO RECOGE");
-    expect(res.recogeAtrasTexto).toBe("RECOGE ATRÁS CON CREMALLERA");
+    expect(res.recogeDelanteTexto).toBe("NO");
+    expect(res.recogeAtrasTexto).toBe("CREMALLERA");
   });
   it("metros de tela = (154+154+253)/100", () => {
     expect(res.metrosTela).toBe(5.61);
@@ -102,6 +102,6 @@ describe("calcLona — variantes", () => {
   it("recogida desconocida: usa fallback NO en medidas y en texto", () => {
     const res = calcLona({ ...base, recogeDelante: "INVENTADA" }, DEFAULT_PARAMS);
     expect(res.panoDelantero.ancho).toBe(154); // demasía de NO = 3
-    expect(res.recogeDelanteTexto).toBe("NO RECOGE");
+    expect(res.recogeDelanteTexto).toBe("NO");
   });
 });

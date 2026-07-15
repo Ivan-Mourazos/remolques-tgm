@@ -21,9 +21,9 @@ const filas: Array<{ clave: ClaveReparto; nombre: string }> = [
 
 function Dato({ label, valor }: { label: string; valor: string }) {
   return (
-    <div className="min-w-0 rounded-lg border border-[#d5dfdc] bg-[linear-gradient(145deg,#fdfefd,#f5f8f7)] px-2.5 py-2 shadow-[0_2px_8px_rgb(14_45_49/0.04)]">
-      <div className="truncate text-[9px] font-extrabold uppercase tracking-[0.075em] text-[#668084]" title={label}>{label}</div>
-      <div className="mt-0.5 truncate text-[13px] font-extrabold tabular-nums text-[#102a2f]" title={valor}>{valor}</div>
+    <div className="min-w-0 rounded-lg border border-[#d5dfdc] bg-[linear-gradient(145deg,#fdfefd,#f5f8f7)] px-2 py-1.5 shadow-[0_2px_8px_rgb(14_45_49/0.04)]">
+      <div className="text-[8px] font-extrabold uppercase leading-[1.15] tracking-[0.045em] text-[#668084]">{label}</div>
+      <div className="mt-1 break-words text-[11px] font-extrabold leading-[1.15] tabular-nums text-[#102a2f]">{valor}</div>
     </div>
   );
 }
@@ -79,7 +79,7 @@ function TablaReparto({ reparto }: { reparto: RepartoOllaos }) {
             const posiciones = reparto[clave];
             return (
               <tr key={clave} className="border-b border-[#e5ebe9] last:border-b-0">
-                <td className="truncate px-3 py-1.5 text-[10px] font-bold text-[#38575c]" title={nombre}>{nombre}</td>
+                <td className="px-2 py-1.5 text-[9px] font-bold leading-tight text-[#38575c]">{nombre}</td>
                 {Array.from({ length: 12 }, (_, i) => (
                   <td key={i} className="px-1 py-1.5 text-center">{posiciones[i] != null ? fmt(posiciones[i]) : "–"}</td>
                 ))}
@@ -125,7 +125,7 @@ function EditorOllaos({
             const posiciones = reparto[clave];
             return (
               <tr key={clave} className="border-b border-[#e5ebe9] last:border-b-0">
-                <td className="truncate px-3 py-1.5 text-[10px] font-bold text-[#38575c]" title={nombre}>{nombre}</td>
+                <td className="px-2 py-1.5 text-[9px] font-bold leading-tight text-[#38575c]">{nombre}</td>
                 {Array.from({ length: 12 }, (_, indice) => (
                   <td key={indice} className="p-0.5">
                     <input

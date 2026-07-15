@@ -115,7 +115,7 @@ export function calcLona(input: LonaInput, params: CalcParams): LonaResult {
 
   const notas: string[] = [];
   if (input.recogeDelante === "GOMA" || input.recogeAtras === "GOMA") {
-    notas.push("Recoge con GOMA: preparar orejas por lado.");
+    notas.push("GOMA: preparar orejas por lado.");
   }
   if (input.bastillaEnfundar) notas.push("Bastilla de enfundar: paño contorno con demasía 13.");
   if (input.ventana) notas.push("Ventana indicada: verificar en taller.");
@@ -123,15 +123,12 @@ export function calcLona(input: LonaInput, params: CalcParams): LonaResult {
     notas.push(input.textoRotulacion ? `Rotulación: ${input.textoRotulacion}.` : "Incluye rotulación.");
   }
 
-  const textoRecogida = (lado: "DELANTE" | "ATRÁS", nombre: string) =>
-    nombre === "NO" ? "NO RECOGE" : `RECOGE ${lado} CON ${nombre}`;
-
   return {
     lonaHecha, contornoIntroducido, ajusteContorno, contornoAjustado,
     panoDelantero, panoTrasero, panoContorno,
     ollaos, reparto, metrosTela,
-    recogeDelanteTexto: textoRecogida("DELANTE", recDel.nombre),
-    recogeAtrasTexto: textoRecogida("ATRÁS", recAtr.nombre),
+    recogeDelanteTexto: recDel.nombre,
+    recogeAtrasTexto: recAtr.nombre,
     notas,
   };
 }

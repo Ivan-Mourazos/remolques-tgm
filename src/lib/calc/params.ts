@@ -35,11 +35,11 @@ export interface CalcParams {
 }
 
 export const PERFILES = [
-  { value: "TIPO 01", label: "TIPO 01 — Recto" },
-  { value: "TIPO 02", label: "TIPO 02 — Dos aguas · líneas rectas" },
-  { value: "TIPO 03", label: "TIPO 03 — Dos aguas · uniones curvas" },
-  { value: "TIPO 04", label: "TIPO 04 — Techo recto · chaflanes" },
-  { value: "TIPO 05", label: "TIPO 05 — Techo recto · esquinas curvas" },
+  { value: "TIPO 01", label: "TIPO 01 · Recto" },
+  { value: "TIPO 02", label: "TIPO 02 · Dos aguas rectas" },
+  { value: "TIPO 03", label: "TIPO 03 · Dos aguas curvas" },
+  { value: "TIPO 04", label: "TIPO 04 · chaflanes" },
+  { value: "TIPO 05", label: "TIPO 05 · esquinas curvas" },
 ] as const;
 export type TipoPerfil = (typeof PERFILES)[number]["value"];
 export const TIPOS_PERFIL: TipoPerfil[] = PERFILES.map((perfil) => perfil.value);

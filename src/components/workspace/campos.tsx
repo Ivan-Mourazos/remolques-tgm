@@ -105,6 +105,7 @@ export function CampoMaterial(props: {
       <span className="font-bold text-[#536d72]">Material</span>
       <input
         className={`${control} w-full`}
+        style={props.compacto ? { fontSize: "11px" } : undefined}
         list={listId}
         name="material"
         autoComplete="off"
@@ -122,7 +123,7 @@ export function CampoMaterial(props: {
         ))}
       </datalist>
       {props.compacto ? (
-        <span className="truncate text-[10px] font-bold text-[#8a6410]">
+        <span className="break-words text-[9px] font-bold leading-tight text-[#8a6410]" title={props.value}>
           {material
             ? `Stock ${material.stockArzua == null ? "sin dato" : material.stockArzua} · ${material.codigoBobina}`
             : props.value ? "Lona manual · sin stock" : "PVC 580/650 RPS"}
