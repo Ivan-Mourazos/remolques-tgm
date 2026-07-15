@@ -9,7 +9,7 @@ const base: LonaInput = {
   },
   cantidad: 1, largo: 250, ancho: 151,
   altoDelante: 62, altoAtras: 62, aguas: 0,
-  llevaCurva: false,
+  contornoScad: 275,
   tipoPerfil: "TIPO 02",
   recogeDelante: "NO", recogeAtras: "CREMALLERA",
   bastillaEnfundar: false, ventana: false,
@@ -48,36 +48,10 @@ describe("calcLona — variantes", () => {
     expect(res.panoContorno?.ancho).toBe(263);
     expect(res.notas.join(" ")).toContain("enfundar");
   });
-  it("curva suma 1,5 al contorno y redondea hacia arriba al mm", () => {
-    const res = calcLona({ ...base, llevaCurva: true }, DEFAULT_PARAMS);
-    expect(res.contornoAjustado).toBe(276.5);
-    expect(res.panoContorno?.alto).toBe(276.5);
-  });
-  it("TIPO 05 usa el radio indicado y suma 1,5 automáticamente", () => {
-    const input = {
-      ...base, tipoPerfil: "TIPO 05" as const, llevaCurva: false,
-      ancho: 141, altoDelante: 88.4, altoAtras: 88.4, radioCurva: 10,
-    };
-    const baseCurva = 2 * (88.4 - 10) + (141 - 20) + Math.PI * 10;
-    const res = calcLona(input, DEFAULT_PARAMS);
-    expect(res.contornoAjustado).toBe(Math.ceil((baseCurva + 1.5) * 10) / 10);
-  });
-  it("la longitud de ZWCAD sustituye al cálculo y recibe el ajuste de curva", () => {
-    const res = calcLona({
-      ...base, tipoPerfil: "TIPO 05", llevaCurva: true,
-      radioCurva: 20, longitudContornoZwcad: 320.05,
-    }, DEFAULT_PARAMS);
+  it("usa exactamente el contorno SCAD indicado, sin cálculos ni ajustes", () => {
+    const res = calcLona({ ...base, tipoPerfil: "TIPO 05", contornoScad: 321.6 }, DEFAULT_PARAMS);
     expect(res.contornoAjustado).toBe(321.6);
-    expect(res.notas.join(" ")).toContain("ZWCAD");
-  });
-  it("TIPO 05 sin radio ni longitud manual queda pendiente", () => {
-    const res = calcLona({
-      ...base, tipoPerfil: "TIPO 05", llevaCurva: true,
-      radioCurva: 0, longitudContornoZwcad: 0,
-    }, DEFAULT_PARAMS);
-    expect(res.contornoAjustado).toBe(0);
-    expect(res.panoContorno).toBeNull();
-    expect(res.notas.join(" ")).toContain("introduce el radio");
+    expect(res.panoContorno?.alto).toBe(321.6);
   });
   it("PUENTES LATERALES: paño trasero usa columna DELANTE (paridad Excel, P1)", () => {
     const res = calcLona({ ...base, recogeAtras: "PUENTES LATERALES" }, DEFAULT_PARAMS);
@@ -89,15 +63,15 @@ describe("calcLona — variantes", () => {
     expect(res.panoDelantero.ancho).toBe(178);
     expect(res.notas.join(" ")).toContain("GOMA");
   });
-  it("sin alturas: paño contorno null y metros tela 0", () => {
-    const res = calcLona({ ...base, altoDelante: 0, altoAtras: 0 }, DEFAULT_PARAMS);
+  it("sin contorno SCAD manual: paño contorno null y metros tela 0", () => {
+    const res = calcLona({ ...base, contornoScad: 0 }, DEFAULT_PARAMS);
     expect(res.panoContorno).toBeNull();
     expect(res.metrosTela).toBe(0);
   });
-  it("si los contornos delantero y trasero difieren usa el mayor", () => {
+  it("cambiar las alturas no recalcula el contorno manual", () => {
     const res = calcLona({ ...base, altoAtras: 64 }, DEFAULT_PARAMS);
-    expect(res.contornoAjustado).toBe(279);
-    expect(res.panoContorno?.alto).toBe(279);
+    expect(res.contornoAjustado).toBe(275);
+    expect(res.panoContorno?.alto).toBe(275);
   });
   it("modo SEGUN SE INDICA usa las posiciones manuales", () => {
     const manuales = { laterales: [2.5, 37.6], atras: [2.5], delante: [2.5] };

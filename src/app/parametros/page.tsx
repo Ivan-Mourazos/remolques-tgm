@@ -32,7 +32,6 @@ export default function ParametrosPage() {
         <CampoNum label="Contorno normal" value={p.demasiaContornoNormal} onChange={(v) => setConst("demasiaContornoNormal", v)} />
         <CampoNum label="Contorno enfundar" value={p.demasiaContornoEnfundar} onChange={(v) => setConst("demasiaContornoEnfundar", v)} />
         <CampoNum label="Lona hecha" value={p.demasiaLonaHecha} onChange={(v) => setConst("demasiaLonaHecha", v)} />
-        <CampoNum label="Aumento curva" value={p.aumentoCurvaContorno} onChange={(v) => setConst("aumentoCurvaContorno", v)} />
         <CampoNum label="Paso ollaos" value={p.pasoOllaosDefecto} onChange={(v) => setConst("pasoOllaosDefecto", v)} />
         <CampoNum label="Primer ollao" value={p.primerOllao} onChange={(v) => setConst("primerOllao", v)} />
       </div>

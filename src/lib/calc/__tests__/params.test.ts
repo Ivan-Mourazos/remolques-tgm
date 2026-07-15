@@ -23,7 +23,6 @@ describe("DEFAULT_PARAMS (hoja PAR)", () => {
     expect(DEFAULT_PARAMS.demasiaContornoNormal).toBe(3);
     expect(DEFAULT_PARAMS.demasiaContornoEnfundar).toBe(13);
     expect(DEFAULT_PARAMS.demasiaLonaHecha).toBe(1);
-    expect(DEFAULT_PARAMS.aumentoCurvaContorno).toBe(1.5);
     expect(DEFAULT_PARAMS.pasoOllaosDefecto).toBe(35);
     expect(DEFAULT_PARAMS.primerOllao).toBe(2.5);
   });

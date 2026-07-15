@@ -8,7 +8,7 @@ describe("buildRecord", () => {
     const input = {
       cabecera: { numeroPedido: "AR1", version: "1", cliente: "YAGÜE", revision: "", realizadoPor: "", fecha: "", fechaSalida: "" },
       cantidad: 1, largo: 250, ancho: 151, altoDelante: 62, altoAtras: 62,
-      llevaCurva: false, tipoPerfil: "TIPO 02",
+      contornoScad: 275, tipoPerfil: "TIPO 02",
       recogeDelante: "NO", recogeAtras: "CREMALLERA",
       bastillaEnfundar: false, ventana: false, rotulacion: false, textoRotulacion: "",
       modoOllaos: "REPARTIDOS", pasoOllaos: 35,

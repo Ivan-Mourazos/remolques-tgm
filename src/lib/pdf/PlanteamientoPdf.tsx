@@ -4,6 +4,7 @@ import {
 import type { PlanteamientoRecord } from "@/lib/store/types";
 import type { LonaInput, LonaResult } from "@/lib/calc/lona";
 import type { BaquetonInput, BaquetonResult } from "@/lib/calc/baqueton";
+import { nombrePerfil } from "@/lib/calc/params";
 
 const s = StyleSheet.create({
   page: { padding: 16, fontSize: 8.5, fontFamily: "Helvetica", color: "#171717" },
@@ -135,7 +136,7 @@ function DatosLona({ rec }: { rec: PlanteamientoRecord }) {
         : `ALTO ${fmt(i.altoDelante)}`} />
       <Dato etiqueta="CONTORNO SCAD" valor={r.contornoAjustado ? fmt(r.contornoAjustado) : "PENDIENTE"} />
       <Dato etiqueta="ARCO" valor={i.cabecera.cliente || i.tipoPerfil} />
-      <Dato etiqueta="PERFIL" valor={i.tipoPerfil} />
+      <Dato etiqueta="PERFIL" valor={nombrePerfil(i.tipoPerfil)} />
       <Dato etiqueta="RECOGE DELANTE" valor={r.recogeDelanteTexto} />
       <Dato etiqueta="RECOGE ATRÁS" valor={r.recogeAtrasTexto} />
       <Dato etiqueta="VENTANA" valor={i.ventana ? "SÍ" : "NO"} />

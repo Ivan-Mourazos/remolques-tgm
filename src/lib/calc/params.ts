@@ -24,7 +24,6 @@ export interface CalcParams {
   demasiaContornoNormal: number;
   demasiaContornoEnfundar: number;
   demasiaLonaHecha: number;
-  aumentoCurvaContorno: number;
   pasoOllaosDefecto: number;
   primerOllao: number;
   maxPosicionesOllaos: number;
@@ -35,8 +34,19 @@ export interface CalcParams {
   clientesBaqueton: ClienteBaqueton[];
 }
 
-export const TIPOS_PERFIL = ["TIPO 01", "TIPO 02", "TIPO 03", "TIPO 04", "TIPO 05"] as const;
-export type TipoPerfil = (typeof TIPOS_PERFIL)[number];
+export const PERFILES = [
+  { value: "TIPO 01", label: "TIPO 01 — Recto" },
+  { value: "TIPO 02", label: "TIPO 02 — Dos aguas · líneas rectas" },
+  { value: "TIPO 03", label: "TIPO 03 — Dos aguas · uniones curvas" },
+  { value: "TIPO 04", label: "TIPO 04 — Techo recto · chaflanes" },
+  { value: "TIPO 05", label: "TIPO 05 — Techo recto · esquinas curvas" },
+] as const;
+export type TipoPerfil = (typeof PERFILES)[number]["value"];
+export const TIPOS_PERFIL: TipoPerfil[] = PERFILES.map((perfil) => perfil.value);
+
+export function nombrePerfil(tipo: TipoPerfil): string {
+  return PERFILES.find((perfil) => perfil.value === tipo)?.label ?? tipo;
+}
 
 const r = (
   nombre: string, delante: number, atras: number,
@@ -57,7 +67,6 @@ export const DEFAULT_PARAMS: CalcParams = {
   demasiaContornoNormal: 3,
   demasiaContornoEnfundar: 13,
   demasiaLonaHecha: 1,
-  aumentoCurvaContorno: 1.5,
   pasoOllaosDefecto: 35,
   primerOllao: 2.5,
   maxPosicionesOllaos: 12,

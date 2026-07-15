@@ -44,7 +44,11 @@ export function CampoTexto(props: {
 }
 
 export function CampoSelect(props: {
-  label: string; value: string; opciones: string[]; onChange: (v: string) => void; ancho?: boolean;
+  label: string;
+  value: string;
+  opciones: Array<string | { value: string; label: string }>;
+  onChange: (v: string) => void;
+  ancho?: boolean;
 }) {
   return (
     <label className={`flex flex-col gap-1.5 text-[13px] ${props.ancho ? "col-span-2" : ""}`}>
@@ -53,7 +57,11 @@ export function CampoSelect(props: {
         className={control}
         value={props.value} onChange={(e) => props.onChange(e.target.value)}
       >
-        {props.opciones.map((o) => <option key={o} value={o}>{o}</option>)}
+        {props.opciones.map((opcion) => {
+          const value = typeof opcion === "string" ? opcion : opcion.value;
+          const label = typeof opcion === "string" ? opcion : opcion.label;
+          return <option key={value} value={value}>{label}</option>;
+        })}
       </select>
     </label>
   );

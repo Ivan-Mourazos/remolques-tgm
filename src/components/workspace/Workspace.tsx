@@ -206,13 +206,12 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
           <Escena3D modo="lona" largo={lona.largo} ancho={lona.ancho}
             altoDelante={lona.altoDelante} altoAtras={lona.altoAtras}
             aguas={lona.aguas}
-            tipoPerfil={lona.tipoPerfil} llevaCurva={lona.tipoPerfil === "TIPO 05" || lona.llevaCurva} ventana={lona.ventana}
-            radioCurva={lona.radioCurva}
+            tipoPerfil={lona.tipoPerfil} ventana={lona.ventana} material={lona.material}
             onSnapshotReady={(fn) => { snapshotRef.current = fn; }} />
         ) : (
           <Escena3D modo="baqueton" largo={baq.largo} ancho={baq.ancho}
-            altoDelante={0} altoAtras={0} tipoPerfil="TIPO 01" llevaCurva={false}
-            baqueton={baq.baqueton}
+            altoDelante={0} altoAtras={0} tipoPerfil="TIPO 01"
+            baqueton={baq.baqueton} material={baq.material}
             onSnapshotReady={(fn) => { snapshotRef.current = fn; }} />
         )}
         {tipo === "lona"

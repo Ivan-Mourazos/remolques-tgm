@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { controlesCatmullRom, type Punto2D } from "@/lib/geometry/curva";
 import { perfilPuntos } from "@/lib/geometry/perfil";
 import { calcularVentanaFrontal } from "@/lib/geometry/ventana";
+import { coloresMaterial } from "@/lib/geometry/color-lona";
 import type { TipoPerfil } from "@/lib/calc/params";
 
 type Punto = Punto2D;
@@ -16,9 +17,8 @@ export interface Escena3DProps {
   altoAtras: number;
   aguas?: number;
   tipoPerfil: TipoPerfil;
-  llevaCurva: boolean;
   ventana?: boolean;
-  radioCurva?: number;
+  material?: string;
   baqueton?: number;
   onSnapshotReady?: (getSnapshot: (() => Promise<string | null>) | null) => void;
 }
@@ -44,16 +44,26 @@ function caminoCurvo(puntos: Punto[], mover = true): string {
   return d;
 }
 
-function caminoPerfil(puntos: Punto[]): string {
+function caminoLineal(puntos: Punto[], mover = true): string {
+  if (puntos.length === 0) return "";
+  const inicio = mover ? `M ${puntoSvg(puntos[0])}` : "";
+  return puntos.slice(1).reduce((camino, punto) => `${camino} L ${puntoSvg(punto)}`, inicio);
+}
+
+function caminoTecho(puntos: Punto[], curvo: boolean, mover = true): string {
+  return curvo ? caminoCurvo(puntos, mover) : caminoLineal(puntos, mover);
+}
+
+function caminoPerfil(puntos: Punto[], curvo: boolean): string {
   const baseIzquierda = puntos[0];
   const baseDerecha = puntos.at(-1)!;
   const cubierta = puntos.slice(1, -1);
-  return `M ${puntoSvg(baseIzquierda)} L ${puntoSvg(cubierta[0])}${caminoCurvo(cubierta, false)} L ${puntoSvg(baseDerecha)}`;
+  return `M ${puntoSvg(baseIzquierda)} L ${puntoSvg(cubierta[0])}${caminoTecho(cubierta, curvo, false)} L ${puntoSvg(baseDerecha)}`;
 }
 
-function superficieCubierta(frente: Punto[], fondo: Punto[]): string {
+function superficieCubierta(frente: Punto[], fondo: Punto[], curvo: boolean): string {
   const fondoInverso = [...fondo].reverse();
-  return `${caminoCurvo(frente)} L ${puntoSvg(fondoInverso[0])}${caminoCurvo(fondoInverso, false)} Z`;
+  return `${caminoTecho(frente, curvo)} L ${puntoSvg(fondoInverso[0])}${caminoTecho(fondoInverso, curvo, false)} Z`;
 }
 
 function Cota({
@@ -82,6 +92,7 @@ function Cota({
 
 export function Escena3D(props: Escena3DProps) {
   const svgRef = useRef<SVGSVGElement>(null);
+  const colores = useMemo(() => coloresMaterial(props.material ?? ""), [props.material]);
   const onSnapshotReady = props.onSnapshotReady;
   const altoDelante = props.modo === "baqueton" ? (props.baqueton ?? 0) : props.altoDelante;
   const altoAtras = props.modo === "baqueton"
@@ -96,7 +107,8 @@ export function Escena3D(props: Escena3DProps) {
       ancho: props.ancho,
       altoDelante: alto,
       alturaPico: props.aguas ?? 0,
-      radio: props.llevaCurva && (props.radioCurva ?? 0) > 0 ? props.radioCurva : 15,
+      chaflan: Math.min(18, props.ancho * 0.1, alto * 0.25),
+      radio: Math.min(18, props.ancho * 0.1, alto * 0.25),
     });
     const delantero = perfilPuntos(perfil, opts(altoDelante));
     const trasero = perfilPuntos(perfil, opts(altoAtras));
@@ -132,22 +144,39 @@ export function Escena3D(props: Escena3DProps) {
       && ["TIPO 02", "TIPO 03"].includes(props.tipoPerfil)
       && picoTechoFrente > 0
       && picoTechoFrente < techoFrente.length - 1;
-    const cubiertaCompleta = superficieCubierta(techoFrente, techoFondo);
+    const usaCurvas = perfil === "TIPO 03" || perfil === "TIPO 05";
+    const cubiertaCompleta = superficieCubierta(techoFrente, techoFondo, usaCurvas);
     const cubiertaIzquierda = tieneCumbrera
       ? superficieCubierta(
         techoFrente.slice(0, picoTechoFrente + 1),
         techoFondo.slice(0, picoTechoFondo + 1),
+        usaCurvas,
       )
       : null;
     const cubiertaDerecha = tieneCumbrera
       ? superficieCubierta(
         techoFrente.slice(picoTechoFrente),
         techoFondo.slice(picoTechoFondo),
+        usaCurvas,
       )
       : null;
+    const lateralIzq = [frente[1], frente[0], fondo[0], fondo[1]];
     const lateralDcha = [frente.at(-2)!, frente.at(-1)!, fondo.at(-1)!, fondo.at(-2)!];
-    const contornoFrente = caminoPerfil(frente);
-    const coronacionFondo = caminoCurvo(techoFondo);
+    const indicesAristas = perfil === "TIPO 02"
+      ? [1, 2, 3]
+      : perfil === "TIPO 03"
+        ? [1, indicePicoFrente, delantero.length - 2]
+        : perfil === "TIPO 04"
+          ? [1, 2, 3, 4]
+          : perfil === "TIPO 05"
+            ? [1, 9, 10, delantero.length - 2]
+            : [1, delantero.length - 2];
+    const aristasLongitudinales = indicesAristas.map((indice) => ({
+      desde: frente[indice],
+      hasta: fondo[indice],
+    }));
+    const contornoFrente = caminoPerfil(frente, usaCurvas);
+    const coronacionFondo = caminoTecho(techoFondo, usaCurvas);
     const hombroDerecho = frente.at(-2)!;
     const picoFrente = frente[indicePicoFrente];
     const picoFondo = fondo[indicePicoFondo];
@@ -163,7 +192,7 @@ export function Escena3D(props: Escena3DProps) {
     } : null;
     const xCotaAguas = frente.at(-1)!.x + 34;
     return {
-      frente, fondo, lateralDcha, contornoFrente, coronacionFondo,
+      frente, fondo, lateralIzq, lateralDcha, aristasLongitudinales, contornoFrente, coronacionFondo,
       cubiertaCompleta, cubiertaIzquierda, cubiertaDerecha,
       tieneCumbrera, picoFrente, picoFondo, ventana,
       anchoDesde: { x: frente[0].x, y: baseY + 35 },
@@ -186,8 +215,8 @@ export function Escena3D(props: Escena3DProps) {
       baseY,
     };
   }, [
-    valido, props.modo, props.tipoPerfil, props.ancho, props.largo, props.llevaCurva,
-    props.radioCurva, props.aguas, props.ventana, altoDelante, altoAtras,
+    valido, props.modo, props.tipoPerfil, props.ancho, props.largo,
+    props.aguas, props.ventana, altoDelante, altoAtras,
   ]);
 
   useEffect(() => {
@@ -240,27 +269,21 @@ export function Escena3D(props: Escena3DProps) {
               <stop offset="0.55" stopColor="#f5f7f9" />
               <stop offset="1" stopColor="#eef2f5" />
             </linearGradient>
-            <linearGradient id="cara" x1="0" y1="0" x2="0.9" y2="1">
-              <stop offset="0" stopColor="#ffffff" />
-              <stop offset="0.6" stopColor="#eef2f6" />
-              <stop offset="1" stopColor="#dce4eb" />
-            </linearGradient>
             <linearGradient id="lateral" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor="#d8e2ea" />
-              <stop offset="1" stopColor="#b8c7d3" />
+              <stop offset="0" stopColor={colores.lateralClaro} />
+              <stop offset="1" stopColor={colores.lateral} />
+            </linearGradient>
+            <linearGradient id="lateralInterior" x1="1" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor={colores.techoClaro} />
+              <stop offset="1" stopColor={colores.lateralClaro} />
             </linearGradient>
             <linearGradient id="cubiertaIzquierda" x1="0" y1="1" x2="1" y2="0">
-              <stop offset="0" stopColor="#f3f6f9" />
-              <stop offset="1" stopColor="#dce4eb" />
+              <stop offset="0" stopColor={colores.techoClaro} />
+              <stop offset="1" stopColor={colores.techo} />
             </linearGradient>
             <linearGradient id="cubiertaDerecha" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor="#dfe7ee" />
-              <stop offset="1" stopColor="#c9d5df" />
-            </linearGradient>
-            <linearGradient id="ventana" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor="#d9eef7" />
-              <stop offset="0.55" stopColor="#b9dbe9" />
-              <stop offset="1" stopColor="#91bdcf" />
+              <stop offset="0" stopColor={colores.techo} />
+              <stop offset="1" stopColor={colores.lateralClaro} />
             </linearGradient>
             <marker id="cota" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto-start-reverse">
               <path d="M 7 0 L 0 3.5 L 7 7 z" fill="#475569" />
@@ -271,8 +294,12 @@ export function Escena3D(props: Escena3DProps) {
           </defs>
           <rect width="760" height="440" fill="url(#lienzo)" />
           <rect x="18" y="68" width="724" height="350" rx="18" fill="#ffffff" fillOpacity="0.64" stroke="#ffffff" />
-          {/* Envolvente de lona opaca: sin estructura ni líneas interiores. */}
+          {/* Techo y lateral muestran el color de lona; el frente queda abierto. */}
           <g filter="url(#sombraLona)">
+            <polygon
+              points={puntosSvg(dibujo.lateralIzq)}
+              fill="url(#lateralInterior)" fillOpacity="0.82" stroke="none"
+            />
             {dibujo.tieneCumbrera ? (
               <>
                 <path d={dibujo.cubiertaIzquierda!} fill="url(#cubiertaIzquierda)" stroke="none" />
@@ -282,7 +309,6 @@ export function Escena3D(props: Escena3DProps) {
               <path d={dibujo.cubiertaCompleta} fill="url(#cubiertaIzquierda)" stroke="none" />
             )}
             <polygon points={puntosSvg(dibujo.lateralDcha)} fill="url(#lateral)" stroke="none" />
-            <path d={`${dibujo.contornoFrente} Z`} fill="url(#cara)" stroke="none" />
           </g>
 
           {dibujo.ventana && (
@@ -291,11 +317,7 @@ export function Escena3D(props: Escena3DProps) {
                 x={dibujo.ventana.x} y={dibujo.ventana.y}
                 width={dibujo.ventana.ancho} height={dibujo.ventana.alto}
                 rx={dibujo.ventana.radio}
-                fill="url(#ventana)" stroke="#52758a" strokeWidth="2.2"
-              />
-              <path
-                d={`M ${dibujo.ventana.x + 7} ${dibujo.ventana.y + 8} L ${dibujo.ventana.x + dibujo.ventana.ancho - 7} ${dibujo.ventana.y + 8}`}
-                stroke="#ffffff" strokeWidth="2" strokeLinecap="round" opacity="0.7"
+                fill="none" stroke="#0f766e" strokeWidth="2.2"
               />
             </g>
           )}
@@ -303,27 +325,18 @@ export function Escena3D(props: Escena3DProps) {
           {/* Únicamente se conservan los bordes visibles de la lona. */}
           <path d={dibujo.coronacionFondo} fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" />
           <line
-            x1={dibujo.frente[1].x} y1={dibujo.frente[1].y}
-            x2={dibujo.fondo[1].x} y2={dibujo.fondo[1].y}
-            stroke="#64748b" strokeWidth="2" strokeLinecap="round"
-          />
-          <line
             x1={dibujo.fondo.at(-2)!.x} y1={dibujo.fondo.at(-2)!.y}
             x2={dibujo.fondo.at(-1)!.x} y2={dibujo.fondo.at(-1)!.y}
             stroke="#64748b" strokeWidth="2" strokeLinecap="round"
           />
-          <line
-            x1={dibujo.frente.at(-2)!.x} y1={dibujo.frente.at(-2)!.y}
-            x2={dibujo.fondo.at(-2)!.x} y2={dibujo.fondo.at(-2)!.y}
-            stroke="#64748b" strokeWidth="2" strokeLinecap="round"
-          />
-          {dibujo.tieneCumbrera && (
+          {dibujo.aristasLongitudinales.map((arista, indice) => (
             <line
-              x1={dibujo.picoFrente.x} y1={dibujo.picoFrente.y}
-              x2={dibujo.picoFondo.x} y2={dibujo.picoFondo.y}
-              stroke="#52677c" strokeWidth="2.3" strokeLinecap="round"
+              key={indice}
+              x1={arista.desde.x} y1={arista.desde.y}
+              x2={arista.hasta.x} y2={arista.hasta.y}
+              stroke="#52677c" strokeWidth="2" strokeLinecap="round"
             />
-          )}
+          ))}
           <path d={dibujo.contornoFrente} fill="none" stroke="#0f172a" strokeWidth="3.6" strokeLinecap="round" strokeLinejoin="round" />
           {props.modo === "baqueton" && (
             <path

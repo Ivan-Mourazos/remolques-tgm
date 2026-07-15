@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { perfilPuntos } from "@/lib/geometry/perfil";
+import { nombrePerfil } from "@/lib/calc/params";
 
 const maxY = (pts: Array<[number, number]>) => Math.max(...pts.map(([, y]) => y));
 const maxX = (pts: Array<[number, number]>) => Math.max(...pts.map(([x]) => x));
@@ -33,5 +34,9 @@ describe("perfilPuntos", () => {
     const pts = perfilPuntos("TIPO 03", { ancho: 150, altoDelante: 60, alturaPico: 20 });
     expect(maxY(pts)).toBe(60);
     expect(Math.min(...pts.slice(1, -1).map(([, y]) => y))).toBeLessThan(60);
+  });
+  it("expone nombres de perfil claros para oficina técnica", () => {
+    expect(nombrePerfil("TIPO 04")).toContain("chaflanes");
+    expect(nombrePerfil("TIPO 05")).toContain("esquinas curvas");
   });
 });

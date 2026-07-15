@@ -1,7 +1,6 @@
-import { excelRound, roundUpToMm } from "@/lib/calc/redondeo";
+import { excelRound } from "@/lib/calc/redondeo";
 import { findRecogida, type CalcParams, type TipoPerfil } from "@/lib/calc/params";
 import { calcOllaos, type OllaosResult } from "@/lib/calc/ollaos";
-import { longitudContornoTerminado } from "@/lib/geometry/contorno";
 
 // P1 del spec: el Excel (G11 y RPS D7) usa la columna DELANTE también para el
 // paño trasero. Cambiar a true si oficina técnica confirma que era un descuido.
@@ -20,11 +19,8 @@ export interface LonaInput {
   altoDelante: number; altoAtras: number;
   /** Caída desde la cumbrera hasta los hombros del perfil. */
   aguas?: number;
-  llevaCurva: boolean;
-  /** Radio real del TIPO 05. Si falta, se requiere la longitud medida en ZWCAD. */
-  radioCurva?: number;
-  /** Longitud base del contorno indicada por ZWCAD, antes de ajuste y redondeo. */
-  longitudContornoZwcad?: number;
+  /** Medida final del contorno SCAD, introducida manualmente por oficina técnica. */
+  contornoScad?: number;
   tipoPerfil: TipoPerfil;
   recogeDelante: string; recogeAtras: string;
   bastillaEnfundar: boolean; ventana: boolean;
@@ -59,22 +55,7 @@ export function calcLona(input: LonaInput, params: CalcParams): LonaResult {
     ancho: r1(input.ancho + params.demasiaLonaHecha),
   };
 
-  const aguas = input.aguas ?? 0;
-  const radioCurva = Math.max(input.radioCurva ?? 0, 0);
-  const longitudZwcad = Math.max(input.longitudContornoZwcad ?? 0, 0);
-  const contornoDelantero = longitudContornoTerminado(
-    input.tipoPerfil, input.ancho, input.altoDelante, aguas, radioCurva,
-  );
-  const contornoTrasero = longitudContornoTerminado(
-    input.tipoPerfil, input.ancho, input.altoAtras, aguas, radioCurva,
-  );
-  const contornoMayor = longitudZwcad > 0
-    ? longitudZwcad
-    : Math.max(contornoDelantero, contornoTrasero);
-  const tieneCurva = input.tipoPerfil === "TIPO 05" || input.llevaCurva;
-  const contornoAjustado = contornoMayor > 0
-    ? roundUpToMm(contornoMayor + (tieneCurva ? params.aumentoCurvaContorno : 0))
-    : 0;
+  const contornoAjustado = Math.max(input.contornoScad ?? 0, 0);
 
   const panoDelantero: Pano = {
     ancho: r1(input.ancho + recDel.delante),
@@ -122,11 +103,6 @@ export function calcLona(input: LonaInput, params: CalcParams): LonaResult {
     notas.push("Recoge con GOMA: preparar orejas por lado.");
   }
   if (input.bastillaEnfundar) notas.push("Bastilla de enfundar: paño contorno con demasía 13.");
-  if (longitudZwcad > 0) notas.push(`Contorno medido en ZWCAD: ${r1(longitudZwcad)} cm.`);
-  if (input.tipoPerfil === "TIPO 05" && longitudZwcad === 0 && radioCurva === 0) {
-    notas.push("TIPO 05: introduce el radio o la longitud medida en ZWCAD.");
-  }
-  if (tieneCurva && contornoMayor > 0) notas.push(`Contorno con curva: +${params.aumentoCurvaContorno} cm.`);
   if (input.ventana) notas.push("Ventana indicada: verificar en taller.");
   if (input.rotulacion) {
     notas.push(input.textoRotulacion ? `Rotulación: ${input.textoRotulacion}.` : "Incluye rotulación.");

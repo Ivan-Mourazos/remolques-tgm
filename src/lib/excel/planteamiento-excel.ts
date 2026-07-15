@@ -3,6 +3,7 @@ import type { LonaInput, LonaResult } from "@/lib/calc/lona";
 import type { BaquetonInput, BaquetonResult } from "@/lib/calc/baqueton";
 import type { Material } from "@/lib/calc/materiales-seed";
 import type { PlanteamientoRecord } from "@/lib/store/types";
+import { nombrePerfil } from "@/lib/calc/params";
 
 const C = {
   negro: "FF111827",
@@ -124,7 +125,7 @@ function datosLona(ws: Worksheet, rec: PlanteamientoRecord, material?: Material)
   campoPar(ws, 6, ["Cantidad", i.cantidad], ["Largo pedido", num(i.largo)]);
   campoPar(ws, 7, ["Ancho pedido", num(i.ancho)], ["Alto delante", num(i.altoDelante)]);
   campoPar(ws, 8, ["Alto detrás", num(i.altoAtras)], ["Aguas", num(i.aguas ?? 0)]);
-  campoPar(ws, 9, ["Perfil", i.tipoPerfil], ["Contorno SCAD", num(r.contornoAjustado)]);
+  campoPar(ws, 9, ["Perfil", nombrePerfil(i.tipoPerfil)], ["Contorno SCAD", num(r.contornoAjustado)]);
   campoPar(ws, 10, ["Recoge delante", r.recogeDelanteTexto], ["Recoge atrás", r.recogeAtrasTexto]);
   campoPar(ws, 11, ["Bastilla enfundar", siNo(i.bastillaEnfundar)], ["Ventana", siNo(i.ventana)]);
   campoPar(ws, 12, ["Ollaos", i.modoOllaos], ["Paso objetivo", num(i.pasoOllaos)]);
