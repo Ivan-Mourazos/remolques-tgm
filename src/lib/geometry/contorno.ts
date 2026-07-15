@@ -13,10 +13,11 @@ export function longitudContornoTerminado(
   ancho: number,
   alto: number,
   aguas = 0,
+  radioCurva = 0,
 ): number {
   if (ancho <= 0 || alto <= 0) return 0;
   const caida = Math.min(Math.max(aguas, 0), alto);
-  const radio = Math.min(15, ancho / 2, alto);
+  const radio = Math.min(Math.max(radioCurva, 0), ancho / 2, alto);
   const chaflan = Math.min(15, ancho / 2, alto);
 
   if (tipoPerfil === "TIPO 01") return 2 * alto + ancho;
@@ -27,6 +28,7 @@ export function longitudContornoTerminado(
     return 2 * (alto - chaflan) + 2 * Math.hypot(chaflan, chaflan) + ancho - 2 * chaflan;
   }
   if (tipoPerfil === "TIPO 05") {
+    if (radio <= 0) return 0;
     return 2 * (alto - radio) + ancho - 2 * radio + Math.PI * radio;
   }
   if (caida === 0) return 2 * alto + ancho;

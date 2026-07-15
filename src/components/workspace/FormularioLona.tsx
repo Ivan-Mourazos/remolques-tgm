@@ -13,6 +13,21 @@ export function FormularioLona({
   const set = <K extends keyof LonaInput>(k: K, v: LonaInput[K]) => onChange({ ...input, [k]: v });
   const setCab = (k: keyof LonaInput["cabecera"], v: string) =>
     onChange({ ...input, cabecera: { ...input.cabecera, [k]: v } });
+  const setRadio = (radioCurva: number) => onChange({
+    ...input,
+    radioCurva,
+    longitudContornoZwcad: radioCurva > 0 ? 0 : input.longitudContornoZwcad,
+  });
+  const setLongitudZwcad = (longitudContornoZwcad: number) => onChange({
+    ...input,
+    longitudContornoZwcad,
+    radioCurva: longitudContornoZwcad > 0 ? 0 : input.radioCurva,
+  });
+  const setPerfil = (tipoPerfil: LonaInput["tipoPerfil"]) => onChange({
+    ...input,
+    tipoPerfil,
+    llevaCurva: tipoPerfil === "TIPO 05",
+  });
 
   return (
     <div className="flex flex-col gap-3">
@@ -30,11 +45,23 @@ export function FormularioLona({
         <CampoNum label="Alto delante" value={input.altoDelante} onChange={(v) => set("altoDelante", v)} />
         <CampoNum label="Alto detrás" value={input.altoAtras} onChange={(v) => set("altoAtras", v)} />
         <CampoNum label="Aguas" value={input.aguas ?? 0} onChange={(v) => set("aguas", v)} />
-        <CampoCheck label="Lleva curva (+1,5 al contorno)" value={input.llevaCurva} onChange={(v) => set("llevaCurva", v)} />
+        {input.tipoPerfil !== "TIPO 05" && (
+          <CampoCheck label="Lleva curva (+1,5 al contorno)" value={input.llevaCurva} onChange={(v) => set("llevaCurva", v)} />
+        )}
       </Grupo>
       <Grupo titulo="Configuración">
-        <CampoSelect label="Perfil" value={input.tipoPerfil} opciones={[...TIPOS_PERFIL]}
-          onChange={(v) => set("tipoPerfil", v as LonaInput["tipoPerfil"])} />
+        <CampoSelect label="Perfil" ancho={input.tipoPerfil === "TIPO 05"} value={input.tipoPerfil} opciones={[...TIPOS_PERFIL]}
+          onChange={(v) => setPerfil(v as LonaInput["tipoPerfil"])} />
+        {input.tipoPerfil === "TIPO 05" && (
+          <>
+            <div className="col-span-2 rounded-xl border border-amber-200/80 bg-amber-50/80 px-3.5 py-3 text-xs leading-relaxed text-amber-950">
+              <strong className="font-extrabold">Contorno curvo TIPO 05.</strong>{" "}
+              Introduce el radio para calcularlo o la longitud que muestra ZWCAD. La segunda opción sustituye al cálculo. El +1,5 cm y el redondeo al milímetro son automáticos. Sin radio, el dibujo muestra una curva orientativa.
+            </div>
+            <CampoNum label="Radio curva" value={input.radioCurva ?? 0} onChange={setRadio} />
+            <CampoNum label="Longitud ZWCAD" value={input.longitudContornoZwcad ?? 0} onChange={setLongitudZwcad} />
+          </>
+        )}
         <CampoSelect label="Recoge delante" value={input.recogeDelante} opciones={RECOGIDAS}
           onChange={(v) => set("recogeDelante", v)} />
         <CampoSelect label="Recoge atrás" value={input.recogeAtras} opciones={RECOGIDAS}

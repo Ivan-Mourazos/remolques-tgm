@@ -53,6 +53,32 @@ describe("calcLona — variantes", () => {
     expect(res.contornoAjustado).toBe(276.5);
     expect(res.panoContorno?.alto).toBe(276.5);
   });
+  it("TIPO 05 usa el radio indicado y suma 1,5 automáticamente", () => {
+    const input = {
+      ...base, tipoPerfil: "TIPO 05" as const, llevaCurva: false,
+      ancho: 141, altoDelante: 88.4, altoAtras: 88.4, radioCurva: 10,
+    };
+    const baseCurva = 2 * (88.4 - 10) + (141 - 20) + Math.PI * 10;
+    const res = calcLona(input, DEFAULT_PARAMS);
+    expect(res.contornoAjustado).toBe(Math.ceil((baseCurva + 1.5) * 10) / 10);
+  });
+  it("la longitud de ZWCAD sustituye al cálculo y recibe el ajuste de curva", () => {
+    const res = calcLona({
+      ...base, tipoPerfil: "TIPO 05", llevaCurva: true,
+      radioCurva: 20, longitudContornoZwcad: 320.05,
+    }, DEFAULT_PARAMS);
+    expect(res.contornoAjustado).toBe(321.6);
+    expect(res.notas.join(" ")).toContain("ZWCAD");
+  });
+  it("TIPO 05 sin radio ni longitud manual queda pendiente", () => {
+    const res = calcLona({
+      ...base, tipoPerfil: "TIPO 05", llevaCurva: true,
+      radioCurva: 0, longitudContornoZwcad: 0,
+    }, DEFAULT_PARAMS);
+    expect(res.contornoAjustado).toBe(0);
+    expect(res.panoContorno).toBeNull();
+    expect(res.notas.join(" ")).toContain("introduce el radio");
+  });
   it("PUENTES LATERALES: paño trasero usa columna DELANTE (paridad Excel, P1)", () => {
     const res = calcLona({ ...base, recogeAtras: "PUENTES LATERALES" }, DEFAULT_PARAMS);
     expect(res.panoTrasero.ancho).toBe(151 + 41); // no 151 + 21

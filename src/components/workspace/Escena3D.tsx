@@ -96,7 +96,7 @@ export function Escena3D(props: Escena3DProps) {
       ancho: props.ancho,
       altoDelante: alto,
       alturaPico: props.aguas ?? 0,
-      radio: props.llevaCurva ? props.radioCurva ?? 15 : 15,
+      radio: props.llevaCurva && (props.radioCurva ?? 0) > 0 ? props.radioCurva : 15,
     });
     const delantero = perfilPuntos(perfil, opts(altoDelante));
     const trasero = perfilPuntos(perfil, opts(altoAtras));
