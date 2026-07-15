@@ -2,7 +2,7 @@
 import type { LonaInput } from "@/lib/calc/lona";
 import type { Material } from "@/lib/calc/materiales-seed";
 import { DEFAULT_PARAMS, PERFILES, type CalcParams } from "@/lib/calc/params";
-import { CampoCheck, CampoMaterial, CampoNum, CampoSelect, CampoTexto, Grupo, PosicionesManuales } from "@/components/workspace/campos";
+import { CampoCheck, CampoMaterial, CampoNum, CampoSelect, CampoTexto, Grupo, PasoFormulario } from "@/components/workspace/campos";
 
 export function FormularioLona({
   input, materiales, params, onChange,
@@ -15,57 +15,53 @@ export function FormularioLona({
     onChange({ ...input, cabecera: { ...input.cabecera, [k]: v } });
 
   return (
-    <div className="flex flex-col gap-3">
-      <Grupo titulo="Pedido">
+    <div className="flex flex-col gap-2.5">
+      <Grupo titulo="Pedido" columnas={3} compacto>
         <CampoTexto label="Nº pedido" value={input.cabecera.numeroPedido} onChange={(v) => setCab("numeroPedido", v)} />
         <CampoTexto label="O.F." value={input.cabecera.ordenFabricacion ?? ""} onChange={(v) => setCab("ordenFabricacion", v)} />
-        <CampoTexto label="Cliente" ancho value={input.cabecera.cliente} onChange={(v) => setCab("cliente", v)} />
-        <CampoTexto label="Revisión" value={input.cabecera.revision} onChange={(v) => setCab("revision", v)} />
         <CampoTexto label="Realizado por" value={input.cabecera.realizadoPor} onChange={(v) => setCab("realizadoPor", v)} />
+        <CampoTexto label="Cliente" span={2} value={input.cabecera.cliente} onChange={(v) => setCab("cliente", v)} />
+        <CampoTexto label="Revisión" value={input.cabecera.revision} onChange={(v) => setCab("revision", v)} />
       </Grupo>
-      <Grupo titulo="Medidas (cm)">
-        <CampoNum label="Cantidad" value={input.cantidad} onChange={(v) => set("cantidad", v)} />
-        <CampoNum label="Largo" value={input.largo} onChange={(v) => set("largo", v)} />
-        <CampoNum label="Ancho" value={input.ancho} onChange={(v) => set("ancho", v)} />
-        <CampoNum label="Alto delante" value={input.altoDelante} onChange={(v) => set("altoDelante", v)} />
-        <CampoNum label="Alto detrás" value={input.altoAtras} onChange={(v) => set("altoAtras", v)} />
-        <CampoNum label="Aguas" value={input.aguas ?? 0} onChange={(v) => set("aguas", v)} />
-        <CampoNum label="Contorno SCAD · manual" ancho value={input.contornoScad ?? 0} onChange={(v) => set("contornoScad", v)} />
-      </Grupo>
-      <Grupo titulo="Configuración">
-        <CampoSelect label="Forma del remolque" ancho value={input.tipoPerfil} opciones={[...PERFILES]}
-          onChange={(v) => set("tipoPerfil", v as LonaInput["tipoPerfil"])} />
-        <CampoSelect label="Recoge delante" value={input.recogeDelante} opciones={RECOGIDAS}
-          onChange={(v) => set("recogeDelante", v)} />
-        <CampoSelect label="Recoge atrás" value={input.recogeAtras} opciones={RECOGIDAS}
-          onChange={(v) => set("recogeAtras", v)} />
-        <CampoCheck label="Bastilla de enfundar" value={input.bastillaEnfundar} onChange={(v) => set("bastillaEnfundar", v)} />
-        <CampoCheck label="Ventana" value={input.ventana} onChange={(v) => set("ventana", v)} />
-        <CampoCheck label="Rotulación" value={input.rotulacion} onChange={(v) => set("rotulacion", v)} />
-        {input.rotulacion && (
-          <CampoTexto label="Texto rotulación" ancho value={input.textoRotulacion} onChange={(v) => set("textoRotulacion", v)} />
-        )}
-      </Grupo>
-      <Grupo titulo="Ollaos">
-        <CampoSelect label="Modo" value={input.modoOllaos} opciones={["REPARTIDOS", "SEGUN SE INDICA"]}
-          onChange={(v) => set("modoOllaos", v as LonaInput["modoOllaos"])} />
-        <CampoNum label="Paso" value={input.pasoOllaos} onChange={(v) => set("pasoOllaos", v)} />
-        {input.modoOllaos === "SEGUN SE INDICA" && (
-          <>
-            <PosicionesManuales label="Laterales (atrás→delante)" valores={input.ollaosManuales.laterales}
-              onChange={(v) => set("ollaosManuales", { ...input.ollaosManuales, laterales: v })} />
-            <PosicionesManuales label="Atrás (izq→dcha)" valores={input.ollaosManuales.atras}
-              onChange={(v) => set("ollaosManuales", { ...input.ollaosManuales, atras: v })} />
-            <PosicionesManuales label="Delante (izq→dcha)" valores={input.ollaosManuales.delante}
-              onChange={(v) => set("ollaosManuales", { ...input.ollaosManuales, delante: v })} />
-          </>
-        )}
-      </Grupo>
-      <Grupo titulo="Material y observaciones">
-        <CampoMaterial value={input.material} opciones={materiales}
-          onChange={(v) => set("material", v)} />
-        <CampoTexto label="Observaciones" ancho value={input.observaciones} onChange={(v) => set("observaciones", v)} />
-      </Grupo>
+
+      <div className="space-y-2 rounded-2xl border border-[#d4dfdb] bg-[#fbfcfb]/95 p-2.5 shadow-[0_12px_32px_rgb(14_45_49/0.055)] backdrop-blur-sm">
+        <PasoFormulario numero={1} titulo="Forma del remolque">
+          <CampoSelect label="Tipo" span={2} value={input.tipoPerfil} opciones={[...PERFILES]}
+            onChange={(v) => set("tipoPerfil", v as LonaInput["tipoPerfil"])} />
+          <CampoMaterial compacto span={1} value={input.material} opciones={materiales}
+            onChange={(v) => set("material", v)} />
+        </PasoFormulario>
+        <PasoFormulario numero={2} titulo="Recogidas">
+          <CampoSelect label="Delante" value={input.recogeDelante} opciones={RECOGIDAS}
+            onChange={(v) => set("recogeDelante", v)} />
+          <CampoSelect label="Atrás" value={input.recogeAtras} opciones={RECOGIDAS}
+            onChange={(v) => set("recogeAtras", v)} />
+          <CampoCheck label="Bastilla enfundar" value={input.bastillaEnfundar} onChange={(v) => set("bastillaEnfundar", v)} />
+        </PasoFormulario>
+        <PasoFormulario numero={3} titulo="Medidas · cm" columnas={4}>
+          <CampoNum label="Cantidad" value={input.cantidad} onChange={(v) => set("cantidad", v)} />
+          <CampoNum label="Largo" value={input.largo} onChange={(v) => set("largo", v)} />
+          <CampoNum label="Ancho" value={input.ancho} onChange={(v) => set("ancho", v)} />
+          <CampoNum label="Alto delante" value={input.altoDelante} onChange={(v) => set("altoDelante", v)} />
+          <CampoNum label="Alto detrás" value={input.altoAtras} onChange={(v) => set("altoAtras", v)} />
+          <CampoNum label="Aguas" value={input.aguas ?? 0} onChange={(v) => set("aguas", v)} />
+          <CampoNum label="Contorno SCAD" value={input.contornoScad ?? 0} onChange={(v) => set("contornoScad", v)} />
+        </PasoFormulario>
+        <PasoFormulario numero={4} titulo="Ajustes finales" ultimo>
+          <CampoSelect label="Ollaos" value={input.modoOllaos} opciones={["REPARTIDOS", "SEGUN SE INDICA"]}
+            onChange={(v) => set("modoOllaos", v as LonaInput["modoOllaos"])} />
+          <CampoNum label="Paso" value={input.pasoOllaos} onChange={(v) => set("pasoOllaos", v)} />
+          <div className="flex items-end">
+            <CampoCheck label="Ventana" value={input.ventana} onChange={(v) => set("ventana", v)} />
+          </div>
+          <div className="col-span-3 flex flex-wrap gap-x-4 gap-y-1 rounded-lg bg-[#edf2f0] px-1.5">
+            <CampoCheck label="Rotulación" value={input.rotulacion} onChange={(v) => set("rotulacion", v)} />
+          </div>
+          {input.rotulacion && (
+            <CampoTexto label="Texto rotulación" span={3} value={input.textoRotulacion} onChange={(v) => set("textoRotulacion", v)} />
+          )}
+        </PasoFormulario>
+      </div>
     </div>
   );
 }

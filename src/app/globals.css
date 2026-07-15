@@ -1,22 +1,28 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f1f5f9;
-  --foreground: #0f172a;
+  --background: #edf2f0;
+  --foreground: #102a2f;
+  --surface: #fbfcfb;
+  --surface-muted: #e5ece9;
+  --line: #d4dfdb;
+  --deep: #0c272c;
+  --deep-soft: #17383e;
+  --gold: #d3a024;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+  --font-sans: var(--font-jakarta), "Avenir Next", "Segoe UI Variable", sans-serif;
   --font-mono: "Cascadia Mono", Consolas, monospace;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
-  letter-spacing: -0.01em;
+  font-family: var(--font-jakarta), "Avenir Next", "Segoe UI Variable", sans-serif;
+  letter-spacing: -0.018em;
 }
 
 /* Vista previa A4 horizontal en pantalla */

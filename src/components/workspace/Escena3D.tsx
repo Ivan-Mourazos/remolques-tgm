@@ -19,6 +19,8 @@ export interface Escena3DProps {
   tipoPerfil: TipoPerfil;
   ventana?: boolean;
   material?: string;
+  observaciones?: string;
+  onObservacionesChange?: (value: string) => void;
   baqueton?: number;
   onSnapshotReady?: (getSnapshot: (() => Promise<string | null>) | null) => void;
 }
@@ -247,9 +249,9 @@ export function Escena3D(props: Escena3DProps) {
   }, [onSnapshotReady]);
 
   return (
-    <div className="relative h-[clamp(380px,43vw,540px)] w-full overflow-hidden rounded-[24px] border border-white/80 bg-white shadow-[0_18px_50px_rgb(15_23_42/0.09),0_2px_8px_rgb(15_23_42/0.04)] ring-1 ring-slate-200/70">
-      <div className="absolute left-6 top-5 z-10 rounded-2xl border border-white/80 bg-white/80 px-3.5 py-2.5 shadow-[0_8px_24px_rgb(15_23_42/0.06)] backdrop-blur-md">
-        <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-amber-600">
+    <div className="relative h-[clamp(360px,44vh,480px)] w-full overflow-hidden rounded-[24px] border border-white/80 bg-white shadow-[0_18px_50px_rgb(15_23_42/0.09),0_2px_8px_rgb(15_23_42/0.04)] ring-1 ring-slate-200/70">
+      <div className="absolute left-6 top-5 z-10 rounded-2xl border border-white/80 bg-white/85 px-3.5 py-2.5 shadow-[0_8px_24px_rgb(15_23_42/0.06)] backdrop-blur-md">
+        <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-[#a7760b]">
           Vista Técnica
         </p>
         <p className="text-base font-bold text-slate-900">Perspectiva fija · cotas en cm</p>
@@ -258,7 +260,7 @@ export function Escena3D(props: Escena3DProps) {
         <svg
           ref={svgRef}
           viewBox="0 0 760 440"
-          className="h-full w-full"
+          className="h-[calc(100%-64px)] w-full"
           role="img"
           aria-label={`Perspectiva técnica de ${props.modo === "lona" ? "lona de remolque" : "baquetón"}: largo ${fmt(props.largo)}, ancho ${fmt(props.ancho)}`}
         >
@@ -386,13 +388,24 @@ export function Escena3D(props: Escena3DProps) {
           )}
         </svg>
       ) : (
-        <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
+        <div className="flex h-[calc(100%-64px)] flex-col items-center justify-center gap-2 px-6 text-center">
           <svg width="52" height="42" viewBox="0 0 52 42" aria-hidden="true" className="text-slate-300">
             <path d="M4 37V15l22-10 22 10v22M4 15l22 10 22-10M26 25v12" fill="none" stroke="currentColor" strokeWidth="2" />
           </svg>
           <p className="text-sm font-medium text-slate-500">Introduce largo, ancho y alto para ver la perspectiva</p>
           <p className="text-xs text-slate-400">Las cotas aparecerán automáticamente en centímetros.</p>
         </div>
+      )}
+      {props.onObservacionesChange && (
+        <label className="absolute inset-x-4 bottom-3 z-10 flex h-11 items-center gap-3 rounded-xl border border-[#d4dfdb] bg-white/90 px-3 shadow-[0_6px_18px_rgb(14_45_49/0.07)] backdrop-blur-md">
+          <span className="shrink-0 text-[9px] font-extrabold uppercase tracking-[0.13em] text-[#668084]">Observaciones</span>
+          <input
+            className="min-w-0 flex-1 rounded-lg border border-[#dbe4e1] bg-[#f8faf9] px-2.5 py-1.5 text-[11px] font-semibold text-[#17383e] outline-none transition focus:border-[#c59420] focus:ring-2 focus:ring-[#d3a024]/15"
+            placeholder="Añadir indicaciones para producción…"
+            value={props.observaciones ?? ""}
+            onChange={(event) => props.onObservacionesChange?.(event.target.value)}
+          />
+        </label>
       )}
     </div>
   );

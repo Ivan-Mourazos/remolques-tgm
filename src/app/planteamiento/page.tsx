@@ -14,9 +14,9 @@ export default async function PlanteamientoPage({
   }
   return (
     <section>
-      <div className="mb-6">
-        <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-amber-600">Oficina técnica</p>
-        <h1 className="mt-1 text-[28px] font-bold tracking-[-0.035em] text-slate-950">Nuevo planteamiento</h1>
+      <div className="mb-2.5">
+        <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-[#a7760b]">Oficina técnica</p>
+        <h1 className="mt-0.5 text-[26px] font-extrabold tracking-[-0.045em] text-[#102a2f]">Nuevo planteamiento</h1>
       </div>
       <Workspace inicial={inicial} key={desde ?? "nuevo"} />
     </section>

@@ -1,65 +1,189 @@
 "use client";
+
 import type { LonaResult } from "@/lib/calc/lona";
 import type { BaquetonResult } from "@/lib/calc/baqueton";
 
+export interface RepartoOllaos {
+  laterales: number[];
+  atras: number[];
+  delante: number[];
+}
+
+type ClaveReparto = keyof RepartoOllaos;
+
 const fmt = (n: number) => n.toLocaleString("es-ES", { maximumFractionDigits: 2 });
+
+const filas: Array<{ clave: ClaveReparto; nombre: string }> = [
+  { clave: "laterales", nombre: "LATERALES · ATRÁS A ADELANTE" },
+  { clave: "atras", nombre: "ATRÁS · IZQUIERDA A DERECHA" },
+  { clave: "delante", nombre: "DELANTE · IZQUIERDA A DERECHA" },
+];
 
 function Dato({ label, valor }: { label: string; valor: string }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-[0_1px_2px_rgb(15_23_42/0.04)]">
-      <div className="text-xs font-bold uppercase tracking-[0.08em] text-slate-500">{label}</div>
-      <div className="mt-0.5 text-base font-extrabold tabular-nums text-slate-900">{valor}</div>
+    <div className="min-w-0 rounded-lg border border-[#d5dfdc] bg-[linear-gradient(145deg,#fdfefd,#f5f8f7)] px-2.5 py-2 shadow-[0_2px_8px_rgb(14_45_49/0.04)]">
+      <div className="truncate text-[9px] font-extrabold uppercase tracking-[0.075em] text-[#668084]" title={label}>{label}</div>
+      <div className="mt-0.5 truncate text-[13px] font-extrabold tabular-nums text-[#102a2f]" title={valor}>{valor}</div>
     </div>
   );
 }
 
-function TablaReparto({ reparto }: { reparto: { laterales: number[]; atras: number[]; delante: number[] } }) {
-  const filas: Array<[string, number[]]> = [
-    ["OLLAOS LATERALES DE ATRÁS A ADELANTE", reparto.laterales],
-    ["OLLAOS ATRÁS DE IZQUIERDA A DERECHA", reparto.atras],
-    ["OLLAOS DELANTE DE IZQUIERDA A DERECHA", reparto.delante],
-  ];
+function Resumen({ columnas, children }: { columnas: number; children: React.ReactNode }) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-      <table className="w-full text-sm tabular-nums">
-        <thead>
-          <tr className="bg-neutral-100 text-neutral-600">
-            <th className="px-3 py-2 text-left font-bold">Reparto</th>
-            {Array.from({ length: 12 }, (_, i) => <th key={i} className="px-2 py-2 font-bold">{i + 1}</th>)}
-            <th className="px-3 py-2 font-bold">TOTAL</th>
-          </tr>
-        </thead>
+    <div className="overflow-x-auto pb-0.5">
+      <div
+        className="grid gap-1.5"
+        style={{
+          gridTemplateColumns: `repeat(${columnas}, minmax(94px, 1fr))`,
+          minWidth: `${columnas * 100}px`,
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function CabeceraTabla() {
+  return (
+    <thead>
+      <tr className="bg-[#e8eeec] text-[#536d72]">
+        <th className="min-w-44 px-3 py-1.5 text-left text-[10px] font-extrabold uppercase tracking-wide">Reparto de ollaos</th>
+        {Array.from({ length: 12 }, (_, i) => (
+          <th key={i} className="min-w-[38px] px-1 py-1.5 text-center text-[10px] font-extrabold">{i + 1}</th>
+        ))}
+        <th className="min-w-14 px-2 py-1.5 text-center text-[10px] font-extrabold">TOTAL</th>
+      </tr>
+    </thead>
+  );
+}
+
+function ColumnasTabla() {
+  return (
+    <colgroup>
+      <col className="w-44" />
+      {Array.from({ length: 12 }, (_, indice) => <col key={indice} className="w-[38px]" />)}
+      <col className="w-14" />
+    </colgroup>
+  );
+}
+
+function TablaReparto({ reparto }: { reparto: RepartoOllaos }) {
+  return (
+    <div className="overflow-x-auto rounded-xl border border-[#d5dfdc] bg-[#fbfcfb] shadow-[0_2px_10px_rgb(14_45_49/0.035)]">
+      <table className="w-full min-w-[688px] table-fixed text-[11px] tabular-nums">
+        <ColumnasTabla />
+        <CabeceraTabla />
         <tbody>
-          {filas.map(([nombre, pos]) => (
-            <tr key={nombre} className="border-b border-neutral-100">
-              <td className="whitespace-nowrap px-3 py-2 font-semibold">{nombre}</td>
-              {Array.from({ length: 12 }, (_, i) => (
-                <td key={i} className="px-2 py-2 text-center">{pos[i] != null ? fmt(pos[i]) : "–"}</td>
-              ))}
-              <td className="px-3 py-2 text-center font-extrabold">{pos.length}</td>
-            </tr>
-          ))}
+          {filas.map(({ clave, nombre }) => {
+            const posiciones = reparto[clave];
+            return (
+              <tr key={clave} className="border-b border-[#e5ebe9] last:border-b-0">
+                <td className="truncate px-3 py-1.5 text-[10px] font-bold text-[#38575c]" title={nombre}>{nombre}</td>
+                {Array.from({ length: 12 }, (_, i) => (
+                  <td key={i} className="px-1 py-1.5 text-center">{posiciones[i] != null ? fmt(posiciones[i]) : "–"}</td>
+                ))}
+                <td className="px-2 py-1.5 text-center font-extrabold text-[#17383e]">{posiciones.length}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
   );
 }
 
-export function ResultadosLona({ res }: { res: LonaResult }) {
+function EditorOllaos({
+  reparto, onChange,
+}: {
+  reparto: RepartoOllaos;
+  onChange: (reparto: RepartoOllaos) => void;
+}) {
+  const cambiar = (clave: ClaveReparto, indice: number, texto: string) => {
+    const siguiente = [...reparto[clave]];
+    if (texto === "") {
+      if (indice < siguiente.length) siguiente.splice(indice, 1);
+    } else {
+      const valor = Number(texto);
+      if (!Number.isFinite(valor) || valor <= 0 || indice > siguiente.length) return;
+      siguiente[indice] = valor;
+    }
+    onChange({ ...reparto, [clave]: siguiente.slice(0, 12) });
+  };
+
   return (
-    <div className="flex flex-col gap-3">
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
-        <Dato label="Medida lona hecha" valor={`${fmt(res.lonaHecha.largo)} × ${fmt(res.lonaHecha.ancho)}`} />
+    <div className="overflow-x-auto rounded-xl border border-[#c9d8d3] bg-[#fbfcfb] shadow-[0_3px_14px_rgb(14_45_49/0.05)]">
+      <div className="flex items-center justify-between border-b border-[#d8e2df] bg-[#f5f8f7] px-3 py-2">
+        <p className="text-[11px] font-extrabold uppercase tracking-[0.1em] text-[#38575c]">Ollaos según se indica</p>
+        <p className="text-[10px] font-semibold text-[#71878a]">Una medida por casilla · cm</p>
+      </div>
+      <table className="w-full min-w-[688px] table-fixed text-[11px] tabular-nums">
+        <ColumnasTabla />
+        <CabeceraTabla />
+        <tbody>
+          {filas.map(({ clave, nombre }) => {
+            const posiciones = reparto[clave];
+            return (
+              <tr key={clave} className="border-b border-[#e5ebe9] last:border-b-0">
+                <td className="truncate px-3 py-1.5 text-[10px] font-bold text-[#38575c]" title={nombre}>{nombre}</td>
+                {Array.from({ length: 12 }, (_, indice) => (
+                  <td key={indice} className="p-0.5">
+                    <input
+                      aria-label={`${nombre}, ollao ${indice + 1}`}
+                      type="number"
+                      inputMode="decimal"
+                      step="0.1"
+                      min="0"
+                      disabled={indice > posiciones.length}
+                      className="h-7 w-full min-w-9 rounded-md border border-[#d3dfdb] bg-white px-1 text-center text-[11px] font-bold text-[#17383e] outline-none transition focus:border-[#c59420] focus:ring-2 focus:ring-[#d3a024]/15 disabled:cursor-not-allowed disabled:bg-[#eef3f1]"
+                      value={posiciones[indice] ?? ""}
+                      onChange={(event) => cambiar(clave, indice, event.target.value)}
+                    />
+                  </td>
+                ))}
+                <td className="px-2 py-1.5 text-center font-extrabold text-[#17383e]">{posiciones.length}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function Ollaos({
+  modo, reparto, onChange,
+}: {
+  modo: "REPARTIDOS" | "SEGUN SE INDICA";
+  reparto: RepartoOllaos;
+  onChange: (reparto: RepartoOllaos) => void;
+}) {
+  return modo === "SEGUN SE INDICA"
+    ? <EditorOllaos reparto={reparto} onChange={onChange} />
+    : <TablaReparto reparto={reparto} />;
+}
+
+export function ResultadosLona({
+  res, modoOllaos, onOllaosChange,
+}: {
+  res: LonaResult;
+  modoOllaos: "REPARTIDOS" | "SEGUN SE INDICA";
+  onOllaosChange: (reparto: RepartoOllaos) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <Resumen columnas={7}>
+        <Dato label="Lona hecha" valor={`${fmt(res.lonaHecha.largo)} × ${fmt(res.lonaHecha.ancho)}`} />
         <Dato label="Contorno SCAD" valor={res.contornoAjustado ? fmt(res.contornoAjustado) : "—"} />
         <Dato label="Paño delantero" valor={`${fmt(res.panoDelantero.ancho)} × ${fmt(res.panoDelantero.alto)}`} />
         <Dato label="Paño trasero" valor={`${fmt(res.panoTrasero.ancho)} × ${fmt(res.panoTrasero.alto)}`} />
         <Dato label="Paño contorno" valor={res.panoContorno ? `${fmt(res.panoContorno.ancho)} × ${fmt(res.panoContorno.alto)}` : "—"} />
         <Dato label="Recoge delante" valor={res.recogeDelanteTexto} />
         <Dato label="Recoge atrás" valor={res.recogeAtrasTexto} />
-      </div>
-      <TablaReparto reparto={res.reparto} />
+      </Resumen>
+      <Ollaos modo={modoOllaos} reparto={res.reparto} onChange={onOllaosChange} />
       {res.notas.length > 0 && (
-        <ul className="list-inside list-disc text-xs text-amber-700">
+        <ul className="list-inside list-disc text-[11px] font-semibold text-[#8a6410]">
           {res.notas.map((n) => <li key={n}>{n}</li>)}
         </ul>
       )}
@@ -67,20 +191,26 @@ export function ResultadosLona({ res }: { res: LonaResult }) {
   );
 }
 
-export function ResultadosBaqueton({ res }: { res: BaquetonResult }) {
+export function ResultadosBaqueton({
+  res, modoOllaos, onOllaosChange,
+}: {
+  res: BaquetonResult;
+  modoOllaos: "REPARTIDOS" | "SEGUN SE INDICA";
+  onOllaosChange: (reparto: RepartoOllaos) => void;
+}) {
   return (
-    <div className="flex flex-col gap-3">
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+    <div className="flex flex-col gap-2">
+      <Resumen columnas={6}>
         <Dato label="Paño único" valor={`${fmt(res.panoUnico.largo)} × ${fmt(res.panoUnico.ancho)}`} />
         <Dato label="Remolque hecho" valor={`${fmt(res.remolqueHecho.largo)} × ${fmt(res.remolqueHecho.ancho)}`} />
         <Dato label="Baquetón + costura" valor={fmt(res.baquetonCostura)} />
-        <Dato label="Esquinas (del./tras.)" valor={`${fmt(res.esquinaDelante)} / ${fmt(res.esquinaDetras)}`} />
-        <Dato label="Baquetón" valor={res.baquetonTrasero ? `Trasero ${fmt(res.baquetonTrasero)} · NO EN LÍNEA` : "EN LÍNEA"} />
+        <Dato label="Esquinas del./tras." valor={`${fmt(res.esquinaDelante)} / ${fmt(res.esquinaDetras)}`} />
+        <Dato label="Baquetón" valor={res.baquetonTrasero ? `Trasero ${fmt(res.baquetonTrasero)}` : "EN LÍNEA"} />
         <Dato label="Superficie" valor={`${fmt(res.superficieM2)} m²/ud`} />
-      </div>
-      <TablaReparto reparto={res.reparto} />
+      </Resumen>
+      <Ollaos modo={modoOllaos} reparto={res.reparto} onChange={onOllaosChange} />
       {res.notas.length > 0 && (
-        <ul className="list-inside list-disc text-xs text-amber-700">
+        <ul className="list-inside list-disc text-[11px] font-semibold text-[#8a6410]">
           {res.notas.map((n) => <li key={n}>{n}</li>)}
         </ul>
       )}

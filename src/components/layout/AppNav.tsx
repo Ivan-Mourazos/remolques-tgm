@@ -14,8 +14,8 @@ export function AppNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="flex flex-col gap-1 p-4">
-      <div className="mb-5 flex items-center gap-3 px-1">
+    <nav className="flex flex-col gap-1.5 p-3.5">
+      <div className="mb-5 flex items-center gap-2.5 rounded-2xl border border-white/6 bg-white/[0.035] px-2 py-2.5">
         <Image
           src="/logo-tgm-transparent.png"
           alt="TGM Toldos Gómez"
@@ -25,10 +25,10 @@ export function AppNav() {
           priority
         />
         <div>
-          <p className="text-sm font-extrabold uppercase tracking-[0.08em] text-white">
+          <p className="text-[13px] font-extrabold uppercase tracking-[0.09em] text-white">
             Remolques
           </p>
-          <p className="text-sm font-medium text-slate-400">Planteamientos</p>
+          <p className="text-xs font-semibold text-[#9fb4b5]">Planteamientos</p>
         </div>
       </div>
       {links.map((link) => {
@@ -40,10 +40,10 @@ export function AppNav() {
           <Link
             key={link.href}
             href={link.href}
-            className={`rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+            className={`rounded-xl px-3.5 py-2.5 text-[13px] font-bold transition-all ${
               active
-                ? "bg-slate-800 text-white"
-                : "text-slate-300 hover:bg-slate-800/60 hover:text-white"
+                ? "bg-[#e2b232] text-[#10272b] shadow-[0_7px_20px_rgb(0_0_0/0.16)]"
+                : "text-[#b9c9c9] hover:bg-white/[0.07] hover:text-white"
             }`}
           >
             {link.label}
