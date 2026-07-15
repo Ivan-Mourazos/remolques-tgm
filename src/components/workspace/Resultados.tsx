@@ -174,7 +174,7 @@ export function ResultadosLona({
     <div className="flex flex-col gap-2">
       <Resumen columnas={7}>
         <Dato label="Lona hecha" valor={`${fmt(res.lonaHecha.largo)} × ${fmt(res.lonaHecha.ancho)}`} />
-        <Dato label="Contorno SCAD" valor={res.contornoAjustado ? fmt(res.contornoAjustado) : "—"} />
+        <Dato label={`Contorno corte (+${fmt(res.ajusteContorno)})`} valor={res.contornoAjustado ? fmt(res.contornoAjustado) : "—"} />
         <Dato label="Paño delantero" valor={`${fmt(res.panoDelantero.ancho)} × ${fmt(res.panoDelantero.alto)}`} />
         <Dato label="Paño trasero" valor={`${fmt(res.panoTrasero.ancho)} × ${fmt(res.panoTrasero.alto)}`} />
         <Dato label="Paño contorno" valor={res.panoContorno ? `${fmt(res.panoContorno.ancho)} × ${fmt(res.panoContorno.alto)}` : "—"} />

@@ -125,7 +125,7 @@ function datosLona(ws: Worksheet, rec: PlanteamientoRecord, material?: Material)
   campoPar(ws, 6, ["Cantidad", i.cantidad], ["Largo pedido", num(i.largo)]);
   campoPar(ws, 7, ["Ancho pedido", num(i.ancho)], ["Alto delante", num(i.altoDelante)]);
   campoPar(ws, 8, ["Alto detrás", num(i.altoAtras)], ["Aguas", num(i.aguas ?? 0)]);
-  campoPar(ws, 9, ["Perfil", nombrePerfil(i.tipoPerfil)], ["Contorno SCAD", num(r.contornoAjustado)]);
+  campoPar(ws, 9, ["Perfil", nombrePerfil(i.tipoPerfil)], ["Contorno remolque", num(r.contornoIntroducido)]);
   campoPar(ws, 10, ["Recoge delante", r.recogeDelanteTexto], ["Recoge atrás", r.recogeAtrasTexto]);
   campoPar(ws, 11, ["Bastilla enfundar", siNo(i.bastillaEnfundar)], ["Ventana", siNo(i.ventana)]);
   campoPar(ws, 12, ["Ollaos", i.modoOllaos], ["Paso objetivo", num(i.pasoOllaos)]);
@@ -133,7 +133,7 @@ function datosLona(ws: Worksheet, rec: PlanteamientoRecord, material?: Material)
   campoPar(ws, 14, ["Bobina almacén", material?.codigoBobina ?? "MANUAL"], ["Stock Arzúa", material?.stockArzua ?? "-"]);
   campoAncho(ws, 15, "Rotulación", i.rotulacion ? i.textoRotulacion || "SÍ" : "NO");
   seccion(ws, 16, "RESULTADO DE PRODUCCIÓN");
-  campoPar(ws, 17, ["Lona hecha", `${num(r.lonaHecha.largo)} × ${num(r.lonaHecha.ancho)}`], ["Contorno", num(r.contornoAjustado)]);
+  campoPar(ws, 17, ["Lona hecha", `${num(r.lonaHecha.largo)} × ${num(r.lonaHecha.ancho)}`], ["Contorno de corte", num(r.contornoAjustado)]);
   campoAncho(ws, 18, "Paño delantero", `${i.cantidad} PAÑO DE ${num(r.panoDelantero.ancho)} × ${num(r.panoDelantero.alto)}`);
   campoAncho(ws, 19, "Paño trasero", `${i.cantidad} PAÑO DE ${num(r.panoTrasero.ancho)} × ${num(r.panoTrasero.alto)}`);
   campoAncho(ws, 20, "Paño contorno", r.panoContorno

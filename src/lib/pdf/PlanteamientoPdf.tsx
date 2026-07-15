@@ -134,7 +134,7 @@ function DatosLona({ rec }: { rec: PlanteamientoRecord }) {
       <Dato etiqueta="" valor={i.altoAtras !== i.altoDelante
         ? `ALTO DELANTE ${fmt(i.altoDelante)} / DETRÁS ${fmt(i.altoAtras)}`
         : `ALTO ${fmt(i.altoDelante)}`} />
-      <Dato etiqueta="CONTORNO SCAD" valor={r.contornoAjustado ? fmt(r.contornoAjustado) : "PENDIENTE"} />
+      <Dato etiqueta="CONTORNO DE CORTE" valor={r.contornoAjustado ? fmt(r.contornoAjustado) : "PENDIENTE"} />
       <Dato etiqueta="ARCO" valor={i.cabecera.cliente || i.tipoPerfil} />
       <Dato etiqueta="PERFIL" valor={nombrePerfil(i.tipoPerfil)} />
       <Dato etiqueta="RECOGE DELANTE" valor={r.recogeDelanteTexto} />

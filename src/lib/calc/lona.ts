@@ -1,5 +1,5 @@
 import { excelRound } from "@/lib/calc/redondeo";
-import { findRecogida, type CalcParams, type TipoPerfil } from "@/lib/calc/params";
+import { findRecogida, perfilTieneCurva, type CalcParams, type TipoPerfil } from "@/lib/calc/params";
 import { calcOllaos, type OllaosResult } from "@/lib/calc/ollaos";
 
 // P1 del spec: el Excel (G11 y RPS D7) usa la columna DELANTE también para el
@@ -19,7 +19,9 @@ export interface LonaInput {
   altoDelante: number; altoAtras: number;
   /** Caída desde la cumbrera hasta los hombros del perfil. */
   aguas?: number;
-  /** Medida final del contorno SCAD, introducida manualmente por oficina técnica. */
+  /** Contorno real del remolque, antes de añadir las bastillas y la demasía de curva. */
+  contorno?: number;
+  /** Campo histórico: contenía directamente la medida final de corte. */
   contornoScad?: number;
   tipoPerfil: TipoPerfil;
   recogeDelante: string; recogeAtras: string;
@@ -35,6 +37,8 @@ export interface Pano { ancho: number; alto: number; etiqueta: string }
 
 export interface LonaResult {
   lonaHecha: { largo: number; ancho: number };
+  contornoIntroducido: number;
+  ajusteContorno: number;
   contornoAjustado: number;
   panoDelantero: Pano; panoTrasero: Pano; panoContorno: Pano | null;
   ollaos: OllaosResult;
@@ -55,7 +59,18 @@ export function calcLona(input: LonaInput, params: CalcParams): LonaResult {
     ancho: r1(input.ancho + params.demasiaLonaHecha),
   };
 
-  const contornoAjustado = Math.max(input.contornoScad ?? 0, 0);
+  const ajusteContorno = 7 + (perfilTieneCurva(input.tipoPerfil) ? 1.5 : 0);
+  const contornoNuevo = Math.max(input.contorno ?? 0, 0);
+  const contornoLegacy = Math.max(input.contornoScad ?? 0, 0);
+  const usaContornoLegacy = input.contorno == null && contornoLegacy > 0;
+  const contornoIntroducido = usaContornoLegacy
+    ? r1(Math.max(contornoLegacy - ajusteContorno, 0))
+    : contornoNuevo;
+  const contornoAjustado = usaContornoLegacy
+    ? contornoLegacy
+    : contornoIntroducido > 0
+      ? r1(contornoIntroducido + ajusteContorno)
+      : 0;
 
   const panoDelantero: Pano = {
     ancho: r1(input.ancho + recDel.delante),
@@ -112,7 +127,7 @@ export function calcLona(input: LonaInput, params: CalcParams): LonaResult {
     nombre === "NO" ? "NO RECOGE" : `RECOGE ${lado} CON ${nombre}`;
 
   return {
-    lonaHecha, contornoAjustado,
+    lonaHecha, contornoIntroducido, ajusteContorno, contornoAjustado,
     panoDelantero, panoTrasero, panoContorno,
     ollaos, reparto, metrosTela,
     recogeDelanteTexto: textoRecogida("DELANTE", recDel.nombre),

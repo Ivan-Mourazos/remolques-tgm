@@ -1,7 +1,7 @@
 "use client";
 import type { LonaInput } from "@/lib/calc/lona";
 import type { Material } from "@/lib/calc/materiales-seed";
-import { DEFAULT_PARAMS, PERFILES, type CalcParams } from "@/lib/calc/params";
+import { DEFAULT_PARAMS, perfilTieneCurva, PERFILES, type CalcParams } from "@/lib/calc/params";
 import { CampoCheck, CampoMaterial, CampoNum, CampoSelect, CampoTexto, Grupo, PasoFormulario } from "@/components/workspace/campos";
 
 export function FormularioLona({
@@ -10,6 +10,9 @@ export function FormularioLona({
   input: LonaInput; materiales: Material[]; params?: CalcParams; onChange: (i: LonaInput) => void;
 }) {
   const RECOGIDAS = (params ?? DEFAULT_PARAMS).recogidas.map((r) => r.nombre);
+  const ajusteContorno = 7 + (perfilTieneCurva(input.tipoPerfil) ? 1.5 : 0);
+  const contornoVisible = input.contorno
+    ?? Math.max((input.contornoScad ?? 0) - ajusteContorno, 0);
   const set = <K extends keyof LonaInput>(k: K, v: LonaInput[K]) => onChange({ ...input, [k]: v });
   const setCab = (k: keyof LonaInput["cabecera"], v: string) =>
     onChange({ ...input, cabecera: { ...input.cabecera, [k]: v } });
@@ -45,7 +48,8 @@ export function FormularioLona({
           <CampoNum label="Alto delante" value={input.altoDelante} onChange={(v) => set("altoDelante", v)} />
           <CampoNum label="Alto detrás" value={input.altoAtras} onChange={(v) => set("altoAtras", v)} />
           <CampoNum label="Aguas" value={input.aguas ?? 0} onChange={(v) => set("aguas", v)} />
-          <CampoNum label="Contorno SCAD" value={input.contornoScad ?? 0} onChange={(v) => set("contornoScad", v)} />
+          <CampoNum label="Contorno remolque" value={contornoVisible}
+            onChange={(v) => onChange({ ...input, contorno: v, contornoScad: undefined })} />
         </PasoFormulario>
         <PasoFormulario numero={4} titulo="Ajustes finales" ultimo>
           <CampoSelect label="Ollaos" value={input.modoOllaos} opciones={["REPARTIDOS", "SEGUN SE INDICA"]}

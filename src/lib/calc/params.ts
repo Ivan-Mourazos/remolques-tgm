@@ -44,6 +44,10 @@ export const PERFILES = [
 export type TipoPerfil = (typeof PERFILES)[number]["value"];
 export const TIPOS_PERFIL: TipoPerfil[] = PERFILES.map((perfil) => perfil.value);
 
+export function perfilTieneCurva(tipo: TipoPerfil): boolean {
+  return tipo === "TIPO 03" || tipo === "TIPO 05";
+}
+
 export function nombrePerfil(tipo: TipoPerfil): string {
   return PERFILES.find((perfil) => perfil.value === tipo)?.label ?? tipo;
 }

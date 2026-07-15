@@ -9,7 +9,7 @@ const base: LonaInput = {
   },
   cantidad: 1, largo: 250, ancho: 151,
   altoDelante: 62, altoAtras: 62, aguas: 0,
-  contornoScad: 275,
+  contorno: 275,
   tipoPerfil: "TIPO 02",
   recogeDelante: "NO", recogeAtras: "CREMALLERA",
   bastillaEnfundar: false, ventana: false,
@@ -30,8 +30,8 @@ describe("calcLona — caso real AR2602796", () => {
     expect(res.panoDelantero).toMatchObject({ ancho: 154, alto: 66.5 });
     expect(res.panoTrasero).toMatchObject({ ancho: 154, alto: 66.5 });
   });
-  it("calcula el paño contorno 253 x 275 desde el perfil terminado", () => {
-    expect(res.panoContorno).toMatchObject({ ancho: 253, alto: 275 });
+  it("calcula el paño contorno 253 x 282 sumando 7 de bastillas", () => {
+    expect(res.panoContorno).toMatchObject({ ancho: 253, alto: 282 });
   });
   it("textos de recogida", () => {
     expect(res.recogeDelanteTexto).toBe("NO RECOGE");
@@ -48,10 +48,27 @@ describe("calcLona — variantes", () => {
     expect(res.panoContorno?.ancho).toBe(263);
     expect(res.notas.join(" ")).toContain("enfundar");
   });
-  it("usa exactamente el contorno SCAD indicado, sin cálculos ni ajustes", () => {
-    const res = calcLona({ ...base, tipoPerfil: "TIPO 05", contornoScad: 321.6 }, DEFAULT_PARAMS);
+  it("suma 7 de bastillas en los perfiles sin curva", () => {
+    for (const tipoPerfil of ["TIPO 01", "TIPO 02", "TIPO 04"] as const) {
+      const res = calcLona({ ...base, tipoPerfil, contorno: 275 }, DEFAULT_PARAMS);
+      expect(res.ajusteContorno).toBe(7);
+      expect(res.contornoAjustado).toBe(282);
+    }
+  });
+  it("suma 7 de bastillas y 1,5 adicional en los perfiles con curva", () => {
+    for (const tipoPerfil of ["TIPO 03", "TIPO 05"] as const) {
+      const res = calcLona({ ...base, tipoPerfil, contorno: 321.6 }, DEFAULT_PARAMS);
+      expect(res.ajusteContorno).toBe(8.5);
+      expect(res.contornoAjustado).toBe(330.1);
+      expect(res.panoContorno?.alto).toBe(330.1);
+    }
+  });
+  it("mantiene el resultado de registros históricos con contorno SCAD", () => {
+    const res = calcLona({
+      ...base, contorno: undefined, tipoPerfil: "TIPO 05", contornoScad: 321.6,
+    }, DEFAULT_PARAMS);
+    expect(res.contornoIntroducido).toBe(313.1);
     expect(res.contornoAjustado).toBe(321.6);
-    expect(res.panoContorno?.alto).toBe(321.6);
   });
   it("PUENTES LATERALES: paño trasero usa columna DELANTE (paridad Excel, P1)", () => {
     const res = calcLona({ ...base, recogeAtras: "PUENTES LATERALES" }, DEFAULT_PARAMS);
@@ -63,15 +80,15 @@ describe("calcLona — variantes", () => {
     expect(res.panoDelantero.ancho).toBe(178);
     expect(res.notas.join(" ")).toContain("GOMA");
   });
-  it("sin contorno SCAD manual: paño contorno null y metros tela 0", () => {
-    const res = calcLona({ ...base, contornoScad: 0 }, DEFAULT_PARAMS);
+  it("sin contorno manual: paño contorno null y metros tela 0", () => {
+    const res = calcLona({ ...base, contorno: 0 }, DEFAULT_PARAMS);
     expect(res.panoContorno).toBeNull();
     expect(res.metrosTela).toBe(0);
   });
-  it("cambiar las alturas no recalcula el contorno manual", () => {
+  it("cambiar las alturas no altera el contorno calculado", () => {
     const res = calcLona({ ...base, altoAtras: 64 }, DEFAULT_PARAMS);
-    expect(res.contornoAjustado).toBe(275);
-    expect(res.panoContorno?.alto).toBe(275);
+    expect(res.contornoAjustado).toBe(282);
+    expect(res.panoContorno?.alto).toBe(282);
   });
   it("modo SEGUN SE INDICA usa las posiciones manuales", () => {
     const manuales = { laterales: [2.5, 37.6], atras: [2.5], delante: [2.5] };
