@@ -7,7 +7,7 @@ let logoDataUri: string | null | undefined;
 export function getLogoTgmDataUri(): string | null {
   if (logoDataUri !== undefined) return logoDataUri;
   try {
-    const bytes = readFileSync(join(process.cwd(), "public", "logo-tgm.png"));
+    const bytes = readFileSync(join(process.cwd(), "public", "logo-tgm-transparent.png"));
     logoDataUri = `data:image/png;base64,${bytes.toString("base64")}`;
   } catch {
     logoDataUri = null;

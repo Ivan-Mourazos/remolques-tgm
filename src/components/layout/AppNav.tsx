@@ -17,7 +17,7 @@ export function AppNav() {
     <nav className="flex flex-col gap-1 p-4">
       <div className="mb-5 flex items-center gap-3 px-1">
         <Image
-          src="/logo-tgm.png"
+          src="/logo-tgm-transparent.png"
           alt="TGM Toldos Gómez"
           width={72}
           height={55}
