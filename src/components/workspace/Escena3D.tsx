@@ -307,13 +307,6 @@ export function Escena3D(props: Escena3DProps) {
                 d={`M ${dibujo.ventana.x + 7} ${dibujo.ventana.y + 8} L ${dibujo.ventana.x + dibujo.ventana.ancho - 7} ${dibujo.ventana.y + 8}`}
                 stroke="#ffffff" strokeWidth="2" strokeLinecap="round" opacity="0.7"
               />
-              <text
-                x={dibujo.ventana.x + dibujo.ventana.ancho / 2}
-                y={dibujo.ventana.y + dibujo.ventana.alto / 2 + 4}
-                textAnchor="middle" fontSize="10" fontWeight="800" fill="#36596b"
-              >
-                50 × 35
-              </text>
             </g>
           )}
 

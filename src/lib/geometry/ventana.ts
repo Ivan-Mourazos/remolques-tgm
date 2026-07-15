@@ -21,25 +21,26 @@ function alturaPerfilEnX(perfil: PerfilPunto[], x: number): number | null {
 }
 
 /**
- * Ventana estándar centrada en el paño delantero.
- * Sus dos esquinas superiores quedan 5 cm bajo la cubierta, también con aguas.
+ * Ventana esquemática centrada y proporcionada al paño delantero.
+ * No representa una medida de fabricación: esa se define posteriormente en CAD.
  */
 export function calcularVentanaFrontal(
   perfil: PerfilPunto[],
   anchoRemolque: number,
-  anchoVentana = 50,
-  altoVentana = 35,
   margenCubierta = 5,
 ): VentanaFrontal | null {
-  if (anchoRemolque <= 0 || anchoVentana <= 0 || altoVentana <= 0 || anchoVentana > anchoRemolque) {
-    return null;
-  }
+  if (anchoRemolque <= 0) return null;
+  const margenLateral = Math.min(20, Math.max(5, anchoRemolque * 0.15));
+  const anchoVentana = Math.min(50, anchoRemolque - margenLateral * 2);
+  if (anchoVentana < 4) return null;
   const x = (anchoRemolque - anchoVentana) / 2;
   const alturaIzquierda = alturaPerfilEnX(perfil, x);
   const alturaDerecha = alturaPerfilEnX(perfil, x + anchoVentana);
   if (alturaIzquierda == null || alturaDerecha == null) return null;
   const bordeSuperior = Math.min(alturaIzquierda, alturaDerecha) - margenCubierta;
+  const margenInferior = Math.min(8, bordeSuperior * 0.18);
+  const altoVentana = Math.min(anchoVentana * 0.7, bordeSuperior - margenInferior);
+  if (altoVentana < 4) return null;
   const y = bordeSuperior - altoVentana;
-  if (y < 0) return null;
   return { x, y, ancho: anchoVentana, alto: altoVentana };
 }

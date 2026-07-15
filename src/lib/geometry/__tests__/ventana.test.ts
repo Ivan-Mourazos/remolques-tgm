@@ -3,7 +3,7 @@ import { perfilPuntos } from "@/lib/geometry/perfil";
 import { calcularVentanaFrontal } from "@/lib/geometry/ventana";
 
 describe("calcularVentanaFrontal", () => {
-  it("centra una ventana 50 × 35 a 5 cm bajo una cubierta plana", () => {
+  it("centra una ventana proporcionada a 5 cm bajo una cubierta plana", () => {
     const perfil = perfilPuntos("TIPO 01", { ancho: 140, altoDelante: 120 });
     expect(calcularVentanaFrontal(perfil, 140)).toEqual({
       x: 45, y: 80, ancho: 50, alto: 35,
@@ -21,8 +21,11 @@ describe("calcularVentanaFrontal", () => {
     expect(ventana!.y + ventana!.alto).toBeCloseTo(109.642857, 5);
   });
 
-  it("no dibuja una ventana estándar si no cabe", () => {
+  it("reduce la ventana para adaptarla a un paño delantero estrecho", () => {
     const perfil = perfilPuntos("TIPO 01", { ancho: 40, altoDelante: 120 });
-    expect(calcularVentanaFrontal(perfil, 40)).toBeNull();
+    const ventana = calcularVentanaFrontal(perfil, 40);
+    expect(ventana).toMatchObject({ x: 6, ancho: 28 });
+    expect(ventana!.y).toBeCloseTo(95.4, 5);
+    expect(ventana!.alto).toBeCloseTo(19.6, 5);
   });
 });
