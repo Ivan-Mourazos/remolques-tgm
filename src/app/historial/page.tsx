@@ -6,13 +6,22 @@ import type { PlanteamientoRecord } from "@/lib/store/types";
 export default function HistorialPage() {
   const [texto, setTexto] = useState("");
   const [items, setItems] = useState<PlanteamientoRecord[]>([]);
+  const [estado, setEstado] = useState<"cargando" | "ok" | "error">("cargando");
 
   useEffect(() => {
+    const ctrl = new AbortController();
+    setEstado("cargando");
     const t = setTimeout(() => {
-      fetch(`/api/planteamientos?texto=${encodeURIComponent(texto)}`)
-        .then((r) => r.json()).then(setItems).catch(() => setItems([]));
+      fetch(`/api/planteamientos?texto=${encodeURIComponent(texto)}`, { signal: ctrl.signal })
+        .then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
+        .then((datos) => { setItems(datos); setEstado("ok"); })
+        .catch((e) => {
+          if ((e as Error).name === "AbortError") return;
+          setItems([]);
+          setEstado("error");
+        });
     }, 200);
-    return () => clearTimeout(t);
+    return () => { clearTimeout(t); ctrl.abort(); };
   }, [texto]);
 
   return (
@@ -47,7 +56,13 @@ export default function HistorialPage() {
             </tr>
           ))}
           {items.length === 0 && (
-            <tr><td colSpan={5} className="p-6 text-center text-[#799094]">Sin resultados</td></tr>
+            <tr>
+              <td colSpan={5} className="p-6 text-center text-[#799094]">
+                {estado === "cargando" ? "Cargando…"
+                  : estado === "error" ? "No se pudo cargar el historial"
+                    : "Sin resultados"}
+              </td>
+            </tr>
           )}
         </tbody>
       </table>
