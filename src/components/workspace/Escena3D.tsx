@@ -204,7 +204,9 @@ export function Escena3D(props: Escena3DProps) {
       altoHasta: { x: frente[0].x - 42, y: baseY - altoDelante * escala },
       largoDesde: { x: frente.at(-1)!.x + 20, y: frente.at(-1)!.y + 15 },
       largoHasta: { x: fondo.at(-1)!.x + 20, y: fondo.at(-1)!.y + 15 },
-      anguloLargo: Math.atan2(-profundidadY, profundidadX) * 180 / Math.PI,
+      // Redondeado: atan2 puede diferir en el último bit entre Node y navegador
+      // y provocaría un aviso de hidratación en el atributo transform.
+      anguloLargo: Math.round(Math.atan2(-profundidadY, profundidadX) * 180 / Math.PI * 100) / 100,
       aguasDesde: {
         x: xCotaAguas,
         y: baseY - (altoDelante - (props.aguas ?? 0)) * escala,
