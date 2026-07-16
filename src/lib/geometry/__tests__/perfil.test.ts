@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { perfilPuntos } from "@/lib/geometry/perfil";
+import { perfilForma, perfilPuntos } from "@/lib/geometry/perfil";
 import { nombrePerfil } from "@/lib/calc/params";
 
 const maxY = (pts: Array<[number, number]>) => Math.max(...pts.map(([, y]) => y));
@@ -35,6 +35,28 @@ describe("perfilPuntos", () => {
     expect(maxY(pts)).toBe(60);
     expect(Math.min(...pts.slice(1, -1).map(([, y]) => y))).toBeLessThan(60);
   });
+  it("expone las aristas longitudinales de cada perfil", () => {
+    const opts = { ancho: 150, altoDelante: 100, alturaPico: 10, chaflan: 12, radio: 12 };
+    for (const tipo of ["TIPO 01", "TIPO 02", "TIPO 03", "TIPO 04", "TIPO 05"] as const) {
+      const { puntos, aristas } = perfilForma(tipo, opts);
+      expect(puntos).toEqual(perfilPuntos(tipo, opts));
+      expect(aristas.length).toBeGreaterThanOrEqual(2);
+      for (const i of aristas) {
+        expect(i).toBeGreaterThan(0);
+        expect(i).toBeLessThan(puntos.length - 1);
+      }
+    }
+    expect(perfilForma("TIPO 01", opts).aristas).toEqual([1, 2]);
+    expect(perfilForma("TIPO 04", opts).aristas).toEqual([1, 2, 3, 4]);
+    // TIPO 05: hombros = tangentes superiores de los dos arcos
+    const t5 = perfilForma("TIPO 05", opts);
+    expect(t5.puntos[t5.aristas[1]][1]).toBe(100);
+    expect(t5.puntos[t5.aristas[2]][1]).toBe(100);
+    // TIPO 03 con aguas: la arista central es el pico
+    const t3 = perfilForma("TIPO 03", opts);
+    expect(t3.puntos[t3.aristas[1]]).toEqual([75, 100]);
+  });
+
   it("expone nombres de perfil claros para oficina técnica", () => {
     expect(nombrePerfil("TIPO 04")).toContain("chaflanes");
     expect(nombrePerfil("TIPO 05")).toContain("esquinas curvas");

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import { controlesCatmullRom, type Punto2D } from "@/lib/geometry/curva";
-import { perfilPuntos } from "@/lib/geometry/perfil";
+import { perfilForma } from "@/lib/geometry/perfil";
 import { calcularVentanaFrontal } from "@/lib/geometry/ventana";
 import { coloresMaterial } from "@/lib/geometry/color-lona";
 import type { TipoPerfil } from "@/lib/calc/params";
@@ -113,8 +113,9 @@ export function Escena3D(props: Escena3DProps) {
       chaflan: Math.min(18, props.ancho * 0.1, alto * 0.25),
       radio: Math.min(18, props.ancho * 0.1, alto * 0.25),
     });
-    const delantero = perfilPuntos(perfil, opts(altoDelante));
-    const trasero = perfilPuntos(perfil, opts(altoAtras));
+    const forma = perfilForma(perfil, opts(altoDelante));
+    const delantero = forma.puntos;
+    const trasero = perfilForma(perfil, opts(altoAtras)).puntos;
     const maxY = Math.max(...delantero.map(([, y]) => y), ...trasero.map(([, y]) => y), 1);
     // Una única escala mantiene la proporción real ancho/alto. La profundidad
     // se comprime en perspectiva para que largos grandes sigan cabiendo en A4.
@@ -165,16 +166,7 @@ export function Escena3D(props: Escena3DProps) {
       : null;
     const lateralIzq = [frente[1], frente[0], fondo[0], fondo[1]];
     const lateralDcha = [frente.at(-2)!, frente.at(-1)!, fondo.at(-1)!, fondo.at(-2)!];
-    const indicesAristas = perfil === "TIPO 02"
-      ? [1, 2, 3]
-      : perfil === "TIPO 03"
-        ? [1, indicePicoFrente, delantero.length - 2]
-        : perfil === "TIPO 04"
-          ? [1, 2, 3, 4]
-          : perfil === "TIPO 05"
-            ? [1, 9, 10, delantero.length - 2]
-            : [1, delantero.length - 2];
-    const aristasLongitudinales = indicesAristas.map((indice) => ({
+    const aristasLongitudinales = forma.aristas.map((indice) => ({
       desde: frente[indice],
       hasta: fondo[indice],
     }));
