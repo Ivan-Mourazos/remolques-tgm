@@ -10,8 +10,8 @@ export default function HistorialPage() {
 
   useEffect(() => {
     const ctrl = new AbortController();
-    setEstado("cargando");
     const t = setTimeout(() => {
+      setEstado("cargando");
       fetch(`/api/planteamientos?texto=${encodeURIComponent(texto)}`, { signal: ctrl.signal })
         .then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
         .then((datos) => { setItems(datos); setEstado("ok"); })
@@ -26,29 +26,29 @@ export default function HistorialPage() {
 
   return (
     <main>
-      <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-[#a7760b]">Archivo técnico</p>
-      <h1 className="mb-4 mt-0.5 text-[26px] font-extrabold tracking-[-0.045em] text-[#102a2f]">Historial de planteamientos</h1>
+      <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-gold-2">Archivo técnico</p>
+      <h1 className="mb-4 mt-0.5 text-[26px] font-extrabold tracking-[-0.045em] text-ink">Historial de planteamientos</h1>
       <input
-        className="mb-3 min-h-10 w-full max-w-md rounded-xl border border-[#d0ddd8] bg-[#fbfcfb] px-3.5 py-2 text-sm font-semibold shadow-sm outline-none transition focus:border-[#c59420] focus:ring-4 focus:ring-[#d3a024]/15"
+        className="mb-3 min-h-10 w-full max-w-md rounded-xl border border-line bg-surface px-3.5 py-2 text-sm font-semibold shadow-sm outline-none transition focus:border-gold focus:ring-4 focus:ring-gold/15"
         placeholder="Buscar por pedido o cliente…"
         value={texto} onChange={(e) => setTexto(e.target.value)}
       />
-      <table className="w-full overflow-hidden rounded-2xl border border-[#d4dfdb] bg-[#fbfcfb] text-sm shadow-[0_10px_28px_rgb(14_45_49/0.045)]">
+      <table className="w-full overflow-hidden rounded-2xl border border-line bg-surface text-sm shadow-[0_10px_28px_rgb(14_45_49/0.045)]">
         <thead>
-          <tr className="border-b border-[#d4dfdb] bg-[#e5ece9] text-left text-xs uppercase text-[#587278]">
+          <tr className="border-b border-line bg-surface-3 text-left text-xs uppercase text-muted">
             <th className="p-2">Pedido</th><th className="p-2">Tipo</th>
             <th className="p-2">Cliente</th><th className="p-2">Modificado</th><th className="p-2" />
           </tr>
         </thead>
         <tbody>
           {items.map((r) => (
-            <tr key={r.id} className="border-b border-[#e1e8e5] transition-colors hover:bg-[#f3f7f5]">
+            <tr key={r.id} className="border-b border-line transition-colors hover:bg-surface-2">
               <td className="p-2 font-medium">{r.numeroPedido || "—"}</td>
               <td className="p-2">{r.tipo === "lona" ? "Lona remolque" : "Baquetón"}</td>
               <td className="p-2">{r.cliente || "—"}</td>
               <td className="p-2 tabular-nums">{new Date(r.updatedAt).toLocaleString("es-ES")}</td>
               <td className="p-2">
-                <Link className="rounded-lg border border-[#c7d5d0] bg-white px-3 py-1.5 text-xs font-bold text-[#31545a] shadow-sm transition hover:border-[#9fb8b0]"
+                <Link className="rounded-lg border border-line-2 bg-white px-3 py-1.5 text-xs font-bold text-ink-2 shadow-sm transition hover:border-line-2"
                   href={`/planteamiento?desde=${r.id}`}>
                   Reutilizar
                 </Link>
@@ -57,7 +57,7 @@ export default function HistorialPage() {
           ))}
           {items.length === 0 && (
             <tr>
-              <td colSpan={5} className="p-6 text-center text-[#799094]">
+              <td colSpan={5} className="p-6 text-center text-muted-2">
                 {estado === "cargando" ? "Cargando…"
                   : estado === "error" ? "No se pudo cargar el historial"
                     : "Sin resultados"}

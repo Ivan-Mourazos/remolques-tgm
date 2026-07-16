@@ -42,7 +42,7 @@ export function AppNav() {
             href={link.href}
             className={`rounded-xl px-3.5 py-2.5 text-[13px] font-bold transition-all ${
               active
-                ? "bg-[#e2b232] text-[#10272b] shadow-[0_7px_20px_rgb(0_0_0/0.16)]"
+                ? "bg-gold text-ink shadow-[0_7px_20px_rgb(0_0_0/0.16)]"
                 : "text-[#b9c9c9] hover:bg-white/[0.07] hover:text-white"
             }`}
           >

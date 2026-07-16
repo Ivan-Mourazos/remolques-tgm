@@ -236,12 +236,12 @@ export function Escena3D(props: Escena3DProps) {
   }, [onSnapshotReady]);
 
   return (
-    <div className="relative h-[clamp(360px,44vh,480px)] w-full overflow-hidden rounded-[24px] border border-white/80 bg-white shadow-[0_18px_50px_rgb(15_23_42/0.09),0_2px_8px_rgb(15_23_42/0.04)] ring-1 ring-slate-200/70">
+    <div className="relative h-[clamp(360px,44vh,480px)] w-full overflow-hidden rounded-[24px] border border-white/80 bg-white shadow-[0_18px_50px_rgb(15_23_42/0.09),0_2px_8px_rgb(15_23_42/0.04)] ring-1 ring-line/70">
       <div className="absolute left-6 top-5 z-10 rounded-2xl border border-white/80 bg-white/85 px-3.5 py-2.5 shadow-[0_8px_24px_rgb(15_23_42/0.06)] backdrop-blur-md">
-        <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-[#a7760b]">
+        <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-gold-2">
           Vista Técnica
         </p>
-        <p className="text-base font-bold text-slate-900">Perspectiva fija · cotas en cm</p>
+        <p className="text-base font-bold text-ink">Perspectiva fija · cotas en cm</p>
       </div>
       {dibujo ? (
         <svg
@@ -391,18 +391,18 @@ export function Escena3D(props: Escena3DProps) {
         </svg>
       ) : (
         <div className="flex h-[calc(100%-64px)] flex-col items-center justify-center gap-2 px-6 text-center">
-          <svg width="52" height="42" viewBox="0 0 52 42" aria-hidden="true" className="text-slate-300">
+          <svg width="52" height="42" viewBox="0 0 52 42" aria-hidden="true" className="text-line-2">
             <path d="M4 37V15l22-10 22 10v22M4 15l22 10 22-10M26 25v12" fill="none" stroke="currentColor" strokeWidth="2" />
           </svg>
-          <p className="text-sm font-medium text-slate-500">Introduce largo, ancho y alto para ver la perspectiva</p>
-          <p className="text-xs text-slate-400">Las cotas aparecerán automáticamente en centímetros.</p>
+          <p className="text-sm font-medium text-muted">Introduce largo, ancho y alto para ver la perspectiva</p>
+          <p className="text-xs text-muted-2">Las cotas aparecerán automáticamente en centímetros.</p>
         </div>
       )}
       {props.onObservacionesChange && (
-        <label className="absolute inset-x-4 bottom-3 z-10 flex h-11 items-center gap-3 rounded-xl border border-[#d4dfdb] bg-white/90 px-3 shadow-[0_6px_18px_rgb(14_45_49/0.07)] backdrop-blur-md">
-          <span className="shrink-0 text-[9px] font-extrabold uppercase tracking-[0.13em] text-[#668084]">Observaciones</span>
+        <label className="absolute inset-x-4 bottom-3 z-10 flex h-11 items-center gap-3 rounded-xl border border-line bg-white/90 px-3 shadow-[0_6px_18px_rgb(14_45_49/0.07)] backdrop-blur-md">
+          <span className="shrink-0 text-[10px] font-extrabold uppercase tracking-[0.13em] text-muted">Observaciones</span>
           <input
-            className="min-w-0 flex-1 rounded-lg border border-[#dbe4e1] bg-[#f8faf9] px-2.5 py-1.5 text-[11px] font-semibold text-[#17383e] outline-none transition focus:border-[#c59420] focus:ring-2 focus:ring-[#d3a024]/15"
+            className="min-w-0 flex-1 rounded-lg border border-line bg-surface-2 px-2.5 py-1.5 text-[12px] font-semibold text-ink outline-none transition focus:border-gold focus:ring-2 focus:ring-gold/15"
             placeholder="Añadir indicaciones para producción…"
             value={props.observaciones ?? ""}
             onChange={(event) => props.onObservacionesChange?.(event.target.value)}

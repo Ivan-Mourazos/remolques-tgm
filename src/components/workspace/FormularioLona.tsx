@@ -28,9 +28,9 @@ export function FormularioLona({
         <CampoTexto label="Revisión" value={input.cabecera.revision} onChange={(v) => setCab("revision", v)} />
       </Grupo>
 
-      <div className="space-y-2 rounded-2xl border border-[#d4dfdb] bg-[#fbfcfb]/95 p-2.5 shadow-[0_12px_32px_rgb(14_45_49/0.055)] backdrop-blur-sm">
-        <PasoFormulario numero={1} titulo="Forma del remolque">
-          <CampoSelect label="Tipo" span={1} value={input.tipoPerfil} opciones={[...PERFILES]}
+      <div className="space-y-2 rounded-2xl border border-line bg-surface/95 p-2.5 shadow-[0_12px_32px_rgb(14_45_49/0.055)] backdrop-blur-sm">
+        <PasoFormulario numero={1} titulo="Forma del remolque" columnas={4}>
+          <CampoSelect label="Tipo" span={2} value={input.tipoPerfil} opciones={[...PERFILES]}
             onChange={(v) => set("tipoPerfil", v as LonaInput["tipoPerfil"])} />
           <CampoMaterial compacto span={2} value={input.material} opciones={materiales}
             onChange={(v) => set("material", v)} />
@@ -59,7 +59,7 @@ export function FormularioLona({
           <div className="flex items-end">
             <CampoCheck label="Ventana" value={input.ventana} onChange={(v) => set("ventana", v)} />
           </div>
-          <div className="col-span-3 flex flex-wrap gap-x-4 gap-y-1 rounded-lg bg-[#edf2f0] px-1.5">
+          <div className="col-span-3 flex flex-wrap gap-x-4 gap-y-1 rounded-lg bg-surface-3 px-1.5">
             <CampoCheck label="Rotulación" value={input.rotulacion} onChange={(v) => set("rotulacion", v)} />
           </div>
           {input.rotulacion && (

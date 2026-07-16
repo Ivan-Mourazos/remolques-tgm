@@ -24,7 +24,7 @@ export function FormularioBaqueton({
         <CampoTexto label="Cliente" span={3} value={input.cabecera.cliente} onChange={(v) => setCab("cliente", v)} />
         <CampoTexto label="Revisión" value={input.cabecera.revision} onChange={(v) => setCab("revision", v)} />
       </Grupo>
-      <div className="space-y-2 rounded-2xl border border-[#d4dfdb] bg-[#fbfcfb]/95 p-2.5 shadow-[0_12px_32px_rgb(14_45_49/0.055)] backdrop-blur-sm">
+      <div className="space-y-2 rounded-2xl border border-line bg-surface/95 p-2.5 shadow-[0_12px_32px_rgb(14_45_49/0.055)] backdrop-blur-sm">
         <PasoFormulario numero={1} titulo="Medidas · cm" columnas={4}>
           <CampoNum label="Cantidad" value={input.cantidad} onChange={(v) => set("cantidad", v)} />
           <CampoNum label="Largo" value={input.largo} onChange={(v) => set("largo", v)} />
