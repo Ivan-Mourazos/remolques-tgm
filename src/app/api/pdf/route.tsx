@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const buffer = await renderToBuffer(doc);
-    const nombre = nombrePdf(recs[0].numeroPedido, recs.map((r) => r.version || "10"));
+    const nombre = nombrePdf(recs[0].numeroPedido);
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
         "Content-Type": "application/pdf",

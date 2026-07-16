@@ -5,13 +5,15 @@ import type { Material } from "@/lib/calc/materiales-seed";
 import type { PlanteamientoRecord } from "@/lib/store/types";
 import { nombrePerfil } from "@/lib/calc/params";
 
+/* Paleta de la web (tokens @theme) trasladada a ARGB. */
 const C = {
-  negro: "FF111827",
-  gris: "FFF3F4F6",
-  grisMedio: "FFD1D5DB",
-  grisTexto: "FF4B5563",
-  ambar: "FFF59E0B",
-  ambarClaro: "FFFFF7E6",
+  negro: "FF102A2F",      // ink
+  gris: "FFE5ECE9",       // surface-3
+  grisMedio: "FFD4DFDB",  // line
+  grisTexto: "FF587278",  // muted
+  ambar: "FFD3A024",      // gold
+  ambarClaro: "FFF8EDCD", // gold suave (pastilla de stock)
+  profundo: "FF0D2C31",   // deep (banda, como el botón primario)
   blanco: "FFFFFFFF",
 };
 
@@ -29,7 +31,9 @@ const bordeNegro = {
   right: { style: "thin" as const, color: { argb: C.negro } },
 };
 
-const num = (n: number) => Number(n.toFixed(2));
+// Tolerante con registros antiguos: campos que aún no existían llegan undefined.
+const num = (n: number | null | undefined) =>
+  typeof n === "number" && Number.isFinite(n) ? Number(n.toFixed(2)) : "-";
 const siNo = (v: boolean) => (v ? "SÍ" : "NO");
 
 function valor(cell: Cell, value: string | number | null, negrita = false) {
@@ -111,17 +115,17 @@ function cabecera(ws: Worksheet, wb: Workbook, rec: PlanteamientoRecord, logoTgm
 
   ws.mergeCells("A4:R4");
   const banda = ws.getCell("A4");
-  banda.value = rec.tipo === "lona" ? "REMOLQUES · LONA" : "REMOLQUES · BAQUETÓN";
-  banda.font = { name: "Arial", size: 9, bold: true, color: { argb: C.negro } };
+  banda.value = `${rec.tipo === "lona" ? "REMOLQUES · LONA" : "REMOLQUES · BAQUETÓN"} · VERSIÓN ${rec.version || "10"}`;
+  banda.font = { name: "Arial", size: 9, bold: true, color: { argb: C.blanco } };
   banda.alignment = { horizontal: "center", vertical: "middle" };
-  banda.fill = { type: "pattern", pattern: "solid", fgColor: { argb: C.gris } };
+  banda.fill = { type: "pattern", pattern: "solid", fgColor: { argb: C.profundo } };
   banda.border = bordeNegro;
 }
 
 function datosLona(ws: Worksheet, rec: PlanteamientoRecord, material?: Material) {
   const i = rec.input as LonaInput;
   const r = rec.result as LonaResult;
-  seccion(ws, 5, "DATOS DEL PEDIDO");
+  seccion(ws, 5, "DATOS INTRODUCIDOS");
   campoPar(ws, 6, ["Cantidad", i.cantidad], ["Largo pedido", num(i.largo)]);
   campoPar(ws, 7, ["Ancho pedido", num(i.ancho)], ["Alto delante", num(i.altoDelante)]);
   campoPar(ws, 8, ["Alto detrás", num(i.altoAtras)], ["Aguas", num(i.aguas ?? 0)]);
@@ -152,7 +156,7 @@ function datosLona(ws: Worksheet, rec: PlanteamientoRecord, material?: Material)
 function datosBaqueton(ws: Worksheet, rec: PlanteamientoRecord, material?: Material) {
   const i = rec.input as BaquetonInput;
   const r = rec.result as BaquetonResult;
-  seccion(ws, 5, "DATOS DEL PEDIDO");
+  seccion(ws, 5, "DATOS INTRODUCIDOS");
   campoPar(ws, 6, ["Cantidad", i.cantidad], ["Largo pedido", num(i.largo)]);
   campoPar(ws, 7, ["Ancho pedido", num(i.ancho)], ["Baquetón", num(i.baqueton)]);
   campoPar(ws, 8, ["Cliente específico", i.clienteEspecifico || "-"], ["Ollaos", i.modoOllaos]);
@@ -179,7 +183,7 @@ function datosBaqueton(ws: Worksheet, rec: PlanteamientoRecord, material?: Mater
 function plano(ws: Worksheet, wb: Workbook, snapshotPng: string | null, material: string) {
   ws.mergeCells("G5:R5");
   const materialCell = ws.getCell("G5");
-  materialCell.value = `LONA: ${material || "SIN INDICAR"}`;
+  materialCell.value = `VISTA TÉCNICA · COTAS EN CM · LONA: ${material || "SIN INDICAR"}`;
   materialCell.font = { name: "Arial", size: 8, bold: true, color: { argb: C.negro } };
   materialCell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
   materialCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: C.ambarClaro } };
