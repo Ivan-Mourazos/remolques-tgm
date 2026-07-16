@@ -63,6 +63,11 @@ describe("calcLona — variantes", () => {
       expect(res.panoContorno?.alto).toBe(330.1);
     }
   });
+  it("el ajuste de contorno sale de los parámetros", () => {
+    const params = { ...DEFAULT_PARAMS, ajusteContornoBase: 9, ajusteContornoCurva: 2 };
+    expect(calcLona({ ...base, tipoPerfil: "TIPO 01" }, params).ajusteContorno).toBe(9);
+    expect(calcLona({ ...base, tipoPerfil: "TIPO 05" }, params).ajusteContorno).toBe(11);
+  });
   it("mantiene el resultado de registros históricos con contorno SCAD", () => {
     const res = calcLona({
       ...base, contorno: undefined, tipoPerfil: "TIPO 05", contornoScad: 321.6,

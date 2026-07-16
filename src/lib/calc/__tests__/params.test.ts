@@ -25,6 +25,8 @@ describe("DEFAULT_PARAMS (hoja PAR)", () => {
     expect(DEFAULT_PARAMS.demasiaLonaHecha).toBe(1);
     expect(DEFAULT_PARAMS.pasoOllaosDefecto).toBe(35);
     expect(DEFAULT_PARAMS.primerOllao).toBe(2.5);
+    expect(DEFAULT_PARAMS.ajusteContornoBase).toBe(7);
+    expect(DEFAULT_PARAMS.ajusteContornoCurva).toBe(1.5);
   });
 
   it("clientes de baquetón con demasías aditivas", () => {
