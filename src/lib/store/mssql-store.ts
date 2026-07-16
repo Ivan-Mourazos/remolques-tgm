@@ -1,6 +1,7 @@
 import sql from "mssql";
 import type { ListadoFiltro, PlanteamientoRecord, PlanteamientoStore } from "@/lib/store/types";
 import { DEFAULT_PARAMS, type CalcParams } from "@/lib/calc/params";
+import { normalizarParams } from "@/lib/calc/validar-params";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function rowToRecord(row: any): PlanteamientoRecord {
@@ -99,7 +100,7 @@ export class MssqlStore implements PlanteamientoStore {
   async getParams(): Promise<CalcParams> {
     const pool = await this.getPool();
     const res = await pool.request().query("SELECT ParamsJson FROM dbo.Parametros WHERE Id = 1");
-    return res.recordset[0] ? JSON.parse(res.recordset[0].ParamsJson) : DEFAULT_PARAMS;
+    return res.recordset[0] ? normalizarParams(JSON.parse(res.recordset[0].ParamsJson)) : DEFAULT_PARAMS;
   }
 
   async saveParams(p: CalcParams): Promise<void> {

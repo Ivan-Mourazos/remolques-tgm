@@ -5,22 +5,40 @@ import { CampoNum } from "@/components/workspace/campos";
 
 export default function ParametrosPage() {
   const [p, setP] = useState<CalcParams | null>(null);
-  const [aviso, setAviso] = useState("");
+  const [aviso, setAviso] = useState<{ texto: string; error: boolean } | null>(null);
 
   useEffect(() => {
-    fetch("/api/parametros").then((r) => r.json()).then(setP);
+    fetch("/api/parametros")
+      .then((r) => r.json())
+      .then(setP)
+      .catch(() => setAviso({ texto: "No se pudieron cargar los parámetros.", error: true }));
   }, []);
-  if (!p) return <main className="text-sm text-[#789094]">Cargando…</main>;
+  if (!p) {
+    return (
+      <main className="text-sm text-[#789094]">
+        {aviso ? <span className="text-red-700">{aviso.texto}</span> : "Cargando…"}
+      </main>
+    );
+  }
 
   const setConst = (k: keyof CalcParams, v: number) => setP({ ...p, [k]: v });
   const setRecogida = (i: number, campo: "delante" | "atras" | "lateralSoloAtras" | "lateralSoloDelante", v: number) =>
     setP({ ...p, recogidas: p.recogidas.map((r, j) => (j === i ? { ...r, [campo]: v } : r)) });
 
   async function guardar() {
-    const res = await fetch("/api/parametros", {
-      method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(p),
-    });
-    setAviso(res.ok ? "Parámetros guardados." : "Error al guardar.");
+    try {
+      const res = await fetch("/api/parametros", {
+        method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(p),
+      });
+      if (res.ok) {
+        setAviso({ texto: "Parámetros guardados.", error: false });
+        return;
+      }
+      const detalle = (await res.json().catch(() => null))?.error ?? String(res.status);
+      setAviso({ texto: `No se guardó: ${detalle}`, error: true });
+    } catch {
+      setAviso({ texto: "Error de red al guardar.", error: true });
+    }
   }
 
   return (
@@ -34,6 +52,8 @@ export default function ParametrosPage() {
         <CampoNum label="Contorno normal" value={p.demasiaContornoNormal} onChange={(v) => setConst("demasiaContornoNormal", v)} />
         <CampoNum label="Contorno enfundar" value={p.demasiaContornoEnfundar} onChange={(v) => setConst("demasiaContornoEnfundar", v)} />
         <CampoNum label="Lona hecha" value={p.demasiaLonaHecha} onChange={(v) => setConst("demasiaLonaHecha", v)} />
+        <CampoNum label="Contorno: bastillas" value={p.ajusteContornoBase} onChange={(v) => setConst("ajusteContornoBase", v)} />
+        <CampoNum label="Contorno: extra curva" value={p.ajusteContornoCurva} onChange={(v) => setConst("ajusteContornoCurva", v)} />
         <CampoNum label="Paso ollaos" value={p.pasoOllaosDefecto} onChange={(v) => setConst("pasoOllaosDefecto", v)} />
         <CampoNum label="Primer ollao" value={p.primerOllao} onChange={(v) => setConst("primerOllao", v)} />
       </div>
@@ -64,7 +84,11 @@ export default function ParametrosPage() {
       <button onClick={guardar} className="rounded-lg bg-[#0d2c31] px-4 py-2 text-sm font-bold text-white shadow-[0_7px_20px_rgb(9_39_44/0.20)] transition hover:bg-[#173a40]">
         Guardar parámetros
       </button>
-      {aviso && <p className="mt-2 text-xs font-semibold text-[#587278]">{aviso}</p>}
+      {aviso && (
+        <p className={`mt-2 text-xs font-semibold ${aviso.error ? "text-red-700" : "text-[#587278]"}`}>
+          {aviso.texto}
+        </p>
+      )}
       </section>
     </main>
   );
