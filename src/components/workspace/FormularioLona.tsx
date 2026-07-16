@@ -1,7 +1,7 @@
 "use client";
 import type { LonaInput } from "@/lib/calc/lona";
 import type { Material } from "@/lib/calc/materiales-seed";
-import { DEFAULT_PARAMS, perfilTieneCurva, PERFILES, type CalcParams } from "@/lib/calc/params";
+import { ajusteContorno, DEFAULT_PARAMS, PERFILES, type CalcParams } from "@/lib/calc/params";
 import { CampoCheck, CampoMaterial, CampoNum, CampoSelect, CampoTexto, Grupo, PasoFormulario } from "@/components/workspace/campos";
 
 export function FormularioLona({
@@ -10,26 +10,27 @@ export function FormularioLona({
   input: LonaInput; materiales: Material[]; params?: CalcParams; onChange: (i: LonaInput) => void;
 }) {
   const RECOGIDAS = (params ?? DEFAULT_PARAMS).recogidas.map((r) => r.nombre);
-  const ajusteContorno = 7 + (perfilTieneCurva(input.tipoPerfil) ? 1.5 : 0);
+  const ajuste = ajusteContorno(params ?? DEFAULT_PARAMS, input.tipoPerfil);
   const contornoVisible = input.contorno
-    ?? Math.max((input.contornoScad ?? 0) - ajusteContorno, 0);
+    ?? Math.max((input.contornoScad ?? 0) - ajuste, 0);
   const set = <K extends keyof LonaInput>(k: K, v: LonaInput[K]) => onChange({ ...input, [k]: v });
   const setCab = (k: keyof LonaInput["cabecera"], v: string) =>
     onChange({ ...input, cabecera: { ...input.cabecera, [k]: v } });
 
   return (
     <div className="flex flex-col gap-2.5">
-      <Grupo titulo="Pedido" columnas={3} compacto>
+      <Grupo titulo="Pedido" columnas={4} compacto>
         <CampoTexto label="Nº pedido" value={input.cabecera.numeroPedido} onChange={(v) => setCab("numeroPedido", v)} />
+        <CampoTexto label="Versión" value={input.cabecera.version} onChange={(v) => setCab("version", v)} />
         <CampoTexto label="O.F." value={input.cabecera.ordenFabricacion ?? ""} onChange={(v) => setCab("ordenFabricacion", v)} />
         <CampoTexto label="Realizado por" value={input.cabecera.realizadoPor} onChange={(v) => setCab("realizadoPor", v)} />
-        <CampoTexto label="Cliente" span={2} value={input.cabecera.cliente} onChange={(v) => setCab("cliente", v)} />
+        <CampoTexto label="Cliente" span={3} value={input.cabecera.cliente} onChange={(v) => setCab("cliente", v)} />
         <CampoTexto label="Revisión" value={input.cabecera.revision} onChange={(v) => setCab("revision", v)} />
       </Grupo>
 
-      <div className="space-y-2 rounded-2xl border border-[#d4dfdb] bg-[#fbfcfb]/95 p-2.5 shadow-[0_12px_32px_rgb(14_45_49/0.055)] backdrop-blur-sm">
-        <PasoFormulario numero={1} titulo="Forma del remolque">
-          <CampoSelect label="Tipo" span={1} value={input.tipoPerfil} opciones={[...PERFILES]}
+      <div className="space-y-2 rounded-2xl border border-line bg-surface/95 p-2.5 shadow-[0_12px_32px_rgb(14_45_49/0.055)] backdrop-blur-sm">
+        <PasoFormulario numero={1} titulo="Forma del remolque" columnas={4}>
+          <CampoSelect label="Tipo" span={2} value={input.tipoPerfil} opciones={[...PERFILES]}
             onChange={(v) => set("tipoPerfil", v as LonaInput["tipoPerfil"])} />
           <CampoMaterial compacto span={2} value={input.material} opciones={materiales}
             onChange={(v) => set("material", v)} />
@@ -58,7 +59,7 @@ export function FormularioLona({
           <div className="flex items-end">
             <CampoCheck label="Ventana" value={input.ventana} onChange={(v) => set("ventana", v)} />
           </div>
-          <div className="col-span-3 flex flex-wrap gap-x-4 gap-y-1 rounded-lg bg-[#edf2f0] px-1.5">
+          <div className="col-span-3 flex flex-wrap gap-x-4 gap-y-1 rounded-lg bg-surface-3 px-1.5">
             <CampoCheck label="Rotulación" value={input.rotulacion} onChange={(v) => set("rotulacion", v)} />
           </div>
           {input.rotulacion && (

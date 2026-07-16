@@ -3,17 +3,25 @@
 :root {
   --background: #edf2f0;
   --foreground: #102a2f;
-  --surface: #fbfcfb;
-  --surface-muted: #e5ece9;
-  --line: #d4dfdb;
-  --deep: #0c272c;
-  --deep-soft: #17383e;
-  --gold: #d3a024;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: #fbfcfb;   /* tarjetas */
+  --color-surface-2: #f5f8f7; /* fondos suaves */
+  --color-surface-3: #e5ece9; /* cabeceras de tabla, pastillas */
+  --color-line: #d4dfdb;      /* bordes */
+  --color-line-2: #c9d8d3;    /* bordes marcados / hover */
+  --color-ink: #102a2f;       /* texto principal */
+  --color-ink-2: #38575c;     /* texto secundario fuerte */
+  --color-muted: #587278;     /* etiquetas */
+  --color-muted-2: #71878a;   /* pistas y texto tenue */
+  --color-deep: #0d2c31;      /* botón primario */
+  --color-deep-2: #173a40;    /* hover del primario */
+  --color-nav: #0b2328;       /* barra lateral */
+  --color-gold: #d3a024;      /* acento TGM */
+  --color-gold-2: #a7760b;    /* acento sobre fondo claro */
   --font-sans: var(--font-jakarta), "Avenir Next", "Segoe UI Variable", sans-serif;
   --font-mono: "Cascadia Mono", Consolas, monospace;
 }
@@ -23,132 +31,4 @@ body {
   color: var(--foreground);
   font-family: var(--font-jakarta), "Avenir Next", "Segoe UI Variable", sans-serif;
   letter-spacing: -0.018em;
-}
-
-/* Vista previa A4 horizontal en pantalla */
-.print-landscape-sheet {
-  color: #000;
-  background: #fff;
-  aspect-ratio: 297 / 210;
-  max-width: 297mm;
-  min-height: 210mm;
-  border: 1px solid #cbd5e1;
-  box-shadow:
-    0 4px 6px -1px rgb(0 0 0 / 0.08),
-    0 2px 4px -2px rgb(0 0 0 / 0.06);
-}
-
-.workshop-plan {
-  min-height: 194mm;
-  --workshop-ink: #111827;
-  --workshop-muted: #475569;
-  --workshop-line: #1f2937;
-  --workshop-brand: #f59e0b;
-  --workshop-soft: #f8fafc;
-  --workshop-blue: #dbeafe;
-  --workshop-amber: #fef3c7;
-}
-
-.workshop-plan table,
-.workshop-plan th,
-.workshop-plan td {
-  border-color: var(--workshop-line);
-}
-
-.workshop-plan svg text {
-  font-family: Arial, Helvetica, sans-serif;
-}
-
-.print-sheet {
-  color: #000;
-}
-
-.print-break-avoid {
-  break-inside: avoid;
-  page-break-inside: avoid;
-}
-
-.landscape-plan-layout .compact-pano-table th,
-.landscape-plan-layout .compact-pano-table td {
-  padding: 2px 4px !important;
-  font-size: 8px !important;
-}
-
-@media print {
-  @page {
-    size: A4 landscape;
-    margin: 8mm;
-  }
-
-  html,
-  body {
-    background: #fff !important;
-    color: #000 !important;
-    print-color-adjust: exact;
-    -webkit-print-color-adjust: exact;
-  }
-
-  .no-print {
-    display: none !important;
-  }
-
-  aside,
-  nav {
-    display: none !important;
-  }
-
-  main {
-    padding: 0 !important;
-    overflow: visible !important;
-  }
-
-  .print-landscape-sheet,
-  .print-sheet {
-    max-width: none !important;
-    width: 100% !important;
-    min-height: auto !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    border: none !important;
-    box-shadow: none !important;
-    background: #fff !important;
-    aspect-ratio: auto;
-    page-break-after: avoid;
-    page-break-inside: avoid;
-  }
-
-  .workshop-plan {
-    min-height: 193mm !important;
-    height: 193mm !important;
-  }
-
-  .landscape-plan-layout {
-    page-break-inside: avoid;
-  }
-
-  .print-only-content,
-  .print-only-content * {
-    print-color-adjust: exact;
-    -webkit-print-color-adjust: exact;
-  }
-
-  .print-break-avoid,
-  .technical-drawing-frame,
-  .landscape-plan-layout > section {
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
-
-  thead {
-    display: table-header-group;
-  }
-
-  tr {
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
-
-  svg {
-    max-width: 100% !important;
-  }
 }

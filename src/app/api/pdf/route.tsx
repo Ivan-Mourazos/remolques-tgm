@@ -4,31 +4,35 @@ import { getStore } from "@/lib/store";
 import { nombrePdf } from "@/lib/pdf/ruta-pdf";
 import { PlanteamientoPdf } from "@/lib/pdf/PlanteamientoPdf";
 import { getLogoTgmDataUri } from "@/lib/assets/logo-tgm";
+import type { PlanteamientoRecord } from "@/lib/store/types";
 
+// Devuelve el PDF del pedido (una página por versión). NO escribe en disco ni
+// en red: el cliente lo guarda con «Guardar como».
 export async function POST(req: NextRequest) {
-  let id: string;
-  let snapshot: string | null;
+  let ids: string[];
+  let snapshots: Record<string, string | null>;
   try {
-    ({ id, snapshot = null } = await req.json());
+    const body = await req.json();
+    ids = Array.isArray(body.ids) ? body.ids : [];
+    snapshots = body.snapshots ?? {};
   } catch {
     return NextResponse.json({ error: "Cuerpo de petición inválido" }, { status: 400 });
   }
-  const rec = await getStore().get(id);
-  if (!rec) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+  const store = getStore();
+  const recs = (await Promise.all(ids.map((id) => store.get(id))))
+    .filter((r): r is PlanteamientoRecord => r !== null);
+  if (recs.length === 0) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
   const doc = (
     <PlanteamientoPdf
-      rec={rec}
-      snapshotPng={snapshot ?? null}
+      paginas={recs.map((rec) => ({ rec, png: snapshots[rec.id] ?? null }))}
       logoTgm={getLogoTgmDataUri()}
     />
   );
 
   try {
     const buffer = await renderToBuffer(doc);
-
-    const nombre = nombrePdf(rec.numeroPedido || "SIN-PEDIDO", rec.version);
-
+    const nombre = nombrePdf(recs[0].numeroPedido, recs.map((r) => r.version || "10"));
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
         "Content-Type": "application/pdf",

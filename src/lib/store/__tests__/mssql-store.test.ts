@@ -6,7 +6,7 @@ describe("rowToRecord", () => {
     const rec = rowToRecord({
       Id: "ABC", Tipo: "lona", NumeroPedido: "AR1", Version: "1", Cliente: "X",
       InputJson: '{"cantidad":1}', ResultJson: '{"metrosTela":2}', ParamsJson: "{}",
-      PdfPath: null,
+      SnapshotSvg: null,
       CreatedAt: new Date("2026-07-13T10:00:00Z"), UpdatedAt: new Date("2026-07-13T11:00:00Z"),
     });
     expect(rec).toMatchObject({

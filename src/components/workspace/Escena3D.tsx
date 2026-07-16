@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import { controlesCatmullRom, type Punto2D } from "@/lib/geometry/curva";
-import { perfilPuntos } from "@/lib/geometry/perfil";
+import { perfilForma } from "@/lib/geometry/perfil";
 import { calcularVentanaFrontal } from "@/lib/geometry/ventana";
 import { coloresMaterial } from "@/lib/geometry/color-lona";
 import type { TipoPerfil } from "@/lib/calc/params";
@@ -22,7 +22,8 @@ export interface Escena3DProps {
   observaciones?: string;
   onObservacionesChange?: (value: string) => void;
   baqueton?: number;
-  onSnapshotReady?: (getSnapshot: (() => Promise<string | null>) | null) => void;
+  /** Entrega una función que devuelve el SVG serializado de la vista (o null). */
+  onSnapshotReady?: (getSvg: (() => string | null) | null) => void;
 }
 
 const fmt = (n: number) =>
@@ -68,6 +69,12 @@ function superficieCubierta(frente: Punto[], fondo: Punto[], curvo: boolean): st
   return `${caminoTecho(frente, curvo)} L ${puntoSvg(fondoInverso[0])}${caminoTecho(fondoInverso, curvo, false)} Z`;
 }
 
+/* Colores propios del plano (inline: el snapshot SVG debe verse igual sin CSS). */
+const FUENTE_PLANO = "'Plus Jakarta Sans','Segoe UI',Arial,sans-serif";
+const COLOR_COTA = "#6b7f83";
+const COLOR_TEXTO_COTA = "#33484d";
+const COLOR_GUIA = "#a3b4b6";
+
 function Cota({
   desde, hasta, texto, rotacion = 0, textoDx = 0, textoDy = -7,
 }: {
@@ -76,14 +83,15 @@ function Cota({
   const cx = (desde.x + hasta.x) / 2 + textoDx;
   const cy = (desde.y + hasta.y) / 2 + textoDy;
   return (
-    <g className="text-slate-600">
+    <g>
       <line
         x1={desde.x} y1={desde.y} x2={hasta.x} y2={hasta.y}
-        stroke="currentColor" strokeWidth="1.2" markerStart="url(#cota)" markerEnd="url(#cota)"
+        stroke={COLOR_COTA} strokeWidth="1.2" markerStart="url(#cota)" markerEnd="url(#cota)"
       />
       <text
         x={cx} y={cy} textAnchor="middle" fontSize="13" fontWeight="800"
-        fill="currentColor" stroke="#ffffff" strokeWidth="6" paintOrder="stroke"
+        fontFamily={FUENTE_PLANO}
+        fill={COLOR_TEXTO_COTA} stroke="#ffffff" strokeWidth="6" paintOrder="stroke"
         strokeLinejoin="round" transform={`rotate(${rotacion} ${cx} ${cy})`}
       >
         {texto}
@@ -112,8 +120,9 @@ export function Escena3D(props: Escena3DProps) {
       chaflan: Math.min(18, props.ancho * 0.1, alto * 0.25),
       radio: Math.min(18, props.ancho * 0.1, alto * 0.25),
     });
-    const delantero = perfilPuntos(perfil, opts(altoDelante));
-    const trasero = perfilPuntos(perfil, opts(altoAtras));
+    const forma = perfilForma(perfil, opts(altoDelante));
+    const delantero = forma.puntos;
+    const trasero = perfilForma(perfil, opts(altoAtras)).puntos;
     const maxY = Math.max(...delantero.map(([, y]) => y), ...trasero.map(([, y]) => y), 1);
     // Una única escala mantiene la proporción real ancho/alto. La profundidad
     // se comprime en perspectiva para que largos grandes sigan cabiendo en A4.
@@ -164,16 +173,7 @@ export function Escena3D(props: Escena3DProps) {
       : null;
     const lateralIzq = [frente[1], frente[0], fondo[0], fondo[1]];
     const lateralDcha = [frente.at(-2)!, frente.at(-1)!, fondo.at(-1)!, fondo.at(-2)!];
-    const indicesAristas = perfil === "TIPO 02"
-      ? [1, 2, 3]
-      : perfil === "TIPO 03"
-        ? [1, indicePicoFrente, delantero.length - 2]
-        : perfil === "TIPO 04"
-          ? [1, 2, 3, 4]
-          : perfil === "TIPO 05"
-            ? [1, 9, 10, delantero.length - 2]
-            : [1, delantero.length - 2];
-    const aristasLongitudinales = indicesAristas.map((indice) => ({
+    const aristasLongitudinales = forma.aristas.map((indice) => ({
       desde: frente[indice],
       hasta: fondo[indice],
     }));
@@ -193,17 +193,22 @@ export function Escena3D(props: Escena3DProps) {
       radio: Math.min(9, 4 * escala),
     } : null;
     const xCotaAguas = frente.at(-1)!.x + 34;
+    const xCotaAltoTras = fondo.at(-1)!.x + 34;
     return {
       frente, fondo, lateralIzq, lateralDcha, aristasLongitudinales, contornoFrente, coronacionFondo,
       cubiertaCompleta, cubiertaIzquierda, cubiertaDerecha,
       tieneCumbrera, picoFrente, picoFondo, ventana,
+      altoTrasDesde: { x: xCotaAltoTras, y: fondo.at(-1)!.y },
+      altoTrasHasta: { x: xCotaAltoTras, y: fondo.at(-2)!.y },
       anchoDesde: { x: frente[0].x, y: baseY + 35 },
       anchoHasta: { x: frente.at(-1)!.x, y: baseY + 35 },
       altoDesde: { x: frente[0].x - 42, y: baseY },
       altoHasta: { x: frente[0].x - 42, y: baseY - altoDelante * escala },
       largoDesde: { x: frente.at(-1)!.x + 20, y: frente.at(-1)!.y + 15 },
       largoHasta: { x: fondo.at(-1)!.x + 20, y: fondo.at(-1)!.y + 15 },
-      anguloLargo: Math.atan2(-profundidadY, profundidadX) * 180 / Math.PI,
+      // Redondeado: atan2 puede diferir en el último bit entre Node y navegador
+      // y provocaría un aviso de hidratación en el atributo transform.
+      anguloLargo: Math.round(Math.atan2(-profundidadY, profundidadX) * 180 / Math.PI * 100) / 100,
       aguasDesde: {
         x: xCotaAguas,
         y: baseY - (altoDelante - (props.aguas ?? 0)) * escala,
@@ -223,43 +228,27 @@ export function Escena3D(props: Escena3DProps) {
 
   useEffect(() => {
     if (!onSnapshotReady) return;
-    onSnapshotReady(async () => {
+    onSnapshotReady(() => {
       const svg = svgRef.current;
-      if (!svg) return null;
-      const xml = new XMLSerializer().serializeToString(svg);
-      const url = URL.createObjectURL(new Blob([xml], { type: "image/svg+xml;charset=utf-8" }));
-      try {
-        const image = new Image();
-        image.src = url;
-        await image.decode();
-        const canvas = document.createElement("canvas");
-        canvas.width = 1520;
-        canvas.height = 880;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return null;
-        ctx.fillStyle = "#f8fafc";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-        return canvas.toDataURL("image/png");
-      } finally {
-        URL.revokeObjectURL(url);
-      }
+      return svg ? new XMLSerializer().serializeToString(svg) : null;
     });
     return () => onSnapshotReady(null);
   }, [onSnapshotReady]);
 
   return (
-    <div className="relative h-[clamp(360px,44vh,480px)] w-full overflow-hidden rounded-[24px] border border-white/80 bg-white shadow-[0_18px_50px_rgb(15_23_42/0.09),0_2px_8px_rgb(15_23_42/0.04)] ring-1 ring-slate-200/70">
+    <div className="relative h-[clamp(360px,44vh,480px)] w-full overflow-hidden rounded-[24px] border border-white/80 bg-white shadow-[0_18px_50px_rgb(15_23_42/0.09),0_2px_8px_rgb(15_23_42/0.04)] ring-1 ring-line/70">
       <div className="absolute left-6 top-5 z-10 rounded-2xl border border-white/80 bg-white/85 px-3.5 py-2.5 shadow-[0_8px_24px_rgb(15_23_42/0.06)] backdrop-blur-md">
-        <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-[#a7760b]">
+        <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-gold-2">
           Vista Técnica
         </p>
-        <p className="text-base font-bold text-slate-900">Perspectiva fija · cotas en cm</p>
+        <p className="text-base font-bold text-ink">Perspectiva fija · cotas en cm</p>
       </div>
       {dibujo ? (
         <svg
           ref={svgRef}
-          viewBox="0 0 760 440"
+          viewBox="0 0 780 440"
+          width={780}
+          height={440}
           className="h-[calc(100%-64px)] w-full"
           role="img"
           aria-label={`Perspectiva técnica de ${props.modo === "lona" ? "lona de remolque" : "baquetón"}: largo ${fmt(props.largo)}, ancho ${fmt(props.ancho)}`}
@@ -267,9 +256,9 @@ export function Escena3D(props: Escena3DProps) {
           <title>Perspectiva técnica acotada</title>
           <defs>
             <linearGradient id="lienzo" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor="#fbfcfd" />
-              <stop offset="0.55" stopColor="#f5f7f9" />
-              <stop offset="1" stopColor="#eef2f5" />
+              <stop offset="0" stopColor="#fcfdfc" />
+              <stop offset="0.55" stopColor="#f4f8f6" />
+              <stop offset="1" stopColor="#ecf2ef" />
             </linearGradient>
             <linearGradient id="lateral" x1="0" y1="0" x2="1" y2="1">
               <stop offset="0" stopColor={colores.lateralClaro} />
@@ -288,14 +277,14 @@ export function Escena3D(props: Escena3DProps) {
               <stop offset="1" stopColor={colores.lateralClaro} />
             </linearGradient>
             <marker id="cota" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto-start-reverse">
-              <path d="M 7 0 L 0 3.5 L 7 7 z" fill="#475569" />
+              <path d="M 7 0 L 0 3.5 L 7 7 z" fill="#6b7f83" />
             </marker>
             <filter id="sombraLona" x="-25%" y="-25%" width="160%" height="180%">
-              <feDropShadow dx="0" dy="10" stdDeviation="10" floodColor="#0f172a" floodOpacity="0.16" />
+              <feDropShadow dx="0" dy="10" stdDeviation="10" floodColor="#0e2a2f" floodOpacity="0.16" />
             </filter>
           </defs>
-          <rect width="760" height="440" fill="url(#lienzo)" />
-          <rect x="18" y="68" width="724" height="350" rx="18" fill="#ffffff" fillOpacity="0.64" stroke="#ffffff" />
+          <rect width="780" height="440" fill="url(#lienzo)" />
+          <rect x="18" y="68" width="744" height="350" rx="18" fill="#ffffff" fillOpacity="0.64" stroke="#ffffff" />
           {/* Techo y lateral muestran el color de lona; el frente queda abierto. */}
           <g filter="url(#sombraLona)">
             <polygon
@@ -325,34 +314,34 @@ export function Escena3D(props: Escena3DProps) {
           )}
 
           {/* Únicamente se conservan los bordes visibles de la lona. */}
-          <path d={dibujo.coronacionFondo} fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" />
+          <path d={dibujo.coronacionFondo} fill="none" stroke="#7d9297" strokeWidth="2" strokeLinecap="round" />
           <line
             x1={dibujo.fondo.at(-2)!.x} y1={dibujo.fondo.at(-2)!.y}
             x2={dibujo.fondo.at(-1)!.x} y2={dibujo.fondo.at(-1)!.y}
-            stroke="#64748b" strokeWidth="2" strokeLinecap="round"
+            stroke="#7d9297" strokeWidth="2" strokeLinecap="round"
           />
           {dibujo.aristasLongitudinales.map((arista, indice) => (
             <line
               key={indice}
               x1={arista.desde.x} y1={arista.desde.y}
               x2={arista.hasta.x} y2={arista.hasta.y}
-              stroke="#52677c" strokeWidth="2" strokeLinecap="round"
+              stroke="#4c6468" strokeWidth="2" strokeLinecap="round"
             />
           ))}
-          <path d={dibujo.contornoFrente} fill="none" stroke="#0f172a" strokeWidth="3.6" strokeLinecap="round" strokeLinejoin="round" />
+          <path d={dibujo.contornoFrente} fill="none" stroke="#122d32" strokeWidth="3.6" strokeLinecap="round" strokeLinejoin="round" />
           {props.modo === "baqueton" && (
             <path
-              d={dibujo.contornoFrente} fill="none" stroke="#f59e0b"
+              d={dibujo.contornoFrente} fill="none" stroke="#d3a024"
               strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round"
             />
           )}
 
-          <line x1={dibujo.frente[0].x} y1={dibujo.baseY + 5} x2={dibujo.frente[0].x} y2={dibujo.baseY + 42} stroke="#94a3b8" />
-          <line x1={dibujo.frente.at(-1)!.x} y1={dibujo.baseY + 5} x2={dibujo.frente.at(-1)!.x} y2={dibujo.baseY + 42} stroke="#94a3b8" />
+          <line x1={dibujo.frente[0].x} y1={dibujo.baseY + 5} x2={dibujo.frente[0].x} y2={dibujo.baseY + 42} stroke={COLOR_GUIA} />
+          <line x1={dibujo.frente.at(-1)!.x} y1={dibujo.baseY + 5} x2={dibujo.frente.at(-1)!.x} y2={dibujo.baseY + 42} stroke={COLOR_GUIA} />
           <Cota desde={dibujo.anchoDesde} hasta={dibujo.anchoHasta} texto={`ANCHO ${fmt(props.ancho)}`} textoDy={22} />
 
-          <line x1={dibujo.frente[0].x - 5} y1={dibujo.altoDesde.y} x2={dibujo.altoDesde.x - 7} y2={dibujo.altoDesde.y} stroke="#94a3b8" />
-          <line x1={dibujo.frente[0].x - 5} y1={dibujo.altoHasta.y} x2={dibujo.altoHasta.x - 7} y2={dibujo.altoHasta.y} stroke="#94a3b8" />
+          <line x1={dibujo.frente[0].x - 5} y1={dibujo.altoDesde.y} x2={dibujo.altoDesde.x - 7} y2={dibujo.altoDesde.y} stroke={COLOR_GUIA} />
+          <line x1={dibujo.frente[0].x - 5} y1={dibujo.altoHasta.y} x2={dibujo.altoHasta.x - 7} y2={dibujo.altoHasta.y} stroke={COLOR_GUIA} />
           <Cota
             desde={dibujo.altoDesde} hasta={dibujo.altoHasta}
             texto={`${props.modo === "baqueton" ? "BAQUETÓN" : "ALTO DEL."} ${fmt(altoDelante)}`}
@@ -368,39 +357,52 @@ export function Escena3D(props: Escena3DProps) {
               <line
                 x1={dibujo.aguasGuiaHombro.desde.x} y1={dibujo.aguasGuiaHombro.desde.y}
                 x2={dibujo.aguasGuiaHombro.hasta.x} y2={dibujo.aguasGuiaHombro.hasta.y}
-                stroke="#94a3b8" strokeWidth="1"
+                stroke={COLOR_GUIA} strokeWidth="1"
               />
               <line
                 x1={dibujo.aguasGuiaPico.desde.x} y1={dibujo.aguasGuiaPico.desde.y}
                 x2={dibujo.aguasGuiaPico.hasta.x} y2={dibujo.aguasGuiaPico.hasta.y}
-                stroke="#94a3b8" strokeWidth="1"
+                stroke={COLOR_GUIA} strokeWidth="1"
               />
               <Cota
                 desde={dibujo.aguasDesde} hasta={dibujo.aguasHasta}
-                texto={`AGUAS ${fmt(props.aguas ?? 0)}`} rotacion={-90} textoDx={18} textoDy={0}
+                texto={`AGUAS ${fmt(props.aguas ?? 0)}`} rotacion={-90} textoDx={-11} textoDy={0}
               />
             </g>
           )}
           {props.modo === "lona" && altoAtras !== altoDelante && (
-            <text x="592" y="105" textAnchor="middle" fontSize="13" fontWeight="800" fill="#475569">
-              ALTO TRAS. {fmt(altoAtras)}
-            </text>
+            <g>
+              <line
+                x1={dibujo.fondo.at(-1)!.x + 5} y1={dibujo.altoTrasDesde.y}
+                x2={dibujo.altoTrasDesde.x + 7} y2={dibujo.altoTrasDesde.y}
+                stroke={COLOR_GUIA}
+              />
+              <line
+                x1={dibujo.fondo.at(-2)!.x + 5} y1={dibujo.altoTrasHasta.y}
+                x2={dibujo.altoTrasHasta.x + 7} y2={dibujo.altoTrasHasta.y}
+                stroke={COLOR_GUIA}
+              />
+              <Cota
+                desde={dibujo.altoTrasDesde} hasta={dibujo.altoTrasHasta}
+                texto={`ALTO TRAS. ${fmt(altoAtras)}`} rotacion={-90} textoDy={-9}
+              />
+            </g>
           )}
         </svg>
       ) : (
         <div className="flex h-[calc(100%-64px)] flex-col items-center justify-center gap-2 px-6 text-center">
-          <svg width="52" height="42" viewBox="0 0 52 42" aria-hidden="true" className="text-slate-300">
+          <svg width="52" height="42" viewBox="0 0 52 42" aria-hidden="true" className="text-line-2">
             <path d="M4 37V15l22-10 22 10v22M4 15l22 10 22-10M26 25v12" fill="none" stroke="currentColor" strokeWidth="2" />
           </svg>
-          <p className="text-sm font-medium text-slate-500">Introduce largo, ancho y alto para ver la perspectiva</p>
-          <p className="text-xs text-slate-400">Las cotas aparecerán automáticamente en centímetros.</p>
+          <p className="text-sm font-medium text-muted">Introduce largo, ancho y alto para ver la perspectiva</p>
+          <p className="text-xs text-muted-2">Las cotas aparecerán automáticamente en centímetros.</p>
         </div>
       )}
       {props.onObservacionesChange && (
-        <label className="absolute inset-x-4 bottom-3 z-10 flex h-11 items-center gap-3 rounded-xl border border-[#d4dfdb] bg-white/90 px-3 shadow-[0_6px_18px_rgb(14_45_49/0.07)] backdrop-blur-md">
-          <span className="shrink-0 text-[9px] font-extrabold uppercase tracking-[0.13em] text-[#668084]">Observaciones</span>
+        <label className="absolute inset-x-4 bottom-3 z-10 flex h-11 items-center gap-3 rounded-xl border border-line bg-white/90 px-3 shadow-[0_6px_18px_rgb(14_45_49/0.07)] backdrop-blur-md">
+          <span className="shrink-0 text-[10px] font-extrabold uppercase tracking-[0.13em] text-muted">Observaciones</span>
           <input
-            className="min-w-0 flex-1 rounded-lg border border-[#dbe4e1] bg-[#f8faf9] px-2.5 py-1.5 text-[11px] font-semibold text-[#17383e] outline-none transition focus:border-[#c59420] focus:ring-2 focus:ring-[#d3a024]/15"
+            className="min-w-0 flex-1 rounded-lg border border-line bg-surface-2 px-2.5 py-1.5 text-[12px] font-semibold text-ink outline-none transition focus:border-gold focus:ring-2 focus:ring-gold/15"
             placeholder="Añadir indicaciones para producción…"
             value={props.observaciones ?? ""}
             onChange={(event) => props.onObservacionesChange?.(event.target.value)}

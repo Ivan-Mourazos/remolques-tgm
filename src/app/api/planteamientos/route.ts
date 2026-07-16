@@ -9,15 +9,16 @@ export async function GET(req: NextRequest) {
   const recs = await getStore().list({
     texto: searchParams.get("texto") ?? undefined,
     tipo: tipoParam ? (tipoParam as TipoPlanteamiento) : undefined,
+    pedido: searchParams.get("pedido") ?? undefined,
   });
   return NextResponse.json(recs);
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const { id, tipo, input } = await req.json();
+    const { id, tipo, input, snapshotSvg } = await req.json();
     const params = await getStore().getParams();
-    const saved = await getStore().save(buildRecord(tipo, input, params, id));
+    const saved = await getStore().save(buildRecord(tipo, input, params, id, snapshotSvg ?? null));
     return NextResponse.json(saved);
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 400 });

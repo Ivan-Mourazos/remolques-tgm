@@ -20,7 +20,7 @@ const rec = {
   input: { cantidad: 1 } as unknown as LonaInput,
   result: { metrosTela: 5.61 } as unknown as LonaResult,
   paramsSnapshot: DEFAULT_PARAMS,
-  pdfPath: null,
+  snapshotSvg: null,
 };
 
 describe("FileStore", () => {

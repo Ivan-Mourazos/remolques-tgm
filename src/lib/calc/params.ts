@@ -24,6 +24,10 @@ export interface CalcParams {
   demasiaContornoNormal: number;
   demasiaContornoEnfundar: number;
   demasiaLonaHecha: number;
+  /** Bastillas que se suman al contorno real para obtener la medida de corte. */
+  ajusteContornoBase: number;
+  /** Demasía adicional del contorno cuando el perfil lleva curva. */
+  ajusteContornoCurva: number;
   pasoOllaosDefecto: number;
   primerOllao: number;
   maxPosicionesOllaos: number;
@@ -46,6 +50,11 @@ export const TIPOS_PERFIL: TipoPerfil[] = PERFILES.map((perfil) => perfil.value)
 
 export function perfilTieneCurva(tipo: TipoPerfil): boolean {
   return tipo === "TIPO 03" || tipo === "TIPO 05";
+}
+
+/** Suma de bastillas (y demasía de curva si procede) sobre el contorno real. */
+export function ajusteContorno(params: CalcParams, tipo: TipoPerfil): number {
+  return params.ajusteContornoBase + (perfilTieneCurva(tipo) ? params.ajusteContornoCurva : 0);
 }
 
 export function nombrePerfil(tipo: TipoPerfil): string {
@@ -71,6 +80,8 @@ export const DEFAULT_PARAMS: CalcParams = {
   demasiaContornoNormal: 3,
   demasiaContornoEnfundar: 13,
   demasiaLonaHecha: 1,
+  ajusteContornoBase: 7,
+  ajusteContornoCurva: 1.5,
   pasoOllaosDefecto: 35,
   primerOllao: 2.5,
   maxPosicionesOllaos: 12,

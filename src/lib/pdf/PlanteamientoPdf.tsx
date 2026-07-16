@@ -172,54 +172,67 @@ function DatosBaqueton({ rec }: { rec: PlanteamientoRecord }) {
   );
 }
 
-/** Hoja completa de taller: datos de producción, dibujo y reparto de ollaos. */
-export function PlanteamientoPdf({ rec, snapshotPng, logoTgm }: {
-  rec: PlanteamientoRecord; snapshotPng: string | null; logoTgm?: string | null;
+function PaginaPlanteamiento({ rec, png, logoTgm }: {
+  rec: PlanteamientoRecord; png: string | null; logoTgm?: string | null;
 }) {
   const input = rec.input;
   const resultado = rec.result as LonaResult | BaquetonResult;
   return (
-    <Document>
-      <Page size="A4" orientation="landscape" style={s.page}>
-        <View style={s.marco}>
-          <View style={s.cabecera}>
-            <View style={s.logo}>
-              {logoTgm ? (
-                /* eslint-disable-next-line jsx-a11y/alt-text */
-                <Image src={logoTgm} style={s.logoImagen} />
-              ) : (
-                <>
-                  <Text style={s.logoMarca}>TGM</Text>
-                  <Text style={s.logoSub}>TOLDOS GÓMEZ</Text>
-                </>
-              )}
-            </View>
-            <View style={s.cabCentro}>
-              <CabFila etiqueta="CLIENTE:" valor={input.cabecera.cliente} />
-              <CabFila etiqueta="REVISIÓN:" valor={input.cabecera.revision} />
-              <CabFila etiqueta="REALIZADO" valor={input.cabecera.realizadoPor} ultima />
-            </View>
-            <View style={s.cabDerecha}>
-              <CabFila etiqueta="Nº PEDIDO:" valor={input.cabecera.numeroPedido} />
-              <CabFila etiqueta="O.F.:" valor={input.cabecera.ordenFabricacion ?? ""} />
-              <CabFila etiqueta="FECHA:" valor={fechaEs(input.cabecera.fecha)} ultima />
-            </View>
+    <Page size="A4" orientation="landscape" style={s.page}>
+      <View style={s.marco}>
+        <View style={s.cabecera}>
+          <View style={s.logo}>
+            {logoTgm ? (
+              /* eslint-disable-next-line jsx-a11y/alt-text */
+              <Image src={logoTgm} style={s.logoImagen} />
+            ) : (
+              <>
+                <Text style={s.logoMarca}>TGM</Text>
+                <Text style={s.logoSub}>TOLDOS GÓMEZ</Text>
+              </>
+            )}
           </View>
-          <View style={s.banda}><Text style={s.bandaTexto}>REMOLQUES</Text></View>
-          <View style={s.cuerpo}>
-            <View style={s.datos}>
-              {rec.tipo === "lona" ? <DatosLona rec={rec} /> : <DatosBaqueton rec={rec} />}
-            </View>
-            <View style={s.dibujo}>
-              {snapshotPng ? (
-                /* eslint-disable-next-line jsx-a11y/alt-text */
-                <Image src={snapshotPng} style={s.foto} />
-              ) : <Text style={s.sinPlano}>(sin vista técnica)</Text>}
-            </View>
+          <View style={s.cabCentro}>
+            <CabFila etiqueta="CLIENTE:" valor={input.cabecera.cliente} />
+            <CabFila etiqueta="REVISIÓN:" valor={input.cabecera.revision} />
+            <CabFila etiqueta="REALIZADO" valor={input.cabecera.realizadoPor} ultima />
+          </View>
+          <View style={s.cabDerecha}>
+            <CabFila etiqueta="Nº PEDIDO:" valor={input.cabecera.numeroPedido} />
+            <CabFila etiqueta="O.F.:" valor={input.cabecera.ordenFabricacion ?? ""} />
+            <CabFila etiqueta="FECHA:" valor={fechaEs(input.cabecera.fecha)} ultima />
           </View>
         </View>
-        <Reparto reparto={resultado.reparto} modo={input.modoOllaos} />
-      </Page>
+        <View style={s.banda}>
+          <Text style={s.bandaTexto}>REMOLQUES · VERSIÓN {rec.version || "10"}</Text>
+        </View>
+        <View style={s.cuerpo}>
+          <View style={s.datos}>
+            {rec.tipo === "lona" ? <DatosLona rec={rec} /> : <DatosBaqueton rec={rec} />}
+          </View>
+          <View style={s.dibujo}>
+            {png ? (
+              /* eslint-disable-next-line jsx-a11y/alt-text */
+              <Image src={png} style={s.foto} />
+            ) : <Text style={s.sinPlano}>(sin vista técnica)</Text>}
+          </View>
+        </View>
+      </View>
+      <Reparto reparto={resultado.reparto} modo={input.modoOllaos} />
+    </Page>
+  );
+}
+
+/** Hoja de taller: una página por remolque (versión) del pedido. */
+export function PlanteamientoPdf({ paginas, logoTgm }: {
+  paginas: Array<{ rec: PlanteamientoRecord; png: string | null }>;
+  logoTgm?: string | null;
+}) {
+  return (
+    <Document>
+      {paginas.map(({ rec, png }) => (
+        <PaginaPlanteamiento key={rec.id} rec={rec} png={png} logoTgm={logoTgm} />
+      ))}
     </Document>
   );
 }

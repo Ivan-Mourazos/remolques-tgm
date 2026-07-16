@@ -10,6 +10,12 @@ export interface PerfilOpts {
 
 type Pt = [number, number];
 
+export interface PerfilForma {
+  puntos: Pt[];
+  /** Índices de los vértices que generan arista longitudinal visible (excluye las bases). */
+  aristas: number[];
+}
+
 function arco(cx: number, cy: number, r: number, a0: number, a1: number, n: number): Pt[] {
   const pts: Pt[] = [];
   for (let i = 0; i <= n; i++) {
@@ -19,7 +25,7 @@ function arco(cx: number, cy: number, r: number, a0: number, a1: number, n: numb
   return pts;
 }
 
-export function perfilPuntos(tipo: TipoPerfil, opts: PerfilOpts): Pt[] {
+export function perfilForma(tipo: TipoPerfil, opts: PerfilOpts): PerfilForma {
   const w = opts.ancho;
   const h = opts.altoDelante;
   // `altoDelante` es la altura total. `alturaPico` (aguas) indica cuánto
@@ -30,15 +36,18 @@ export function perfilPuntos(tipo: TipoPerfil, opts: PerfilOpts): Pt[] {
 
   switch (tipo) {
     case "TIPO 01":
-      return [[0, 0], [0, h], [w, h], [w, 0]];
+      return { puntos: [[0, 0], [0, h], [w, h], [w, 0]], aristas: [1, 2] };
     case "TIPO 02":
-      return [[0, 0], [0, h - pico], [w / 2, h], [w, h - pico], [w, 0]];
+      return {
+        puntos: [[0, 0], [0, h - pico], [w / 2, h], [w, h - pico], [w, 0]],
+        aristas: [1, 2, 3],
+      };
     case "TIPO 03": {
-      if (pico === 0) return [[0, 0], [0, h], [w, h], [w, 0]];
+      if (pico === 0) return { puntos: [[0, 0], [0, h], [w, h], [w, 0]], aristas: [1, 2] };
       // Dos aguas suavizado dentro de la altura total.
       const sub = Math.min(r, pico, w / 4);
       const hombro = h - pico;
-      return [
+      const puntos: Pt[] = [
         [0, 0], [0, Math.max(0, hombro - sub)],
         [sub * 0.3, hombro - sub * 0.3], [sub, hombro],
         [w / 2 - sub, h - sub * 0.3], [w / 2, h],
@@ -46,15 +55,24 @@ export function perfilPuntos(tipo: TipoPerfil, opts: PerfilOpts): Pt[] {
         [w - sub * 0.3, hombro - sub * 0.3], [w, Math.max(0, hombro - sub)],
         [w, 0],
       ];
+      return { puntos, aristas: [1, 5, puntos.length - 2] };
     }
     case "TIPO 04":
-      return [[0, 0], [0, h - ch], [ch, h], [w - ch, h], [w, h - ch], [w, 0]];
-    case "TIPO 05":
-      return [
-        [0, 0], [0, h - r],
-        ...arco(r, h - r, r, Math.PI, Math.PI / 2, 8).slice(1),
-        ...arco(w - r, h - r, r, Math.PI / 2, 0, 8),
-        [w, 0],
-      ];
+      return {
+        puntos: [[0, 0], [0, h - ch], [ch, h], [w - ch, h], [w, h - ch], [w, 0]],
+        aristas: [1, 2, 3, 4],
+      };
+    case "TIPO 05": {
+      const subida: Pt[] = [[0, 0], [0, h - r]];
+      const arcoIzq = arco(r, h - r, r, Math.PI, Math.PI / 2, 8).slice(1);
+      const arcoDer = arco(w - r, h - r, r, Math.PI / 2, 0, 8);
+      const puntos: Pt[] = [...subida, ...arcoIzq, ...arcoDer, [w, 0]];
+      const finArcoIzq = subida.length + arcoIzq.length - 1;
+      return { puntos, aristas: [1, finArcoIzq, finArcoIzq + 1, puntos.length - 2] };
+    }
   }
+}
+
+export function perfilPuntos(tipo: TipoPerfil, opts: PerfilOpts): Pt[] {
+  return perfilForma(tipo, opts).puntos;
 }

@@ -1,5 +1,5 @@
 import { excelRound } from "@/lib/calc/redondeo";
-import { findRecogida, perfilTieneCurva, type CalcParams, type TipoPerfil } from "@/lib/calc/params";
+import { ajusteContorno, findRecogida, type CalcParams, type TipoPerfil } from "@/lib/calc/params";
 import { calcOllaos, type OllaosResult } from "@/lib/calc/ollaos";
 
 // P1 del spec: el Excel (G11 y RPS D7) usa la columna DELANTE también para el
@@ -59,17 +59,17 @@ export function calcLona(input: LonaInput, params: CalcParams): LonaResult {
     ancho: r1(input.ancho + params.demasiaLonaHecha),
   };
 
-  const ajusteContorno = 7 + (perfilTieneCurva(input.tipoPerfil) ? 1.5 : 0);
+  const ajuste = ajusteContorno(params, input.tipoPerfil);
   const contornoNuevo = Math.max(input.contorno ?? 0, 0);
   const contornoLegacy = Math.max(input.contornoScad ?? 0, 0);
   const usaContornoLegacy = input.contorno == null && contornoLegacy > 0;
   const contornoIntroducido = usaContornoLegacy
-    ? r1(Math.max(contornoLegacy - ajusteContorno, 0))
+    ? r1(Math.max(contornoLegacy - ajuste, 0))
     : contornoNuevo;
   const contornoAjustado = usaContornoLegacy
     ? contornoLegacy
     : contornoIntroducido > 0
-      ? r1(contornoIntroducido + ajusteContorno)
+      ? r1(contornoIntroducido + ajuste)
       : 0;
 
   const panoDelantero: Pano = {
@@ -124,7 +124,7 @@ export function calcLona(input: LonaInput, params: CalcParams): LonaResult {
   }
 
   return {
-    lonaHecha, contornoIntroducido, ajusteContorno, contornoAjustado,
+    lonaHecha, contornoIntroducido, ajusteContorno: ajuste, contornoAjustado,
     panoDelantero, panoTrasero, panoContorno,
     ollaos, reparto, metrosTela,
     recogeDelanteTexto: recDel.nombre,

@@ -3,6 +3,7 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import type { ListadoFiltro, PlanteamientoRecord, PlanteamientoStore } from "@/lib/store/types";
 import { DEFAULT_PARAMS, type CalcParams } from "@/lib/calc/params";
+import { normalizarParams } from "@/lib/calc/validar-params";
 
 /** Driver de desarrollo: dos ficheros JSON en `data/`. */
 export class FileStore implements PlanteamientoStore {
@@ -24,6 +25,7 @@ export class FileStore implements PlanteamientoStore {
   async list(filtro?: ListadoFiltro): Promise<PlanteamientoRecord[]> {
     let recs = this.readAll();
     if (filtro?.tipo) recs = recs.filter((r) => r.tipo === filtro.tipo);
+    if (filtro?.pedido) recs = recs.filter((r) => r.numeroPedido === filtro.pedido);
     if (filtro?.texto) {
       const t = filtro.texto.toLowerCase();
       recs = recs.filter(
@@ -57,7 +59,7 @@ export class FileStore implements PlanteamientoStore {
   async getParams(): Promise<CalcParams> {
     const f = this.file("parametros.json");
     if (!existsSync(f)) return DEFAULT_PARAMS;
-    return JSON.parse(readFileSync(f, "utf8")) as CalcParams;
+    return normalizarParams(JSON.parse(readFileSync(f, "utf8")));
   }
 
   async saveParams(p: CalcParams): Promise<void> {

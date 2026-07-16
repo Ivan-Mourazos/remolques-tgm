@@ -4,7 +4,8 @@ import { calcLona, type LonaInput } from "@/lib/calc/lona";
 import { calcBaqueton, type BaquetonInput } from "@/lib/calc/baqueton";
 import { DEFAULT_PARAMS, type CalcParams } from "@/lib/calc/params";
 import type { Material } from "@/lib/calc/materiales-seed";
-import type { TipoPlanteamiento } from "@/lib/store/types";
+import type { PlanteamientoRecord, TipoPlanteamiento } from "@/lib/store/types";
+import { rasterizarSvg } from "@/lib/svg/rasterizar";
 import { emptyLona, emptyBaqueton } from "@/components/workspace/entradas-vacias";
 import { FormularioLona } from "@/components/workspace/FormularioLona";
 import { FormularioBaqueton } from "@/components/workspace/FormularioBaqueton";
@@ -31,7 +32,7 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
   const [aviso, setAviso] = useState<string | null>(null);
   const [accion, setAccion] = useState<"guardar" | "pdf" | "excel" | null>(null);
   const busy = accion !== null;
-  const snapshotRef = useRef<(() => Promise<string | null>) | null>(null);
+  const snapshotRef = useRef<(() => string | null) | null>(null);
 
   useEffect(() => {
     fetch("/api/materiales").then((r) => r.json()).then(setMateriales).catch(() => setMateriales([]));
@@ -51,7 +52,7 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
       const res = await fetch("/api/planteamientos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, tipo, input }),
+        body: JSON.stringify({ id, tipo, input, snapshotSvg: snapshotRef.current?.() ?? null }),
       });
       if (!res.ok) {
         let detalle = String(res.status);
@@ -126,10 +127,33 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
     try {
       const savedId = await doGuardar();
       if (!savedId) return;
+      // Un PDF por pedido: una página por versión (el registro más reciente de cada una).
+      const pedido = input.cabecera.numeroPedido.trim();
+      let registros: PlanteamientoRecord[] = [];
+      if (pedido) {
+        registros = await fetch(`/api/planteamientos?pedido=${encodeURIComponent(pedido)}`)
+          .then((r) => (r.ok ? r.json() : []))
+          .catch(() => []);
+      }
+      const porVersion = new Map<string, PlanteamientoRecord>();
+      for (const r of registros) {
+        const previo = porVersion.get(r.version);
+        if (!previo || r.updatedAt > previo.updatedAt) porVersion.set(r.version, r);
+      }
+      const paginas = [...porVersion.values()]
+        .sort((a, b) => a.version.localeCompare(b.version, "es", { numeric: true }));
+      const ids = paginas.length > 0 ? paginas.map((r) => r.id) : [savedId];
+      const snapshots: Record<string, string | null> = {};
+      for (const r of paginas) {
+        snapshots[r.id] = r.snapshotSvg ? await rasterizarSvg(r.snapshotSvg) : null;
+      }
+      if (!(savedId in snapshots)) {
+        snapshots[savedId] = await rasterizarSvg(snapshotRef.current?.() ?? "");
+      }
       const res = await fetch("/api/pdf", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: savedId, snapshot: await snapshotRef.current?.() ?? null }),
+        body: JSON.stringify({ ids, snapshots }),
       });
       if (!res.ok) {
         setAviso(`Error al generar PDF: ${res.status}`);
@@ -153,7 +177,10 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
       const res = await fetch("/api/excel", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: savedId, snapshot: await snapshotRef.current?.() ?? null }),
+        body: JSON.stringify({
+          id: savedId,
+          snapshot: await rasterizarSvg(snapshotRef.current?.() ?? ""),
+        }),
       });
       if (!res.ok) {
         setAviso(`Error al generar Excel: ${res.status}`);
@@ -174,11 +201,11 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
   return (
     <div className="grid gap-3 xl:grid-cols-[480px_minmax(0,1fr)]">
       <div>
-        <div className="mb-2.5 flex gap-1 rounded-xl border border-[#d1ddda] bg-[#dfe8e5] p-1 shadow-inner">
+        <div className="mb-2.5 flex gap-1 rounded-xl border border-line bg-surface-3 p-1 shadow-inner">
           {(["lona", "baqueton"] as const).map((t) => (
             <button key={t} onClick={() => { if (t !== tipo) { setTipo(t); setId(undefined); setAviso(null); } }}
               aria-pressed={tipo === t}
-              className={`flex-1 rounded-lg px-3 py-1.5 text-[13px] font-extrabold transition-all focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#d3a024]/15 ${tipo === t ? "bg-[#fbfcfb] text-[#102a2f] shadow-[0_4px_14px_rgb(14_45_49/0.10)]" : "text-[#60777b] hover:bg-white/55 hover:text-[#16353b]"}`}>
+              className={`flex-1 rounded-lg px-3 py-1.5 text-[13px] font-extrabold transition-all focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold/15 ${tipo === t ? "bg-surface text-ink shadow-[0_4px_14px_rgb(14_45_49/0.10)]" : "text-muted hover:bg-white/55 hover:text-ink"}`}>
               {t === "lona" ? "Lona remolque" : "Baquetón"}
             </button>
           ))}
@@ -189,17 +216,17 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
           <FormularioBaqueton input={baq} materiales={materiales} params={params} onChange={setBaq} />
         )}
         <div className="mt-2.5 flex flex-wrap gap-2">
-          <button onClick={guardar} disabled={busy} className="rounded-lg border border-[#cfdbd7] bg-[#fbfcfb] px-3.5 py-2 text-[13px] font-bold text-[#3f5d62] shadow-sm transition-all hover:-translate-y-px hover:border-[#b6c9c3] hover:shadow-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#16353b]/10 disabled:cursor-wait disabled:opacity-50">
+          <button onClick={guardar} disabled={busy} className="rounded-lg border border-line bg-surface px-3.5 py-2 text-[13px] font-bold text-ink-2 shadow-sm transition-all hover:-translate-y-px hover:border-line-2 hover:shadow-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ink/10 disabled:cursor-wait disabled:opacity-50">
             {accion === "guardar" ? "Guardando…" : "Guardar"}
           </button>
-          <button onClick={generarPdf} disabled={busy} className="rounded-lg bg-[#0d2c31] px-3.5 py-2 text-[13px] font-bold text-white shadow-[0_7px_20px_rgb(9_39_44/0.22)] transition-all hover:-translate-y-px hover:bg-[#173a40] hover:shadow-lg focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#12343a]/20 disabled:cursor-wait disabled:opacity-50">
+          <button onClick={generarPdf} disabled={busy} className="rounded-lg bg-deep px-3.5 py-2 text-[13px] font-bold text-white shadow-[0_7px_20px_rgb(9_39_44/0.22)] transition-all hover:-translate-y-px hover:bg-deep-2 hover:shadow-lg focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-2/20 disabled:cursor-wait disabled:opacity-50">
             {accion === "pdf" ? "Generando PDF…" : "Generar PDF"}
           </button>
-          <button onClick={generarExcel} disabled={busy} className="rounded-lg border border-[#cfdbd7] bg-[#fbfcfb] px-3.5 py-2 text-[13px] font-bold text-[#3f5d62] shadow-sm transition-all hover:-translate-y-px hover:border-[#b6c9c3] hover:shadow-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#16353b]/10 disabled:cursor-wait disabled:opacity-50">
+          <button onClick={generarExcel} disabled={busy} className="rounded-lg border border-line bg-surface px-3.5 py-2 text-[13px] font-bold text-ink-2 shadow-sm transition-all hover:-translate-y-px hover:border-line-2 hover:shadow-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ink/10 disabled:cursor-wait disabled:opacity-50">
             {accion === "excel" ? "Generando Excel…" : "Generar Excel"}
           </button>
         </div>
-        {aviso && <p role="status" aria-live="polite" className="mt-2 text-xs text-neutral-600">{aviso}</p>}
+        {aviso && <p role="status" aria-live="polite" className="mt-2 text-xs font-semibold text-muted">{aviso}</p>}
       </div>
       <div className="flex flex-col gap-4">
         {tipo === "lona" ? (
