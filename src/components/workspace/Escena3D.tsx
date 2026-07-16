@@ -69,6 +69,12 @@ function superficieCubierta(frente: Punto[], fondo: Punto[], curvo: boolean): st
   return `${caminoTecho(frente, curvo)} L ${puntoSvg(fondoInverso[0])}${caminoTecho(fondoInverso, curvo, false)} Z`;
 }
 
+/* Colores propios del plano (inline: el snapshot SVG debe verse igual sin CSS). */
+const FUENTE_PLANO = "'Plus Jakarta Sans','Segoe UI',Arial,sans-serif";
+const COLOR_COTA = "#6b7f83";
+const COLOR_TEXTO_COTA = "#33484d";
+const COLOR_GUIA = "#a3b4b6";
+
 function Cota({
   desde, hasta, texto, rotacion = 0, textoDx = 0, textoDy = -7,
 }: {
@@ -77,14 +83,15 @@ function Cota({
   const cx = (desde.x + hasta.x) / 2 + textoDx;
   const cy = (desde.y + hasta.y) / 2 + textoDy;
   return (
-    <g className="text-slate-600">
+    <g>
       <line
         x1={desde.x} y1={desde.y} x2={hasta.x} y2={hasta.y}
-        stroke="currentColor" strokeWidth="1.2" markerStart="url(#cota)" markerEnd="url(#cota)"
+        stroke={COLOR_COTA} strokeWidth="1.2" markerStart="url(#cota)" markerEnd="url(#cota)"
       />
       <text
         x={cx} y={cy} textAnchor="middle" fontSize="13" fontWeight="800"
-        fill="currentColor" stroke="#ffffff" strokeWidth="6" paintOrder="stroke"
+        fontFamily={FUENTE_PLANO}
+        fill={COLOR_TEXTO_COTA} stroke="#ffffff" strokeWidth="6" paintOrder="stroke"
         strokeLinejoin="round" transform={`rotate(${rotacion} ${cx} ${cy})`}
       >
         {texto}
@@ -186,10 +193,13 @@ export function Escena3D(props: Escena3DProps) {
       radio: Math.min(9, 4 * escala),
     } : null;
     const xCotaAguas = frente.at(-1)!.x + 34;
+    const xCotaAltoTras = fondo.at(-1)!.x + 34;
     return {
       frente, fondo, lateralIzq, lateralDcha, aristasLongitudinales, contornoFrente, coronacionFondo,
       cubiertaCompleta, cubiertaIzquierda, cubiertaDerecha,
       tieneCumbrera, picoFrente, picoFondo, ventana,
+      altoTrasDesde: { x: xCotaAltoTras, y: fondo.at(-1)!.y },
+      altoTrasHasta: { x: xCotaAltoTras, y: fondo.at(-2)!.y },
       anchoDesde: { x: frente[0].x, y: baseY + 35 },
       anchoHasta: { x: frente.at(-1)!.x, y: baseY + 35 },
       altoDesde: { x: frente[0].x - 42, y: baseY },
@@ -246,9 +256,9 @@ export function Escena3D(props: Escena3DProps) {
           <title>Perspectiva técnica acotada</title>
           <defs>
             <linearGradient id="lienzo" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor="#fbfcfd" />
-              <stop offset="0.55" stopColor="#f5f7f9" />
-              <stop offset="1" stopColor="#eef2f5" />
+              <stop offset="0" stopColor="#fcfdfc" />
+              <stop offset="0.55" stopColor="#f4f8f6" />
+              <stop offset="1" stopColor="#ecf2ef" />
             </linearGradient>
             <linearGradient id="lateral" x1="0" y1="0" x2="1" y2="1">
               <stop offset="0" stopColor={colores.lateralClaro} />
@@ -267,10 +277,10 @@ export function Escena3D(props: Escena3DProps) {
               <stop offset="1" stopColor={colores.lateralClaro} />
             </linearGradient>
             <marker id="cota" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto-start-reverse">
-              <path d="M 7 0 L 0 3.5 L 7 7 z" fill="#475569" />
+              <path d="M 7 0 L 0 3.5 L 7 7 z" fill="#6b7f83" />
             </marker>
             <filter id="sombraLona" x="-25%" y="-25%" width="160%" height="180%">
-              <feDropShadow dx="0" dy="10" stdDeviation="10" floodColor="#0f172a" floodOpacity="0.16" />
+              <feDropShadow dx="0" dy="10" stdDeviation="10" floodColor="#0e2a2f" floodOpacity="0.16" />
             </filter>
           </defs>
           <rect width="780" height="440" fill="url(#lienzo)" />
@@ -304,34 +314,34 @@ export function Escena3D(props: Escena3DProps) {
           )}
 
           {/* Únicamente se conservan los bordes visibles de la lona. */}
-          <path d={dibujo.coronacionFondo} fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" />
+          <path d={dibujo.coronacionFondo} fill="none" stroke="#7d9297" strokeWidth="2" strokeLinecap="round" />
           <line
             x1={dibujo.fondo.at(-2)!.x} y1={dibujo.fondo.at(-2)!.y}
             x2={dibujo.fondo.at(-1)!.x} y2={dibujo.fondo.at(-1)!.y}
-            stroke="#64748b" strokeWidth="2" strokeLinecap="round"
+            stroke="#7d9297" strokeWidth="2" strokeLinecap="round"
           />
           {dibujo.aristasLongitudinales.map((arista, indice) => (
             <line
               key={indice}
               x1={arista.desde.x} y1={arista.desde.y}
               x2={arista.hasta.x} y2={arista.hasta.y}
-              stroke="#52677c" strokeWidth="2" strokeLinecap="round"
+              stroke="#4c6468" strokeWidth="2" strokeLinecap="round"
             />
           ))}
-          <path d={dibujo.contornoFrente} fill="none" stroke="#0f172a" strokeWidth="3.6" strokeLinecap="round" strokeLinejoin="round" />
+          <path d={dibujo.contornoFrente} fill="none" stroke="#122d32" strokeWidth="3.6" strokeLinecap="round" strokeLinejoin="round" />
           {props.modo === "baqueton" && (
             <path
-              d={dibujo.contornoFrente} fill="none" stroke="#f59e0b"
+              d={dibujo.contornoFrente} fill="none" stroke="#d3a024"
               strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round"
             />
           )}
 
-          <line x1={dibujo.frente[0].x} y1={dibujo.baseY + 5} x2={dibujo.frente[0].x} y2={dibujo.baseY + 42} stroke="#94a3b8" />
-          <line x1={dibujo.frente.at(-1)!.x} y1={dibujo.baseY + 5} x2={dibujo.frente.at(-1)!.x} y2={dibujo.baseY + 42} stroke="#94a3b8" />
+          <line x1={dibujo.frente[0].x} y1={dibujo.baseY + 5} x2={dibujo.frente[0].x} y2={dibujo.baseY + 42} stroke={COLOR_GUIA} />
+          <line x1={dibujo.frente.at(-1)!.x} y1={dibujo.baseY + 5} x2={dibujo.frente.at(-1)!.x} y2={dibujo.baseY + 42} stroke={COLOR_GUIA} />
           <Cota desde={dibujo.anchoDesde} hasta={dibujo.anchoHasta} texto={`ANCHO ${fmt(props.ancho)}`} textoDy={22} />
 
-          <line x1={dibujo.frente[0].x - 5} y1={dibujo.altoDesde.y} x2={dibujo.altoDesde.x - 7} y2={dibujo.altoDesde.y} stroke="#94a3b8" />
-          <line x1={dibujo.frente[0].x - 5} y1={dibujo.altoHasta.y} x2={dibujo.altoHasta.x - 7} y2={dibujo.altoHasta.y} stroke="#94a3b8" />
+          <line x1={dibujo.frente[0].x - 5} y1={dibujo.altoDesde.y} x2={dibujo.altoDesde.x - 7} y2={dibujo.altoDesde.y} stroke={COLOR_GUIA} />
+          <line x1={dibujo.frente[0].x - 5} y1={dibujo.altoHasta.y} x2={dibujo.altoHasta.x - 7} y2={dibujo.altoHasta.y} stroke={COLOR_GUIA} />
           <Cota
             desde={dibujo.altoDesde} hasta={dibujo.altoHasta}
             texto={`${props.modo === "baqueton" ? "BAQUETÓN" : "ALTO DEL."} ${fmt(altoDelante)}`}
@@ -347,23 +357,36 @@ export function Escena3D(props: Escena3DProps) {
               <line
                 x1={dibujo.aguasGuiaHombro.desde.x} y1={dibujo.aguasGuiaHombro.desde.y}
                 x2={dibujo.aguasGuiaHombro.hasta.x} y2={dibujo.aguasGuiaHombro.hasta.y}
-                stroke="#94a3b8" strokeWidth="1"
+                stroke={COLOR_GUIA} strokeWidth="1"
               />
               <line
                 x1={dibujo.aguasGuiaPico.desde.x} y1={dibujo.aguasGuiaPico.desde.y}
                 x2={dibujo.aguasGuiaPico.hasta.x} y2={dibujo.aguasGuiaPico.hasta.y}
-                stroke="#94a3b8" strokeWidth="1"
+                stroke={COLOR_GUIA} strokeWidth="1"
               />
               <Cota
                 desde={dibujo.aguasDesde} hasta={dibujo.aguasHasta}
-                texto={`AGUAS ${fmt(props.aguas ?? 0)}`} rotacion={-90} textoDx={18} textoDy={0}
+                texto={`AGUAS ${fmt(props.aguas ?? 0)}`} rotacion={-90} textoDx={-11} textoDy={0}
               />
             </g>
           )}
           {props.modo === "lona" && altoAtras !== altoDelante && (
-            <text x="592" y="105" textAnchor="middle" fontSize="13" fontWeight="800" fill="#475569">
-              ALTO TRAS. {fmt(altoAtras)}
-            </text>
+            <g>
+              <line
+                x1={dibujo.fondo.at(-1)!.x + 5} y1={dibujo.altoTrasDesde.y}
+                x2={dibujo.altoTrasDesde.x + 7} y2={dibujo.altoTrasDesde.y}
+                stroke={COLOR_GUIA}
+              />
+              <line
+                x1={dibujo.fondo.at(-2)!.x + 5} y1={dibujo.altoTrasHasta.y}
+                x2={dibujo.altoTrasHasta.x + 7} y2={dibujo.altoTrasHasta.y}
+                stroke={COLOR_GUIA}
+              />
+              <Cota
+                desde={dibujo.altoTrasDesde} hasta={dibujo.altoTrasHasta}
+                texto={`ALTO TRAS. ${fmt(altoAtras)}`} rotacion={-90} textoDy={-9}
+              />
+            </g>
           )}
         </svg>
       ) : (
