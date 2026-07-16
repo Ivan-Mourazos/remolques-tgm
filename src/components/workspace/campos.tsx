@@ -14,12 +14,13 @@ function columna(ancho?: boolean, span?: 1 | 2 | 3): string {
 export function Grupo({
   titulo, children, columnas = 2, compacto = false,
 }: {
-  titulo: string; children: ReactNode; columnas?: 2 | 3; compacto?: boolean;
+  titulo: string; children: ReactNode; columnas?: 2 | 3 | 4; compacto?: boolean;
 }) {
+  const cols = columnas === 4 ? "grid-cols-4" : columnas === 3 ? "grid-cols-3" : "grid-cols-2";
   return (
     <fieldset className={`border border-[#d4dfdb] bg-[#fbfcfb]/95 shadow-[0_10px_28px_rgb(14_45_49/0.045)] backdrop-blur-sm ${compacto ? "rounded-xl p-2.5" : "rounded-2xl p-4"}`}>
       <legend className="px-1.5 text-[11px] font-extrabold uppercase tracking-[0.11em] text-[#587278]">{titulo}</legend>
-      <div className={`grid ${columnas === 3 ? "grid-cols-3" : "grid-cols-2"} ${compacto ? "gap-1.5" : "gap-3"}`}>{children}</div>
+      <div className={`grid ${cols} ${compacto ? "gap-1.5" : "gap-3"}`}>{children}</div>
     </fieldset>
   );
 }

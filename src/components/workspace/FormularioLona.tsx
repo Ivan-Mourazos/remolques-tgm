@@ -19,11 +19,12 @@ export function FormularioLona({
 
   return (
     <div className="flex flex-col gap-2.5">
-      <Grupo titulo="Pedido" columnas={3} compacto>
+      <Grupo titulo="Pedido" columnas={4} compacto>
         <CampoTexto label="Nº pedido" value={input.cabecera.numeroPedido} onChange={(v) => setCab("numeroPedido", v)} />
+        <CampoTexto label="Versión" value={input.cabecera.version} onChange={(v) => setCab("version", v)} />
         <CampoTexto label="O.F." value={input.cabecera.ordenFabricacion ?? ""} onChange={(v) => setCab("ordenFabricacion", v)} />
         <CampoTexto label="Realizado por" value={input.cabecera.realizadoPor} onChange={(v) => setCab("realizadoPor", v)} />
-        <CampoTexto label="Cliente" span={2} value={input.cabecera.cliente} onChange={(v) => setCab("cliente", v)} />
+        <CampoTexto label="Cliente" span={3} value={input.cabecera.cliente} onChange={(v) => setCab("cliente", v)} />
         <CampoTexto label="Revisión" value={input.cabecera.revision} onChange={(v) => setCab("revision", v)} />
       </Grupo>
 
