@@ -4,7 +4,8 @@ import { calcLona, type LonaInput } from "@/lib/calc/lona";
 import { calcBaqueton, type BaquetonInput } from "@/lib/calc/baqueton";
 import { DEFAULT_PARAMS, type CalcParams } from "@/lib/calc/params";
 import type { Material } from "@/lib/calc/materiales-seed";
-import type { TipoPlanteamiento } from "@/lib/store/types";
+import type { PlanteamientoRecord, TipoPlanteamiento } from "@/lib/store/types";
+import { rasterizarSvg } from "@/lib/svg/rasterizar";
 import { emptyLona, emptyBaqueton } from "@/components/workspace/entradas-vacias";
 import { FormularioLona } from "@/components/workspace/FormularioLona";
 import { FormularioBaqueton } from "@/components/workspace/FormularioBaqueton";
@@ -31,7 +32,7 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
   const [aviso, setAviso] = useState<string | null>(null);
   const [accion, setAccion] = useState<"guardar" | "pdf" | "excel" | null>(null);
   const busy = accion !== null;
-  const snapshotRef = useRef<(() => Promise<string | null>) | null>(null);
+  const snapshotRef = useRef<(() => string | null) | null>(null);
 
   useEffect(() => {
     fetch("/api/materiales").then((r) => r.json()).then(setMateriales).catch(() => setMateriales([]));
@@ -51,7 +52,7 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
       const res = await fetch("/api/planteamientos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, tipo, input }),
+        body: JSON.stringify({ id, tipo, input, snapshotSvg: snapshotRef.current?.() ?? null }),
       });
       if (!res.ok) {
         let detalle = String(res.status);
@@ -126,10 +127,33 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
     try {
       const savedId = await doGuardar();
       if (!savedId) return;
+      // Un PDF por pedido: una página por versión (el registro más reciente de cada una).
+      const pedido = input.cabecera.numeroPedido.trim();
+      let registros: PlanteamientoRecord[] = [];
+      if (pedido) {
+        registros = await fetch(`/api/planteamientos?pedido=${encodeURIComponent(pedido)}`)
+          .then((r) => (r.ok ? r.json() : []))
+          .catch(() => []);
+      }
+      const porVersion = new Map<string, PlanteamientoRecord>();
+      for (const r of registros) {
+        const previo = porVersion.get(r.version);
+        if (!previo || r.updatedAt > previo.updatedAt) porVersion.set(r.version, r);
+      }
+      const paginas = [...porVersion.values()]
+        .sort((a, b) => a.version.localeCompare(b.version, "es", { numeric: true }));
+      const ids = paginas.length > 0 ? paginas.map((r) => r.id) : [savedId];
+      const snapshots: Record<string, string | null> = {};
+      for (const r of paginas) {
+        snapshots[r.id] = r.snapshotSvg ? await rasterizarSvg(r.snapshotSvg) : null;
+      }
+      if (!(savedId in snapshots)) {
+        snapshots[savedId] = await rasterizarSvg(snapshotRef.current?.() ?? "");
+      }
       const res = await fetch("/api/pdf", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: savedId, snapshot: await snapshotRef.current?.() ?? null }),
+        body: JSON.stringify({ ids, snapshots }),
       });
       if (!res.ok) {
         setAviso(`Error al generar PDF: ${res.status}`);
@@ -153,7 +177,10 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
       const res = await fetch("/api/excel", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: savedId, snapshot: await snapshotRef.current?.() ?? null }),
+        body: JSON.stringify({
+          id: savedId,
+          snapshot: await rasterizarSvg(snapshotRef.current?.() ?? ""),
+        }),
       });
       if (!res.ok) {
         setAviso(`Error al generar Excel: ${res.status}`);

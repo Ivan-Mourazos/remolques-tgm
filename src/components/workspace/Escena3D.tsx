@@ -22,7 +22,8 @@ export interface Escena3DProps {
   observaciones?: string;
   onObservacionesChange?: (value: string) => void;
   baqueton?: number;
-  onSnapshotReady?: (getSnapshot: (() => Promise<string | null>) | null) => void;
+  /** Entrega una función que devuelve el SVG serializado de la vista (o null). */
+  onSnapshotReady?: (getSvg: (() => string | null) | null) => void;
 }
 
 const fmt = (n: number) =>
@@ -223,27 +224,9 @@ export function Escena3D(props: Escena3DProps) {
 
   useEffect(() => {
     if (!onSnapshotReady) return;
-    onSnapshotReady(async () => {
+    onSnapshotReady(() => {
       const svg = svgRef.current;
-      if (!svg) return null;
-      const xml = new XMLSerializer().serializeToString(svg);
-      const url = URL.createObjectURL(new Blob([xml], { type: "image/svg+xml;charset=utf-8" }));
-      try {
-        const image = new Image();
-        image.src = url;
-        await image.decode();
-        const canvas = document.createElement("canvas");
-        canvas.width = 1520;
-        canvas.height = 880;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return null;
-        ctx.fillStyle = "#f8fafc";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-        return canvas.toDataURL("image/png");
-      } finally {
-        URL.revokeObjectURL(url);
-      }
+      return svg ? new XMLSerializer().serializeToString(svg) : null;
     });
     return () => onSnapshotReady(null);
   }, [onSnapshotReady]);
@@ -259,7 +242,9 @@ export function Escena3D(props: Escena3DProps) {
       {dibujo ? (
         <svg
           ref={svgRef}
-          viewBox="0 0 760 440"
+          viewBox="0 0 780 440"
+          width={780}
+          height={440}
           className="h-[calc(100%-64px)] w-full"
           role="img"
           aria-label={`Perspectiva técnica de ${props.modo === "lona" ? "lona de remolque" : "baquetón"}: largo ${fmt(props.largo)}, ancho ${fmt(props.ancho)}`}
@@ -294,8 +279,8 @@ export function Escena3D(props: Escena3DProps) {
               <feDropShadow dx="0" dy="10" stdDeviation="10" floodColor="#0f172a" floodOpacity="0.16" />
             </filter>
           </defs>
-          <rect width="760" height="440" fill="url(#lienzo)" />
-          <rect x="18" y="68" width="724" height="350" rx="18" fill="#ffffff" fillOpacity="0.64" stroke="#ffffff" />
+          <rect width="780" height="440" fill="url(#lienzo)" />
+          <rect x="18" y="68" width="744" height="350" rx="18" fill="#ffffff" fillOpacity="0.64" stroke="#ffffff" />
           {/* Techo y lateral muestran el color de lona; el frente queda abierto. */}
           <g filter="url(#sombraLona)">
             <polygon

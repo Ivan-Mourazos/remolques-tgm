@@ -25,6 +25,7 @@ export class FileStore implements PlanteamientoStore {
   async list(filtro?: ListadoFiltro): Promise<PlanteamientoRecord[]> {
     let recs = this.readAll();
     if (filtro?.tipo) recs = recs.filter((r) => r.tipo === filtro.tipo);
+    if (filtro?.pedido) recs = recs.filter((r) => r.numeroPedido === filtro.pedido);
     if (filtro?.texto) {
       const t = filtro.texto.toLowerCase();
       recs = recs.filter(

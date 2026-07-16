@@ -8,14 +8,15 @@ export function buildRecord(
   input: LonaInput | BaquetonInput,
   params: CalcParams,
   id?: string,
+  snapshotSvg?: string | null,
 ): Omit<PlanteamientoRecord, "id" | "createdAt" | "updatedAt"> & { id?: string } {
   if (tipo === "lona") {
     const result = calcLona(input as LonaInput, params);
-    return base(tipo, input, result, params, id);
+    return base(tipo, input, result, params, id, snapshotSvg);
   }
   if (tipo === "baqueton") {
     const result = calcBaqueton(input as BaquetonInput, params);
-    return base(tipo, input, result, params, id);
+    return base(tipo, input, result, params, id, snapshotSvg);
   }
   throw new Error(`Tipo de planteamiento desconocido: ${tipo}`);
 }
@@ -26,6 +27,7 @@ function base(
   result: ReturnType<typeof calcLona> | ReturnType<typeof calcBaqueton>,
   params: CalcParams,
   id?: string,
+  snapshotSvg?: string | null,
 ) {
   return {
     id, tipo,
@@ -34,6 +36,6 @@ function base(
     cliente: input.cabecera.cliente,
     input, result,
     paramsSnapshot: params,
-    pdfPath: null,
+    snapshotSvg: snapshotSvg ?? null,
   };
 }

@@ -10,7 +10,7 @@ export function rowToRecord(row: any): PlanteamientoRecord {
     numeroPedido: row.NumeroPedido, version: row.Version, cliente: row.Cliente,
     input: JSON.parse(row.InputJson), result: JSON.parse(row.ResultJson),
     paramsSnapshot: JSON.parse(row.ParamsJson),
-    pdfPath: row.PdfPath ?? null,
+    snapshotSvg: row.SnapshotSvg ?? null,
     createdAt: new Date(row.CreatedAt).toISOString(),
     updatedAt: new Date(row.UpdatedAt).toISOString(),
   };
@@ -55,10 +55,12 @@ export class MssqlStore implements PlanteamientoStore {
     const req = pool.request()
       .input("limit", sql.Int, filtro?.limit ?? 200)
       .input("tipo", sql.VarChar, filtro?.tipo ?? null)
+      .input("pedido", sql.VarChar, filtro?.pedido ?? null)
       .input("texto", sql.NVarChar, filtro?.texto ? `%${filtro.texto}%` : null);
     const res = await req.query(`
       SELECT TOP (@limit) * FROM dbo.Planteamientos
       WHERE (@tipo IS NULL OR Tipo = @tipo)
+        AND (@pedido IS NULL OR NumeroPedido = @pedido)
         AND (@texto IS NULL OR NumeroPedido LIKE @texto OR Cliente LIKE @texto)
       ORDER BY UpdatedAt DESC`);
     return res.recordset.map(rowToRecord);
@@ -84,15 +86,15 @@ export class MssqlStore implements PlanteamientoStore {
       .input("input", sql.NVarChar, JSON.stringify(rec.input))
       .input("result", sql.NVarChar, JSON.stringify(rec.result))
       .input("params", sql.NVarChar, JSON.stringify(rec.paramsSnapshot))
-      .input("pdf", sql.NVarChar, rec.pdfPath);
+      .input("snapshotSvg", sql.NVarChar, rec.snapshotSvg ?? null);
     const res = await req.query(`
       MERGE dbo.Planteamientos AS t
       USING (SELECT COALESCE(@id, NEWID()) AS Id) AS s ON t.Id = s.Id
       WHEN MATCHED THEN UPDATE SET Tipo=@tipo, NumeroPedido=@pedido, Version=@version,
         Cliente=@cliente, InputJson=@input, ResultJson=@result, ParamsJson=@params,
-        PdfPath=@pdf, UpdatedAt=SYSUTCDATETIME()
-      WHEN NOT MATCHED THEN INSERT (Id, Tipo, NumeroPedido, Version, Cliente, InputJson, ResultJson, ParamsJson, PdfPath)
-        VALUES (s.Id, @tipo, @pedido, @version, @cliente, @input, @result, @params, @pdf)
+        SnapshotSvg=@snapshotSvg, UpdatedAt=SYSUTCDATETIME()
+      WHEN NOT MATCHED THEN INSERT (Id, Tipo, NumeroPedido, Version, Cliente, InputJson, ResultJson, ParamsJson, SnapshotSvg)
+        VALUES (s.Id, @tipo, @pedido, @version, @cliente, @input, @result, @params, @snapshotSvg)
       OUTPUT inserted.*;`);
     return rowToRecord(res.recordset[0]);
   }

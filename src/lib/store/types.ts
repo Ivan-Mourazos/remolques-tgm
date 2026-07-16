@@ -13,12 +13,19 @@ export interface PlanteamientoRecord {
   input: LonaInput | BaquetonInput;
   result: LonaResult | BaquetonResult;
   paramsSnapshot: CalcParams;
-  pdfPath: string | null;
+  /** SVG serializado de la vista técnica en el momento de guardar (para PDF multi-remolque). */
+  snapshotSvg?: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface ListadoFiltro { texto?: string; tipo?: TipoPlanteamiento; limit?: number }
+export interface ListadoFiltro {
+  texto?: string;
+  tipo?: TipoPlanteamiento;
+  /** Igualdad exacta con el nº de pedido (todas las versiones de un pedido). */
+  pedido?: string;
+  limit?: number;
+}
 
 export interface PlanteamientoStore {
   list(filtro?: ListadoFiltro): Promise<PlanteamientoRecord[]>;
