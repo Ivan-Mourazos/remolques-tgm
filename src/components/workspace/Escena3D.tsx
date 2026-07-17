@@ -322,6 +322,13 @@ export function Escena3D(props: Escena3DProps) {
           <rect x="18" y="68" width="744" height="350" rx="18" fill="#ffffff" fillOpacity="0.64" stroke="#ffffff" />
           {/* Techo y lateral muestran el color de lona; el frente queda abierto. */}
           <g filter="url(#sombraLona)">
+            {/* Relleno del hueco frontal completo: cubre también las zonas
+                curvas de la coronación (tipos 03 y 05) que las superficies
+                de techo y lateral no alcanzan. */}
+            <path
+              d={`${dibujo.contornoFrente} Z`}
+              fill="url(#lateralInterior)" fillOpacity="0.6" stroke="none"
+            />
             <polygon
               points={puntosSvg(dibujo.lateralIzq)}
               fill="url(#lateralInterior)" fillOpacity="0.82" stroke="none"
