@@ -82,9 +82,10 @@ function Dato({ etiqueta, valor }: { etiqueta: string; valor: string }) {
   );
 }
 
-function Reparto({ reparto, modo }: {
+function Reparto({ reparto, modo, primerOllao }: {
   reparto: { laterales: number[]; atras: number[]; delante: number[] };
   modo: string;
+  primerOllao: number;
 }) {
   const filas: Array<[string, number[]]> = [
     ["OLLAOS LATERALES DE ATRÁS A ADELANTE", reparto.laterales],
@@ -93,7 +94,9 @@ function Reparto({ reparto, modo }: {
   ];
   return (
     <>
-      <Text style={s.tablaTitulo}>{modo}</Text>
+      <Text style={s.tablaTitulo}>
+        {modo} · PRIMER Y ÚLTIMO OLLAO A {fmt(primerOllao)} CM DEL BORDE
+      </Text>
       <View style={s.tabla}>
         <View style={s.tr}>
           <Text style={[s.th, s.thNombre]} />
@@ -218,7 +221,11 @@ function PaginaPlanteamiento({ rec, png, logoTgm }: {
           </View>
         </View>
       </View>
-      <Reparto reparto={resultado.reparto} modo={input.modoOllaos} />
+      <Reparto
+        reparto={resultado.reparto}
+        modo={input.modoOllaos}
+        primerOllao={rec.paramsSnapshot?.primerOllao ?? 2.5}
+      />
     </Page>
   );
 }

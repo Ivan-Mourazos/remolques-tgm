@@ -152,22 +152,31 @@ function EditorOllaos({
 }
 
 function Ollaos({
-  modo, reparto, onChange,
+  modo, reparto, primerOllao, onChange,
 }: {
   modo: "REPARTIDOS" | "SEGUN SE INDICA";
   reparto: RepartoOllaos;
+  primerOllao: number;
   onChange: (reparto: RepartoOllaos) => void;
 }) {
-  return modo === "SEGUN SE INDICA"
-    ? <EditorOllaos reparto={reparto} onChange={onChange} />
-    : <TablaReparto reparto={reparto} />;
+  return (
+    <div className="flex flex-col gap-1">
+      {modo === "SEGUN SE INDICA"
+        ? <EditorOllaos reparto={reparto} onChange={onChange} />
+        : <TablaReparto reparto={reparto} />}
+      <p className="text-[10px] font-semibold text-muted">
+        Primer y último ollao a {fmt(primerOllao)} cm del borde.
+      </p>
+    </div>
+  );
 }
 
 export function ResultadosLona({
-  res, modoOllaos, onOllaosChange,
+  res, modoOllaos, primerOllao, onOllaosChange,
 }: {
   res: LonaResult;
   modoOllaos: "REPARTIDOS" | "SEGUN SE INDICA";
+  primerOllao: number;
   onOllaosChange: (reparto: RepartoOllaos) => void;
 }) {
   return (
@@ -181,7 +190,7 @@ export function ResultadosLona({
         <Dato label="Recoge delante" valor={res.recogeDelanteTexto} />
         <Dato label="Recoge atrás" valor={res.recogeAtrasTexto} />
       </Resumen>
-      <Ollaos modo={modoOllaos} reparto={res.reparto} onChange={onOllaosChange} />
+      <Ollaos modo={modoOllaos} reparto={res.reparto} primerOllao={primerOllao} onChange={onOllaosChange} />
       {res.notas.length > 0 && (
         <ul className="list-inside list-disc text-[11px] font-semibold text-gold-2">
           {res.notas.map((n) => <li key={n}>{n}</li>)}
@@ -192,10 +201,11 @@ export function ResultadosLona({
 }
 
 export function ResultadosBaqueton({
-  res, modoOllaos, onOllaosChange,
+  res, modoOllaos, primerOllao, onOllaosChange,
 }: {
   res: BaquetonResult;
   modoOllaos: "REPARTIDOS" | "SEGUN SE INDICA";
+  primerOllao: number;
   onOllaosChange: (reparto: RepartoOllaos) => void;
 }) {
   return (
@@ -208,7 +218,7 @@ export function ResultadosBaqueton({
         <Dato label="Baquetón" valor={res.baquetonTrasero ? `Trasero ${fmt(res.baquetonTrasero)}` : "EN LÍNEA"} />
         <Dato label="Superficie" valor={`${fmt(res.superficieM2)} m²/ud`} />
       </Resumen>
-      <Ollaos modo={modoOllaos} reparto={res.reparto} onChange={onOllaosChange} />
+      <Ollaos modo={modoOllaos} reparto={res.reparto} primerOllao={primerOllao} onChange={onOllaosChange} />
       {res.notas.length > 0 && (
         <ul className="list-inside list-disc text-[11px] font-semibold text-gold-2">
           {res.notas.map((n) => <li key={n}>{n}</li>)}
