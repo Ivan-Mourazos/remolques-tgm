@@ -2,7 +2,8 @@ import type { LonaInput } from "@/lib/calc/lona";
 import type { BaquetonInput } from "@/lib/calc/baqueton";
 import { DEFAULT_PARAMS } from "@/lib/calc/params";
 
-// La versión empieza en "10" (nº de remolque dentro del pedido: 10, 11, 12…).
+// La versión "10" es fija: solo marca el archivo como planteamiento en el
+// nombre del Excel (PEDIDO-10.xlsx); no se muestra ni se edita en la app.
 const cabecera = () => ({
   numeroPedido: "", version: "10", cliente: "", revision: "", realizadoPor: "",
   ordenFabricacion: "", fecha: new Date().toISOString().slice(0, 10), fechaSalida: "",

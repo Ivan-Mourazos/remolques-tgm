@@ -149,7 +149,13 @@ export function CampoMaterial(props: {
 
 export function CampoCheck(props: { label: string; value: boolean; onChange: (v: boolean) => void }) {
   return (
-    <label className="flex min-h-8 items-center gap-2 rounded-lg px-2 py-0.5 text-[13px] font-bold text-ink-2 transition-colors hover:bg-surface-3">
+    <label
+      className={`flex min-h-8 w-full cursor-pointer select-none items-center gap-2 self-end rounded-lg border px-2.5 py-1 text-[12px] font-bold transition-colors ${
+        props.value
+          ? "border-gold/60 bg-gold/10 text-ink"
+          : "border-line bg-surface text-ink-2 hover:border-line-2"
+      }`}
+    >
       <input className="h-4 w-4 accent-gold" type="checkbox" checked={props.value} onChange={(e) => props.onChange(e.target.checked)} />
       {props.label}
     </label>

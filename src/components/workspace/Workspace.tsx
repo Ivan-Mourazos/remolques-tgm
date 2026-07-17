@@ -145,20 +145,15 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
       }
       const savedId = await doGuardar();
       if (!savedId) return;
-      // Un PDF por pedido: una página por versión (el registro más reciente de cada una).
+      // Un PDF por pedido: una página por cada remolque guardado, en orden de creación.
       let registros: PlanteamientoRecord[] = [];
       if (pedido) {
         registros = await fetch(`/api/planteamientos?pedido=${encodeURIComponent(pedido)}`)
           .then((r) => (r.ok ? r.json() : []))
           .catch(() => []);
       }
-      const porVersion = new Map<string, PlanteamientoRecord>();
-      for (const r of registros) {
-        const previo = porVersion.get(r.version);
-        if (!previo || r.updatedAt > previo.updatedAt) porVersion.set(r.version, r);
-      }
-      const paginas = [...porVersion.values()]
-        .sort((a, b) => a.version.localeCompare(b.version, "es", { numeric: true }));
+      const paginas = [...registros]
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
       const ids = paginas.length > 0 ? paginas.map((r) => r.id) : [savedId];
       const snapshots: Record<string, string | null> = {};
       for (const r of paginas) {
