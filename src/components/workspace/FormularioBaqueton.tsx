@@ -46,9 +46,6 @@ export function FormularioBaqueton({
             </>
           )}
           <CampoCheck label="Rotulación" value={input.rotulacion} onChange={(v) => set("rotulacion", v)} />
-          {input.rotulacion && (
-            <CampoTexto label="Texto rotulación" span={3} value={input.textoRotulacion} onChange={(v) => set("textoRotulacion", v)} />
-          )}
         </PasoFormulario>
       </div>
     </div>

@@ -33,7 +33,8 @@ export interface LonaInput {
   tipoPerfil: TipoPerfil;
   recogeDelante: string; recogeAtras: string;
   bastillaEnfundar: boolean; ventana: boolean;
-  rotulacion: boolean; textoRotulacion: string;
+  /** Solo se indica si va rotulado; el contenido no forma parte del planteamiento. */
+  rotulacion: boolean;
   modoOllaos: "REPARTIDOS" | "SEGUN SE INDICA";
   pasoOllaos: number;
   /** Distancia del primer y último ollao al borde; por defecto la de los parámetros. */
@@ -128,9 +129,7 @@ export function calcLona(input: LonaInput, params: CalcParams): LonaResult {
   }
   if (input.bastillaEnfundar) notas.push("Bastilla de enfundar: paño contorno con demasía 13.");
   if (input.ventana) notas.push("Ventana indicada: verificar en taller.");
-  if (input.rotulacion) {
-    notas.push(input.textoRotulacion ? `Rotulación: ${input.textoRotulacion}.` : "Incluye rotulación.");
-  }
+  if (input.rotulacion) notas.push("Incluye rotulación.");
 
   return {
     lonaHecha, contornoIntroducido, ajusteContorno: ajuste, contornoAjustado,

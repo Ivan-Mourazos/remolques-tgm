@@ -10,7 +10,7 @@ describe("buildRecord", () => {
       cantidad: 1, largo: 250, ancho: 151, altoDelante: 62, altoAtras: 62,
       contorno: 275, tipoPerfil: "TIPO 02",
       recogeDelante: "NO", recogeAtras: "CREMALLERA",
-      bastillaEnfundar: false, ventana: false, rotulacion: false, textoRotulacion: "",
+      bastillaEnfundar: false, ventana: false, rotulacion: false,
       modoOllaos: "REPARTIDOS", pasoOllaos: 35,
       ollaosManuales: { laterales: [], atras: [], delante: [] },
       material: "", observaciones: "",

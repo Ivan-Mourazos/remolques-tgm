@@ -13,7 +13,7 @@ const base: LonaInput = {
   tipoPerfil: "TIPO 02",
   recogeDelante: "NO", recogeAtras: "CREMALLERA",
   bastillaEnfundar: false, ventana: false,
-  rotulacion: true, textoRotulacion: "YAGUE",
+  rotulacion: true,
   modoOllaos: "REPARTIDOS", pasoOllaos: 35,
   ollaosManuales: { laterales: [], atras: [], delante: [] },
   material: "LONA NS86 2L 630GR [580]: GRIS 7038 (COR/900): 250AN",

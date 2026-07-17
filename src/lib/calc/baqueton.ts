@@ -12,7 +12,8 @@ export interface BaquetonInput {
   /** Distancia del primer y último ollao al borde; por defecto la de los parámetros. */
   primerOllao?: number;
   ollaosManuales: { laterales: number[]; atras: number[]; delante: number[] };
-  rotulacion: boolean; textoRotulacion: string;
+  /** Solo se indica si va rotulado; el contenido no forma parte del planteamiento. */
+  rotulacion: boolean;
   material: string; observaciones: string;
 }
 
@@ -55,9 +56,7 @@ export function calcBaqueton(input: BaquetonInput, params: CalcParams): Baqueton
         };
 
   const notas: string[] = [...cli.observaciones];
-  if (input.rotulacion) {
-    notas.push(input.textoRotulacion ? `Rotulación: ${input.textoRotulacion}.` : "Incluye rotulación.");
-  }
+  if (input.rotulacion) notas.push("Incluye rotulación.");
 
   return {
     panoUnico, remolqueHecho, baquetonCostura,

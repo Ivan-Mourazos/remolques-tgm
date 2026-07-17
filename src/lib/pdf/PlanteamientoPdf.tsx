@@ -146,7 +146,7 @@ function DatosLona({ rec }: { rec: PlanteamientoRecord }) {
       <Dato etiqueta="RECOGE ATRÁS" valor={r.recogeAtrasTexto} />
       <Dato etiqueta="VENTANA" valor={i.ventana ? "SÍ" : "NO"} />
       <View style={s.separacion} />
-      <Dato etiqueta="ROTULACIÓN:" valor={i.rotulacion ? i.textoRotulacion || "SÍ" : "NO"} />
+      <Dato etiqueta="ROTULACIÓN:" valor={i.rotulacion ? "SÍ" : "NO"} />
       <View style={s.separacion} />
       <Dato etiqueta="OLLAOS:" valor={i.modoOllaos} />
       <Dato etiqueta="MATERIAL" valor={i.material} />
@@ -168,7 +168,7 @@ function DatosBaqueton({ rec }: { rec: PlanteamientoRecord }) {
       <Dato etiqueta="BAQUETÓN" valor={`${fmt(i.baqueton)}${r.baquetonTrasero ? ` / TRASERO ${fmt(r.baquetonTrasero)}` : " EN LÍNEA"}`} />
       <Dato etiqueta="CLIENTE ESPECÍFICO" valor={i.clienteEspecifico} />
       <View style={s.separacion} />
-      <Dato etiqueta="ROTULACIÓN:" valor={i.rotulacion ? i.textoRotulacion || "SÍ" : "NO"} />
+      <Dato etiqueta="ROTULACIÓN:" valor={i.rotulacion ? "SÍ" : "NO"} />
       <View style={s.separacion} />
       <Dato etiqueta="OLLAOS:" valor={i.modoOllaos} />
       <Dato etiqueta="MATERIAL" valor={i.material} />
