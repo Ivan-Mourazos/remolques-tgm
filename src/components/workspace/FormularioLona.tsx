@@ -112,9 +112,6 @@ export function FormularioLona({
           <div className="col-span-4 flex flex-wrap gap-x-4 gap-y-1 rounded-lg bg-surface-3 px-1.5">
             <CampoCheck label="Rotulación" value={input.rotulacion} onChange={(v) => set("rotulacion", v)} />
           </div>
-          {input.rotulacion && (
-            <CampoTexto label="Texto rotulación" span={3} value={input.textoRotulacion} onChange={(v) => set("textoRotulacion", v)} />
-          )}
         </PasoFormulario>
       </div>
     </div>

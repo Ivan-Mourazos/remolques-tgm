@@ -135,7 +135,7 @@ function datosLona(ws: Worksheet, rec: PlanteamientoRecord, material?: Material)
   campoPar(ws, 12, ["Ollaos", i.modoOllaos], ["Paso objetivo", num(i.pasoOllaos)]);
   campoAncho(ws, 13, "Material", i.material || "-");
   campoPar(ws, 14, ["Bobina almacén", material?.codigoBobina ?? "MANUAL"], ["Stock Arzúa", material?.stockArzua ?? "-"]);
-  campoAncho(ws, 15, "Rotulación", i.rotulacion ? i.textoRotulacion || "SÍ" : "NO");
+  campoAncho(ws, 15, "Rotulación", siNo(i.rotulacion));
   seccion(ws, 16, "RESULTADO DE PRODUCCIÓN");
   campoPar(ws, 17, ["Lona hecha", `${num(r.lonaHecha.largo)} × ${num(r.lonaHecha.ancho)}`], ["Contorno de corte", num(r.contornoAjustado)]);
   campoAncho(ws, 18, "Paño delantero", `${i.cantidad} PAÑO DE ${num(r.panoDelantero.ancho)} × ${num(r.panoDelantero.alto)}`);
@@ -161,7 +161,7 @@ function datosBaqueton(ws: Worksheet, rec: PlanteamientoRecord, material?: Mater
   campoPar(ws, 7, ["Ancho pedido", num(i.ancho)], ["Baquetón", num(i.baqueton)]);
   campoPar(ws, 8, ["Cliente específico", i.clienteEspecifico || "-"], ["Ollaos", i.modoOllaos]);
   campoPar(ws, 9, ["Paso objetivo", num(i.pasoOllaos)], ["Rotulación", i.rotulacion ? "SÍ" : "NO"]);
-  campoAncho(ws, 10, "Texto rotulación", i.textoRotulacion || "-");
+  campoAncho(ws, 10, "", "");
   campoAncho(ws, 11, "Material", i.material || "-");
   campoPar(ws, 12, ["Bobina almacén", material?.codigoBobina ?? "MANUAL"], ["Stock Arzúa", material?.stockArzua ?? "-"]);
   campoAncho(ws, 13, "Observaciones", i.observaciones || "-");
