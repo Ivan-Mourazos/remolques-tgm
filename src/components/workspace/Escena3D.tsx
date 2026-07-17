@@ -164,7 +164,12 @@ export function Escena3D(props: Escena3DProps) {
       && ["TIPO 02", "TIPO 03"].includes(props.tipoPerfil)
       && picoTechoFrente > 0
       && picoTechoFrente < techoFrente.length - 1;
-    const usaCurvas = perfil === "TIPO 03" || perfil === "TIPO 05";
+    // El spline solo suaviza la curva estética del TIPO 03 sin radio conocido.
+    // TIPO 05 y TIPO 03 con radio ya traen el arco discretizado en puntos
+    // densos: dibujarlos lineales es exacto y evita que el suavizado rebase
+    // el contorno en las uniones curva-recta.
+    const usaCurvas = perfil === "TIPO 03"
+      && !((props.radioCumbrera ?? 0) > 0 && (props.aguas ?? 0) > 0);
     const cubiertaCompleta = superficieCubierta(techoFrente, techoFondo, usaCurvas);
     const cubiertaIzquierda = tieneCumbrera
       ? superficieCubierta(
@@ -210,12 +215,12 @@ export function Escena3D(props: Escena3DProps) {
       medida > 0
         ? posiciones.filter((p) => p >= 0 && p <= medida).map((p) => interpola(desde, hasta, p / medida))
         : [];
+    // Solo en aristas visibles: el borde trasero queda oculto tras el faldón
+    // y sus ollaos parecerían manchas sobre la lona.
     const marcasOllaos = props.ollaos
       ? [
           // delante: borde inferior frontal, de izquierda a derecha
           ...enTramo(props.ollaos.delante, props.ancho, frente[0], frente.at(-1)!),
-          // atrás: borde inferior trasero, de izquierda a derecha
-          ...enTramo(props.ollaos.atras, props.ancho, fondo[0], fondo.at(-1)!),
           // laterales: borde inferior derecho, de atrás a adelante
           ...enTramo(props.ollaos.laterales, props.largo, fondo.at(-1)!, frente.at(-1)!),
         ]
