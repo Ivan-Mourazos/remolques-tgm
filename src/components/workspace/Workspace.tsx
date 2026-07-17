@@ -232,7 +232,7 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
         {tipo === "lona" ? (
           <Escena3D modo="lona" largo={lona.largo} ancho={lona.ancho}
             altoDelante={lona.altoDelante} altoAtras={lona.altoAtras}
-            aguas={lona.aguas}
+            aguas={lona.aguas} radioEsquina={lona.radioEsquina} chaflan={lona.chaflan}
             tipoPerfil={lona.tipoPerfil} ventana={lona.ventana} material={lona.material}
             observaciones={lona.observaciones}
             onObservacionesChange={(observaciones) => setLona((actual) => ({ ...actual, observaciones }))}
