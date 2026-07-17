@@ -6,6 +6,8 @@ import { DEFAULT_PARAMS, type CalcParams } from "@/lib/calc/params";
 import type { Material } from "@/lib/calc/materiales-seed";
 import type { PlanteamientoRecord, TipoPlanteamiento } from "@/lib/store/types";
 import { rasterizarSvg } from "@/lib/svg/rasterizar";
+import { nombrePdf } from "@/lib/pdf/ruta-pdf";
+import { nombreExcel } from "@/lib/excel/nombre-excel";
 import { emptyLona, emptyBaqueton } from "@/components/workspace/entradas-vacias";
 import { FormularioLona } from "@/components/workspace/FormularioLona";
 import { FormularioBaqueton } from "@/components/workspace/FormularioBaqueton";
@@ -84,33 +86,42 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
     }
   }
 
-  // «Guardar como» (File System Access API) con descarga de respaldo.
-  async function guardarComo(
-    blob: Blob, nombre: string, descripcion: string, mime: string, ext: string,
-  ): Promise<void> {
+  // «Guardar como»: la ubicación se pide ANTES de generar el fichero, porque
+  // el permiso del gesto de usuario caduca en unos segundos y la generación
+  // tarda más — pedirlo después hacía que el navegador descargara sin preguntar.
+  type Destino =
+    | { tipo: "cancelado" }
+    | { tipo: "descarga" }
+    | { tipo: "picker"; handle: { createWritable(): Promise<{ write(b: Blob): Promise<void>; close(): Promise<void> }> } };
+
+  async function elegirDestino(
+    nombre: string, descripcion: string, mime: string, ext: string,
+  ): Promise<Destino> {
     type SaveFilePicker = (opts: {
       suggestedName?: string;
       types?: Array<{ description: string; accept: Record<string, string[]> }>;
     }) => Promise<{ createWritable(): Promise<{ write(b: Blob): Promise<void>; close(): Promise<void> }> }>;
     const picker = (window as { showSaveFilePicker?: SaveFilePicker }).showSaveFilePicker;
-    if (picker) {
-      try {
-        const handle = await picker({
-          suggestedName: nombre,
-          types: [{ description: descripcion, accept: { [mime]: [ext] } }],
-        });
-        const writable = await handle.createWritable();
-        await writable.write(blob);
-        await writable.close();
-        setAviso(`${descripcion} guardado como ${nombre}.`);
-        return;
-      } catch (e) {
-        if ((e as DOMException).name === "AbortError") {
-          setAviso("Guardado cancelado.");
-          return;
-        }
-        // si el picker falla por otra causa, caemos a descarga normal
-      }
+    if (!picker) return { tipo: "descarga" };
+    try {
+      const handle = await picker({
+        suggestedName: nombre,
+        types: [{ description: descripcion, accept: { [mime]: [ext] } }],
+      });
+      return { tipo: "picker", handle };
+    } catch (e) {
+      if ((e as DOMException).name === "AbortError") return { tipo: "cancelado" };
+      return { tipo: "descarga" };
+    }
+  }
+
+  async function escribirEnDestino(destino: Destino, blob: Blob, nombre: string, descripcion: string) {
+    if (destino.tipo === "picker") {
+      const writable = await destino.handle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      setAviso(`${descripcion} guardado como ${nombre}.`);
+      return;
     }
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -125,10 +136,16 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
     if (busy) return;
     setAccion("pdf");
     try {
+      const pedido = input.cabecera.numeroPedido.trim();
+      const nombre = nombrePdf(pedido);
+      const destino = await elegirDestino(nombre, "PDF", "application/pdf", ".pdf");
+      if (destino.tipo === "cancelado") {
+        setAviso("Guardado cancelado.");
+        return;
+      }
       const savedId = await doGuardar();
       if (!savedId) return;
       // Un PDF por pedido: una página por versión (el registro más reciente de cada una).
-      const pedido = input.cabecera.numeroPedido.trim();
       let registros: PlanteamientoRecord[] = [];
       if (pedido) {
         registros = await fetch(`/api/planteamientos?pedido=${encodeURIComponent(pedido)}`)
@@ -159,8 +176,7 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
         setAviso(`Error al generar PDF: ${res.status}`);
         return;
       }
-      const nombre = res.headers.get("X-Nombre-Pdf") ?? "planteamiento.pdf";
-      await guardarComo(await res.blob(), nombre, "PDF", "application/pdf", ".pdf");
+      await escribirEnDestino(destino, await res.blob(), nombre, "PDF");
     } catch {
       setAviso("Error de red al generar PDF");
     } finally {
@@ -172,6 +188,15 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
     if (busy) return;
     setAccion("excel");
     try {
+      const nombre = nombreExcel(input.cabecera.numeroPedido.trim(), input.cabecera.version);
+      const destino = await elegirDestino(
+        nombre, "Excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", ".xlsx",
+      );
+      if (destino.tipo === "cancelado") {
+        setAviso("Guardado cancelado.");
+        return;
+      }
       const savedId = await doGuardar();
       if (!savedId) return;
       const res = await fetch("/api/excel", {
@@ -186,11 +211,7 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
         setAviso(`Error al generar Excel: ${res.status}`);
         return;
       }
-      const nombre = res.headers.get("X-Nombre-Excel") ?? "planteamiento.xlsx";
-      await guardarComo(
-        await res.blob(), nombre, "Excel",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", ".xlsx",
-      );
+      await escribirEnDestino(destino, await res.blob(), nombre, "Excel");
     } catch {
       setAviso("Error de red al generar Excel");
     } finally {
@@ -234,6 +255,7 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
             altoDelante={lona.altoDelante} altoAtras={lona.altoAtras}
             aguas={lona.aguas} radioCumbrera={lona.radioCumbrera}
             radioEsquina={lona.radioEsquina} chaflan={lona.chaflan}
+            ollaos={resLona.reparto}
             tipoPerfil={lona.tipoPerfil} ventana={lona.ventana} material={lona.material}
             observaciones={lona.observaciones}
             onObservacionesChange={(observaciones) => setLona((actual) => ({ ...actual, observaciones }))}
@@ -242,6 +264,7 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
           <Escena3D modo="baqueton" largo={baq.largo} ancho={baq.ancho}
             altoDelante={0} altoAtras={0} tipoPerfil="TIPO 01"
             baqueton={baq.baqueton} material={baq.material}
+            ollaos={resBaq.reparto}
             observaciones={baq.observaciones}
             onObservacionesChange={(observaciones) => setBaq((actual) => ({ ...actual, observaciones }))}
             onSnapshotReady={(fn) => { snapshotRef.current = fn; }} />
@@ -250,13 +273,13 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
           ? <ResultadosLona
               res={resLona}
               modoOllaos={lona.modoOllaos}
-              primerOllao={params.primerOllao}
+              primerOllao={lona.primerOllao ?? params.primerOllao}
               onOllaosChange={(ollaosManuales) => setLona((actual) => ({ ...actual, ollaosManuales }))}
             />
           : <ResultadosBaqueton
               res={resBaq}
               modoOllaos={baq.modoOllaos}
-              primerOllao={params.primerOllao}
+              primerOllao={baq.primerOllao ?? params.primerOllao}
               onOllaosChange={(ollaosManuales) => setBaq((actual) => ({ ...actual, ollaosManuales }))}
             />}
       </div>

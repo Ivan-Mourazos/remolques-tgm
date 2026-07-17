@@ -9,6 +9,8 @@ export interface BaquetonInput {
   clienteEspecifico: string;
   modoOllaos: "REPARTIDOS" | "SEGUN SE INDICA";
   pasoOllaos: number;
+  /** Distancia del primer y último ollao al borde; por defecto la de los parámetros. */
+  primerOllao?: number;
   ollaosManuales: { laterales: number[]; atras: number[]; delante: number[] };
   rotulacion: boolean; textoRotulacion: string;
   material: string; observaciones: string;
@@ -42,7 +44,7 @@ export function calcBaqueton(input: BaquetonInput, params: CalcParams): Baqueton
     ancho: r1(input.ancho + params.baquetonDemasiaFinal + cli.extraAnchoFinal),
   };
 
-  const ollaos = calcOllaos(remolqueHecho.largo, remolqueHecho.ancho, input.pasoOllaos, params);
+  const ollaos = calcOllaos(remolqueHecho.largo, remolqueHecho.ancho, input.pasoOllaos, params, input.primerOllao);
   const reparto =
     input.modoOllaos === "SEGUN SE INDICA"
       ? input.ollaosManuales

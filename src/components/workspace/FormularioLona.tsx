@@ -96,14 +96,20 @@ export function FormularioLona({
             ) : null}
           </div>
         </PasoFormulario>
-        <PasoFormulario numero={4} titulo="Ajustes finales" ultimo>
+        <PasoFormulario numero={4} titulo="Ajustes finales" columnas={4} ultimo>
           <CampoSelect label="Ollaos" value={input.modoOllaos} opciones={["REPARTIDOS", "SEGUN SE INDICA"]}
             onChange={(v) => set("modoOllaos", v as LonaInput["modoOllaos"])} />
-          <CampoNum label="Paso" value={input.pasoOllaos} onChange={(v) => set("pasoOllaos", v)} />
+          {input.modoOllaos === "REPARTIDOS" && (
+            <>
+              <CampoNum label="Paso" value={input.pasoOllaos} onChange={(v) => set("pasoOllaos", v)} />
+              <CampoNum label="Primer ollao" value={input.primerOllao ?? DEFAULT_PARAMS.primerOllao}
+                onChange={(v) => set("primerOllao", v)} />
+            </>
+          )}
           <div className="flex items-end">
             <CampoCheck label="Ventana" value={input.ventana} onChange={(v) => set("ventana", v)} />
           </div>
-          <div className="col-span-3 flex flex-wrap gap-x-4 gap-y-1 rounded-lg bg-surface-3 px-1.5">
+          <div className="col-span-4 flex flex-wrap gap-x-4 gap-y-1 rounded-lg bg-surface-3 px-1.5">
             <CampoCheck label="Rotulación" value={input.rotulacion} onChange={(v) => set("rotulacion", v)} />
           </div>
           {input.rotulacion && (
