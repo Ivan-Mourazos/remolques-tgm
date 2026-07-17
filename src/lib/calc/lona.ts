@@ -2,8 +2,9 @@ import { excelRound } from "@/lib/calc/redondeo";
 import { ajusteContorno, findRecogida, type CalcParams, type TipoPerfil } from "@/lib/calc/params";
 import { calcOllaos, type OllaosResult } from "@/lib/calc/ollaos";
 
-// P1 del spec: el Excel (G11 y RPS D7) usa la columna DELANTE también para el
-// paño trasero. Cambiar a true si oficina técnica confirma que era un descuido.
+// El paño trasero usa la columna DELANTE de la recogida, igual que el Excel
+// (G11 y RPS D7). Confirmado por Iván el 2026-07-17: es el comportamiento
+// deseado. El interruptor queda por si algún día cambia la regla.
 export const USAR_COLUMNA_ATRAS = false;
 
 export interface CabeceraInput {
