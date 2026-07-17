@@ -250,11 +250,13 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
           ? <ResultadosLona
               res={resLona}
               modoOllaos={lona.modoOllaos}
+              primerOllao={params.primerOllao}
               onOllaosChange={(ollaosManuales) => setLona((actual) => ({ ...actual, ollaosManuales }))}
             />
           : <ResultadosBaqueton
               res={resBaq}
               modoOllaos={baq.modoOllaos}
+              primerOllao={params.primerOllao}
               onOllaosChange={(ollaosManuales) => setBaq((actual) => ({ ...actual, ollaosManuales }))}
             />}
       </div>

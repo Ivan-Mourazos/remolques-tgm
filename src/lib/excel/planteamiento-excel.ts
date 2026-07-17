@@ -202,7 +202,11 @@ function plano(ws: Worksheet, wb: Workbook, snapshotPng: string | null, material
   ws.addImage(imageId, "G6:R24");
 }
 
-function tablaOllaos(ws: Worksheet, reparto: { laterales: number[]; atras: number[]; delante: number[] }) {
+function tablaOllaos(
+  ws: Worksheet,
+  reparto: { laterales: number[]; atras: number[]; delante: number[] },
+  primerOllao: number,
+) {
   const filas: Array<[string, number[]]> = [
     ["OLLAOS LATERALES DE ATRÁS A ADELANTE", reparto.laterales],
     ["OLLAOS ATRÁS DE IZQUIERDA A DERECHA", reparto.atras],
@@ -230,6 +234,12 @@ function tablaOllaos(ws: Worksheet, reparto: { laterales: number[]; atras: numbe
     valor(ws.getCell(`R${row}`), posiciones.length, true);
     ws.getCell(`R${row}`).alignment = { horizontal: "center", vertical: "middle" };
   });
+
+  ws.mergeCells("A30:R30");
+  const nota = ws.getCell("A30");
+  nota.value = `PRIMER Y ÚLTIMO OLLAO A ${String(primerOllao).replace(".", ",")} CM DEL BORDE`;
+  nota.font = { name: "Arial", size: 7, italic: true, bold: true, color: { argb: C.grisTexto } };
+  nota.alignment = { vertical: "middle" };
 }
 
 function prepararHoja(ws: Worksheet) {
@@ -237,7 +247,7 @@ function prepararHoja(ws: Worksheet) {
   ws.pageSetup = {
     paperSize: 9, orientation: "landscape", fitToPage: true,
     fitToWidth: 1, fitToHeight: 1, horizontalCentered: true,
-    printArea: "A1:R29", showGridLines: false,
+    printArea: "A1:R30", showGridLines: false,
     margins: { left: 0.2, right: 0.2, top: 0.25, bottom: 0.25, header: 0, footer: 0 },
   };
   ws.properties.defaultRowHeight = 16;
@@ -251,6 +261,7 @@ function prepararHoja(ws: Worksheet) {
   for (let row = 6; row <= 24; row += 1) ws.getRow(row).height = 18;
   ws.getRow(25).height = 8;
   for (let row = 26; row <= 29; row += 1) ws.getRow(row).height = 18;
+  ws.getRow(30).height = 14;
 }
 
 /** Libro final de producción: datos a la izquierda y planteamiento técnico a la derecha. */
@@ -271,7 +282,11 @@ export async function buildPlanteamientoWorkbook(
   if (rec.tipo === "lona") datosLona(ws, rec, material);
   else datosBaqueton(ws, rec, material);
   plano(ws, wb, snapshotPng, rec.input.material);
-  tablaOllaos(ws, (rec.result as LonaResult | BaquetonResult).reparto);
+  tablaOllaos(
+    ws,
+    (rec.result as LonaResult | BaquetonResult).reparto,
+    rec.paramsSnapshot?.primerOllao ?? 2.5,
+  );
   const bytes = await wb.xlsx.writeBuffer();
   return Buffer.from(bytes);
 }
