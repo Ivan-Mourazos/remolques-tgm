@@ -16,6 +16,10 @@ export interface Escena3DProps {
   altoDelante: number;
   altoAtras: number;
   aguas?: number;
+  /** Radio real de esquina (TIPO 05); si falta se usa uno estético. */
+  radioEsquina?: number;
+  /** Chaflán real de esquina (TIPO 04); si falta se usa uno estético. */
+  chaflan?: number;
   tipoPerfil: TipoPerfil;
   ventana?: boolean;
   material?: string;
@@ -117,8 +121,8 @@ export function Escena3D(props: Escena3DProps) {
       ancho: props.ancho,
       altoDelante: alto,
       alturaPico: props.aguas ?? 0,
-      chaflan: Math.min(18, props.ancho * 0.1, alto * 0.25),
-      radio: Math.min(18, props.ancho * 0.1, alto * 0.25),
+      chaflan: (props.chaflan ?? 0) > 0 ? props.chaflan : Math.min(18, props.ancho * 0.1, alto * 0.25),
+      radio: (props.radioEsquina ?? 0) > 0 ? props.radioEsquina : Math.min(18, props.ancho * 0.1, alto * 0.25),
     });
     const forma = perfilForma(perfil, opts(altoDelante));
     const delantero = forma.puntos;
@@ -223,7 +227,7 @@ export function Escena3D(props: Escena3DProps) {
     };
   }, [
     valido, props.modo, props.tipoPerfil, props.ancho, props.largo,
-    props.aguas, props.ventana, altoDelante, altoAtras,
+    props.aguas, props.radioEsquina, props.chaflan, props.ventana, altoDelante, altoAtras,
   ]);
 
   useEffect(() => {

@@ -19,6 +19,10 @@ export interface LonaInput {
   altoDelante: number; altoAtras: number;
   /** Caída desde la cumbrera hasta los hombros del perfil. */
   aguas?: number;
+  /** Radio real de las esquinas superiores (TIPO 05); necesario para calcular el contorno. */
+  radioEsquina?: number;
+  /** Chaflán real de las esquinas superiores (TIPO 04); necesario para calcular el contorno. */
+  chaflan?: number;
   /** Contorno real del remolque, antes de añadir las bastillas y la demasía de curva. */
   contorno?: number;
   /** Campo histórico: contenía directamente la medida final de corte. */
