@@ -19,6 +19,8 @@ export interface LonaInput {
   altoDelante: number; altoAtras: number;
   /** Caída desde la cumbrera hasta los hombros del perfil. */
   aguas?: number;
+  /** Radio real del arco de cumbrera (TIPO 03); necesario para calcular el contorno. */
+  radioCumbrera?: number;
   /** Radio real de las esquinas superiores (TIPO 05); necesario para calcular el contorno. */
   radioEsquina?: number;
   /** Chaflán real de las esquinas superiores (TIPO 04); necesario para calcular el contorno. */

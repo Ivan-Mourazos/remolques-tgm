@@ -16,6 +16,8 @@ export interface Escena3DProps {
   altoDelante: number;
   altoAtras: number;
   aguas?: number;
+  /** Radio real del arco de cumbrera (TIPO 03); si falta se usa la curva estética. */
+  radioCumbrera?: number;
   /** Radio real de esquina (TIPO 05); si falta se usa uno estético. */
   radioEsquina?: number;
   /** Chaflán real de esquina (TIPO 04); si falta se usa uno estético. */
@@ -121,6 +123,7 @@ export function Escena3D(props: Escena3DProps) {
       ancho: props.ancho,
       altoDelante: alto,
       alturaPico: props.aguas ?? 0,
+      radioCumbrera: props.radioCumbrera ?? 0,
       chaflan: (props.chaflan ?? 0) > 0 ? props.chaflan : Math.min(18, props.ancho * 0.1, alto * 0.25),
       radio: (props.radioEsquina ?? 0) > 0 ? props.radioEsquina : Math.min(18, props.ancho * 0.1, alto * 0.25),
     });
@@ -227,7 +230,8 @@ export function Escena3D(props: Escena3DProps) {
     };
   }, [
     valido, props.modo, props.tipoPerfil, props.ancho, props.largo,
-    props.aguas, props.radioEsquina, props.chaflan, props.ventana, altoDelante, altoAtras,
+    props.aguas, props.radioCumbrera, props.radioEsquina, props.chaflan,
+    props.ventana, altoDelante, altoAtras,
   ]);
 
   useEffect(() => {
