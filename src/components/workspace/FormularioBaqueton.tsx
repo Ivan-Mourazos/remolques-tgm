@@ -16,12 +16,11 @@ export function FormularioBaqueton({
 
   return (
     <div className="flex flex-col gap-2.5">
-      <Grupo titulo="Pedido" columnas={4} compacto>
+      <Grupo titulo="Pedido" columnas={3} compacto>
         <CampoTexto label="Nº pedido" value={input.cabecera.numeroPedido} onChange={(v) => setCab("numeroPedido", v)} />
-        <CampoTexto label="Versión" value={input.cabecera.version} onChange={(v) => setCab("version", v)} />
         <CampoTexto label="O.F." value={input.cabecera.ordenFabricacion ?? ""} onChange={(v) => setCab("ordenFabricacion", v)} />
         <CampoTexto label="Realizado por" value={input.cabecera.realizadoPor} onChange={(v) => setCab("realizadoPor", v)} />
-        <CampoTexto label="Cliente" span={3} value={input.cabecera.cliente} onChange={(v) => setCab("cliente", v)} />
+        <CampoTexto label="Cliente" span={2} value={input.cabecera.cliente} onChange={(v) => setCab("cliente", v)} />
         <CampoTexto label="Revisión" value={input.cabecera.revision} onChange={(v) => setCab("revision", v)} />
       </Grupo>
       <div className="space-y-2 rounded-2xl border border-line bg-surface/95 p-2.5 shadow-[0_12px_32px_rgb(14_45_49/0.055)] backdrop-blur-sm">
@@ -31,12 +30,12 @@ export function FormularioBaqueton({
           <CampoNum label="Ancho" value={input.ancho} onChange={(v) => set("ancho", v)} />
           <CampoNum label="Baquetón" value={input.baqueton} onChange={(v) => set("baqueton", v)} />
         </PasoFormulario>
-        <PasoFormulario numero={2} titulo="Ajustes finales" ultimo>
+        <PasoFormulario numero={2} titulo="Ajustes finales" columnas={4} ultimo>
           <CampoSelect label="Cliente específico" span={2} value={input.clienteEspecifico} opciones={CLIENTES}
             onChange={(v) => set("clienteEspecifico", v)} />
-          <CampoMaterial compacto span={1} value={input.material} opciones={materiales}
+          <CampoMaterial compacto span={2} value={input.material} opciones={materiales}
             onChange={(v) => set("material", v)} />
-          <CampoSelect label="Ollaos" value={input.modoOllaos} opciones={["REPARTIDOS", "SEGUN SE INDICA"]}
+          <CampoSelect label="Ollaos" span={2} value={input.modoOllaos} opciones={["REPARTIDOS", "SEGUN SE INDICA"]}
             onChange={(v) => set("modoOllaos", v as BaquetonInput["modoOllaos"])} />
           {input.modoOllaos === "REPARTIDOS" && (
             <>
@@ -45,7 +44,9 @@ export function FormularioBaqueton({
                 onChange={(v) => set("primerOllao", v)} />
             </>
           )}
-          <CampoCheck label="Rotulación" value={input.rotulacion} onChange={(v) => set("rotulacion", v)} />
+          <div className="col-span-2">
+            <CampoCheck label="Rotulación" value={input.rotulacion} onChange={(v) => set("rotulacion", v)} />
+          </div>
         </PasoFormulario>
       </div>
     </div>

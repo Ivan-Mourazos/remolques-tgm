@@ -39,12 +39,11 @@ export function FormularioLona({
 
   return (
     <div className="flex flex-col gap-2.5">
-      <Grupo titulo="Pedido" columnas={4} compacto>
+      <Grupo titulo="Pedido" columnas={3} compacto>
         <CampoTexto label="Nº pedido" value={input.cabecera.numeroPedido} onChange={(v) => setCab("numeroPedido", v)} />
-        <CampoTexto label="Versión" value={input.cabecera.version} onChange={(v) => setCab("version", v)} />
         <CampoTexto label="O.F." value={input.cabecera.ordenFabricacion ?? ""} onChange={(v) => setCab("ordenFabricacion", v)} />
         <CampoTexto label="Realizado por" value={input.cabecera.realizadoPor} onChange={(v) => setCab("realizadoPor", v)} />
-        <CampoTexto label="Cliente" span={3} value={input.cabecera.cliente} onChange={(v) => setCab("cliente", v)} />
+        <CampoTexto label="Cliente" span={2} value={input.cabecera.cliente} onChange={(v) => setCab("cliente", v)} />
         <CampoTexto label="Revisión" value={input.cabecera.revision} onChange={(v) => setCab("revision", v)} />
       </Grupo>
 
@@ -79,7 +78,7 @@ export function FormularioLona({
             <CampoNum label="Radio esquina" value={input.radioEsquina ?? 0} onChange={(v) => set("radioEsquina", v)} />
           )}
           <div className="flex min-w-0 flex-col">
-            <CampoNum label="Contorno remolque" value={contornoVisible}
+            <CampoNum label="Contorno" value={contornoVisible}
               onChange={(v) => onChange({ ...input, contorno: v, contornoScad: undefined })} />
             {faltaDato ? (
               <p className="mt-0.5 text-[10px] font-bold leading-tight text-gold-2">
@@ -97,7 +96,7 @@ export function FormularioLona({
           </div>
         </PasoFormulario>
         <PasoFormulario numero={4} titulo="Ajustes finales" columnas={4} ultimo>
-          <CampoSelect label="Ollaos" value={input.modoOllaos} opciones={["REPARTIDOS", "SEGUN SE INDICA"]}
+          <CampoSelect label="Ollaos" span={2} value={input.modoOllaos} opciones={["REPARTIDOS", "SEGUN SE INDICA"]}
             onChange={(v) => set("modoOllaos", v as LonaInput["modoOllaos"])} />
           {input.modoOllaos === "REPARTIDOS" && (
             <>
@@ -106,10 +105,10 @@ export function FormularioLona({
                 onChange={(v) => set("primerOllao", v)} />
             </>
           )}
-          <div className="flex items-end">
+          <div className="col-span-2">
             <CampoCheck label="Ventana" value={input.ventana} onChange={(v) => set("ventana", v)} />
           </div>
-          <div className="col-span-4 flex flex-wrap gap-x-4 gap-y-1 rounded-lg bg-surface-3 px-1.5">
+          <div className="col-span-2">
             <CampoCheck label="Rotulación" value={input.rotulacion} onChange={(v) => set("rotulacion", v)} />
           </div>
         </PasoFormulario>
