@@ -115,7 +115,7 @@ function cabecera(ws: Worksheet, wb: Workbook, rec: PlanteamientoRecord, logoTgm
 
   ws.mergeCells("A4:R4");
   const banda = ws.getCell("A4");
-  banda.value = `${rec.tipo === "lona" ? "REMOLQUES · LONA" : "REMOLQUES · BAQUETÓN"} · VERSIÓN ${rec.version || "10"}`;
+  banda.value = rec.tipo === "lona" ? "REMOLQUES · LONA" : "REMOLQUES · BAQUETÓN";
   banda.font = { name: "Arial", size: 9, bold: true, color: { argb: C.blanco } };
   banda.alignment = { horizontal: "center", vertical: "middle" };
   banda.fill = { type: "pattern", pattern: "solid", fgColor: { argb: C.profundo } };
@@ -206,6 +206,7 @@ function tablaOllaos(
   ws: Worksheet,
   reparto: { laterales: number[]; atras: number[]; delante: number[] },
   primerOllao: number,
+  modo: string,
 ) {
   const filas: Array<[string, number[]]> = [
     ["OLLAOS LATERALES DE ATRÁS A ADELANTE", reparto.laterales],
@@ -235,11 +236,13 @@ function tablaOllaos(
     ws.getCell(`R${row}`).alignment = { horizontal: "center", vertical: "middle" };
   });
 
-  ws.mergeCells("A30:R30");
-  const nota = ws.getCell("A30");
-  nota.value = `PRIMER Y ÚLTIMO OLLAO A ${String(primerOllao).replace(".", ",")} CM DEL BORDE`;
-  nota.font = { name: "Arial", size: 7, italic: true, bold: true, color: { argb: C.grisTexto } };
-  nota.alignment = { vertical: "middle" };
+  if (modo === "REPARTIDOS") {
+    ws.mergeCells("A30:R30");
+    const nota = ws.getCell("A30");
+    nota.value = `PRIMER Y ÚLTIMO OLLAO A ${String(primerOllao).replace(".", ",")} CM DEL BORDE`;
+    nota.font = { name: "Arial", size: 7, italic: true, bold: true, color: { argb: C.grisTexto } };
+    nota.alignment = { vertical: "middle" };
+  }
 }
 
 function prepararHoja(ws: Worksheet) {
@@ -285,7 +288,8 @@ export async function buildPlanteamientoWorkbook(
   tablaOllaos(
     ws,
     (rec.result as LonaResult | BaquetonResult).reparto,
-    rec.paramsSnapshot?.primerOllao ?? 2.5,
+    rec.input.primerOllao ?? rec.paramsSnapshot?.primerOllao ?? 2.5,
+    rec.input.modoOllaos,
   );
   const bytes = await wb.xlsx.writeBuffer();
   return Buffer.from(bytes);

@@ -4,10 +4,10 @@ import type { CalcParams } from "@/lib/calc/params";
 export interface EjeOllaos { n: number; dist: number; posiciones: number[] }
 export interface OllaosResult { largo: EjeOllaos; ancho: EjeOllaos }
 
-function eje(medida: number, paso: number, params: CalcParams): EjeOllaos {
+function eje(medida: number, paso: number, params: CalcParams, primerOllao?: number): EjeOllaos {
   if (!(medida > 0) || !(paso > 0)) return { n: 0, dist: 0, posiciones: [] };
-  const primero = params.primerOllao;
-  const ultimo = medida - params.primerOllao;
+  const primero = primerOllao ?? params.primerOllao;
+  const ultimo = medida - primero;
   const recorrido = ultimo - primero;
   if (!(recorrido > 0)) return { n: 0, dist: 0, posiciones: [] };
   // Se fijan exactamente el primer y el último ollao; los intermedios se
@@ -27,6 +27,11 @@ function eje(medida: number, paso: number, params: CalcParams): EjeOllaos {
 
 export function calcOllaos(
   medidaLargo: number, medidaAncho: number, paso: number, params: CalcParams,
+  /** Distancia del primer (y último) ollao al borde; si falta, la de los parámetros. */
+  primerOllao?: number,
 ): OllaosResult {
-  return { largo: eje(medidaLargo, paso, params), ancho: eje(medidaAncho, paso, params) };
+  return {
+    largo: eje(medidaLargo, paso, params, primerOllao),
+    ancho: eje(medidaAncho, paso, params, primerOllao),
+  };
 }

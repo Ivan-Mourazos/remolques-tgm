@@ -164,9 +164,11 @@ function Ollaos({
       {modo === "SEGUN SE INDICA"
         ? <EditorOllaos reparto={reparto} onChange={onChange} />
         : <TablaReparto reparto={reparto} />}
-      <p className="text-[10px] font-semibold text-muted">
-        Primer y último ollao a {fmt(primerOllao)} cm del borde.
-      </p>
+      {modo === "REPARTIDOS" && (
+        <p className="text-[10px] font-semibold text-muted">
+          Primer y último ollao a {fmt(primerOllao)} cm del borde.
+        </p>
+      )}
     </div>
   );
 }

@@ -28,6 +28,8 @@ export interface Escena3DProps {
   observaciones?: string;
   onObservacionesChange?: (value: string) => void;
   baqueton?: number;
+  /** Reparto de ollaos (cm desde el origen de cada tramo) para marcarlos en el dibujo. */
+  ollaos?: { laterales: number[]; atras: number[]; delante: number[] };
   /** Entrega una función que devuelve el SVG serializado de la vista (o null). */
   onSnapshotReady?: (getSvg: (() => string | null) | null) => void;
 }
@@ -199,12 +201,32 @@ export function Escena3D(props: Escena3DProps) {
       alto: ventanaLocal.alto * escala,
       radio: Math.min(9, 4 * escala),
     } : null;
+    // Marcas de ollaos sobre las aristas de base visibles.
+    const interpola = (a: Punto, b: Punto, t: number): Punto => ({
+      x: a.x + (b.x - a.x) * t,
+      y: a.y + (b.y - a.y) * t,
+    });
+    const enTramo = (posiciones: number[], medida: number, desde: Punto, hasta: Punto) =>
+      medida > 0
+        ? posiciones.filter((p) => p >= 0 && p <= medida).map((p) => interpola(desde, hasta, p / medida))
+        : [];
+    const marcasOllaos = props.ollaos
+      ? [
+          // delante: borde inferior frontal, de izquierda a derecha
+          ...enTramo(props.ollaos.delante, props.ancho, frente[0], frente.at(-1)!),
+          // atrás: borde inferior trasero, de izquierda a derecha
+          ...enTramo(props.ollaos.atras, props.ancho, fondo[0], fondo.at(-1)!),
+          // laterales: borde inferior derecho, de atrás a adelante
+          ...enTramo(props.ollaos.laterales, props.largo, fondo.at(-1)!, frente.at(-1)!),
+        ]
+      : [];
     const xCotaAguas = frente.at(-1)!.x + 34;
     const xCotaAltoTras = fondo.at(-1)!.x + 34;
     return {
       frente, fondo, lateralIzq, lateralDcha, aristasLongitudinales, contornoFrente, coronacionFondo,
       cubiertaCompleta, cubiertaIzquierda, cubiertaDerecha,
       tieneCumbrera, picoFrente, picoFondo, ventana,
+      marcasOllaos,
       altoTrasDesde: { x: xCotaAltoTras, y: fondo.at(-1)!.y },
       altoTrasHasta: { x: xCotaAltoTras, y: fondo.at(-2)!.y },
       anchoDesde: { x: frente[0].x, y: baseY + 35 },
@@ -231,7 +253,7 @@ export function Escena3D(props: Escena3DProps) {
   }, [
     valido, props.modo, props.tipoPerfil, props.ancho, props.largo,
     props.aguas, props.radioCumbrera, props.radioEsquina, props.chaflan,
-    props.ventana, altoDelante, altoAtras,
+    props.ventana, props.ollaos, altoDelante, altoAtras,
   ]);
 
   useEffect(() => {
@@ -337,6 +359,13 @@ export function Escena3D(props: Escena3DProps) {
             />
           ))}
           <path d={dibujo.contornoFrente} fill="none" stroke="#122d32" strokeWidth="3.6" strokeLinecap="round" strokeLinejoin="round" />
+          {dibujo.marcasOllaos.map((marca, indice) => (
+            <circle
+              key={indice}
+              cx={marca.x} cy={marca.y} r="3"
+              fill="#ffffff" stroke="#4c6468" strokeWidth="1.4"
+            />
+          ))}
           {props.modo === "baqueton" && (
             <path
               d={dibujo.contornoFrente} fill="none" stroke="#d3a024"

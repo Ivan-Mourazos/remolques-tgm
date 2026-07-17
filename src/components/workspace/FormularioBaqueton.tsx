@@ -38,7 +38,13 @@ export function FormularioBaqueton({
             onChange={(v) => set("material", v)} />
           <CampoSelect label="Ollaos" value={input.modoOllaos} opciones={["REPARTIDOS", "SEGUN SE INDICA"]}
             onChange={(v) => set("modoOllaos", v as BaquetonInput["modoOllaos"])} />
-          <CampoNum label="Paso" value={input.pasoOllaos} onChange={(v) => set("pasoOllaos", v)} />
+          {input.modoOllaos === "REPARTIDOS" && (
+            <>
+              <CampoNum label="Paso" value={input.pasoOllaos} onChange={(v) => set("pasoOllaos", v)} />
+              <CampoNum label="Primer ollao" value={input.primerOllao ?? DEFAULT_PARAMS.primerOllao}
+                onChange={(v) => set("primerOllao", v)} />
+            </>
+          )}
           <CampoCheck label="Rotulación" value={input.rotulacion} onChange={(v) => set("rotulacion", v)} />
           {input.rotulacion && (
             <CampoTexto label="Texto rotulación" span={3} value={input.textoRotulacion} onChange={(v) => set("textoRotulacion", v)} />

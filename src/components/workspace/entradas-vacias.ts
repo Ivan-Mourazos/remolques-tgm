@@ -18,6 +18,7 @@ export function emptyLona(): LonaInput {
     recogeDelante: "NO", recogeAtras: "NO",
     bastillaEnfundar: false, ventana: false, rotulacion: false, textoRotulacion: "",
     modoOllaos: "REPARTIDOS", pasoOllaos: DEFAULT_PARAMS.pasoOllaosDefecto,
+    primerOllao: DEFAULT_PARAMS.primerOllao,
     ollaosManuales: sinOllaos(), material: "", observaciones: "",
   };
 }
@@ -28,6 +29,7 @@ export function emptyBaqueton(): BaquetonInput {
     cantidad: 1, largo: 0, ancho: 0, baqueton: 0,
     clienteEspecifico: "GENERAL",
     modoOllaos: "REPARTIDOS", pasoOllaos: DEFAULT_PARAMS.pasoOllaosDefecto,
+    primerOllao: DEFAULT_PARAMS.primerOllao,
     ollaosManuales: sinOllaos(), rotulacion: false, textoRotulacion: "",
     material: "", observaciones: "",
   };

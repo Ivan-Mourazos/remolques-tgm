@@ -35,4 +35,10 @@ describe("calcOllaos", () => {
     expect(res.largo.n).toBe(30);
     expect(res.largo.posiciones).toHaveLength(12);
   });
+
+  it("primer ollao indicado por planteamiento (ej. 2,7)", () => {
+    const res = calcOllaos(161, 0, 35, DEFAULT_PARAMS, 2.7);
+    expect(res.largo.posiciones[0]).toBe(2.7);
+    expect(res.largo.posiciones.at(-1)).toBe(158.3);
+  });
 });

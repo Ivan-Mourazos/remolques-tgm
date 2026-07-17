@@ -95,7 +95,9 @@ function Reparto({ reparto, modo, primerOllao }: {
   return (
     <>
       <Text style={s.tablaTitulo}>
-        {modo} · PRIMER Y ÚLTIMO OLLAO A {fmt(primerOllao)} CM DEL BORDE
+        {modo === "REPARTIDOS"
+          ? `REPARTIDOS · PRIMER Y ÚLTIMO OLLAO A ${fmt(primerOllao)} CM DEL BORDE`
+          : modo}
       </Text>
       <View style={s.tabla}>
         <View style={s.tr}>
@@ -206,9 +208,7 @@ function PaginaPlanteamiento({ rec, png, logoTgm }: {
             <CabFila etiqueta="FECHA:" valor={fechaEs(input.cabecera.fecha)} ultima />
           </View>
         </View>
-        <View style={s.banda}>
-          <Text style={s.bandaTexto}>REMOLQUES · VERSIÓN {rec.version || "10"}</Text>
-        </View>
+        <View style={s.banda}><Text style={s.bandaTexto}>REMOLQUES</Text></View>
         <View style={s.cuerpo}>
           <View style={s.datos}>
             {rec.tipo === "lona" ? <DatosLona rec={rec} /> : <DatosBaqueton rec={rec} />}
@@ -224,7 +224,7 @@ function PaginaPlanteamiento({ rec, png, logoTgm }: {
       <Reparto
         reparto={resultado.reparto}
         modo={input.modoOllaos}
-        primerOllao={rec.paramsSnapshot?.primerOllao ?? 2.5}
+        primerOllao={input.primerOllao ?? rec.paramsSnapshot?.primerOllao ?? 2.5}
       />
     </Page>
   );
