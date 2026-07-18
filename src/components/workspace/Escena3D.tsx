@@ -77,9 +77,23 @@ function caminoPerfil(puntos: Punto[], curvo: boolean): string {
   return `M ${puntoSvg(baseIzquierda)} L ${puntoSvg(cubierta[0])}${caminoTecho(cubierta, curvo, false)} L ${puntoSvg(baseDerecha)}`;
 }
 
-function superficieCubierta(frente: Punto[], fondo: Punto[], curvo: boolean): string {
-  const fondoInverso = [...fondo].reverse();
-  return `${caminoTecho(frente, curvo)} L ${puntoSvg(fondoInverso[0])}${caminoTecho(fondoInverso, curvo, false)} Z`;
+/**
+ * La cubierta se rellena por franjas (un cuadrilátero por segmento del perfil):
+ * un único polígono perfil-delantero→perfil-trasero deja sin cubrir las franjas
+ * laterales cuando el cierre recto corta por debajo del chaflán o la vertiente.
+ */
+function franjasCubierta(
+  frente: Punto[], fondo: Punto[], picoTecho: number, conCumbrera: boolean,
+): Array<{ puntos: Punto[]; lado: "izq" | "dcha" }> {
+  const franjas: Array<{ puntos: Punto[]; lado: "izq" | "dcha" }> = [];
+  const tramos = Math.min(frente.length, fondo.length) - 1;
+  for (let i = 0; i < tramos; i += 1) {
+    franjas.push({
+      puntos: [frente[i], frente[i + 1], fondo[i + 1], fondo[i]],
+      lado: conCumbrera && i >= picoTecho ? "dcha" : "izq",
+    });
+  }
+  return franjas;
 }
 
 /* Colores propios del plano (inline: el snapshot SVG debe verse igual sin CSS). */
@@ -249,21 +263,7 @@ function calcularVista(o: OpcionesVista) {
   // densos: dibujarlos lineales es exacto y evita que el suavizado rebase
   // el contorno en las uniones curva-recta.
   const usaCurvas = perfil === "TIPO 03" && !(o.radioCumbrera > 0 && o.aguas > 0);
-  const cubiertaCompleta = superficieCubierta(techoFrente, techoFondo, usaCurvas);
-  const cubiertaIzquierda = tieneCumbrera
-    ? superficieCubierta(
-      techoFrente.slice(0, picoTechoFrente + 1),
-      techoFondo.slice(0, picoTechoFondo + 1),
-      usaCurvas,
-    )
-    : null;
-  const cubiertaDerecha = tieneCumbrera
-    ? superficieCubierta(
-      techoFrente.slice(picoTechoFrente),
-      techoFondo.slice(picoTechoFondo),
-      usaCurvas,
-    )
-    : null;
+  const cubierta = franjasCubierta(techoFrente, techoFondo, picoTechoFrente, tieneCumbrera);
   const lateralIzq = [frente[1], frente[0], fondo[0], fondo[1]];
   const lateralDcha = [frente.at(-2)!, frente.at(-1)!, fondo.at(-1)!, fondo.at(-2)!];
   const aristasLongitudinales = forma.aristas.map((indice) => ({
@@ -301,11 +301,21 @@ function calcularVista(o: OpcionesVista) {
   // Costuras verticales paño–contorno («el alto de los lados»): donde va la recogida.
   const costuraIzq: Costura = { x: frente[0].x, yBase: frente[0].y, yTop: frente[1].y };
   const costuraDcha: Costura = { x: frente.at(-1)!.x, yBase: frente.at(-1)!.y, yTop: frente.at(-2)!.y };
+  // Bastilla de enfundar: banda paralela a los bordes de base visibles.
+  const largoLateral = Math.hypot(fondo.at(-1)!.x - frente.at(-1)!.x, fondo.at(-1)!.y - frente.at(-1)!.y);
+  const normalLateral = {
+    x: ((fondo.at(-1)!.y - frente.at(-1)!.y) / largoLateral) * 6,
+    y: (-(fondo.at(-1)!.x - frente.at(-1)!.x) / largoLateral) * 6,
+  };
+  const bastillaBorde = `M ${puntoSvg(frente[0])} L ${puntoSvg(frente.at(-1)!)} L ${puntoSvg(fondo.at(-1)!)}`;
+  const bastillaInterior = `M ${puntoSvg({ x: frente[0].x, y: frente[0].y - 6 })}`
+    + ` L ${puntoSvg({ x: frente.at(-1)!.x, y: frente.at(-1)!.y - 6 })}`
+    + ` L ${puntoSvg({ x: fondo.at(-1)!.x + normalLateral.x, y: fondo.at(-1)!.y + normalLateral.y })}`;
   const xCotaAguas = frente.at(-1)!.x + 34;
   return {
     frente, fondo, lateralIzq, lateralDcha, aristasLongitudinales, contornoFrente, coronacionFondo,
-    cubiertaCompleta, cubiertaIzquierda, cubiertaDerecha,
-    tieneCumbrera, ventana, marcasOllaos, costuraIzq, costuraDcha,
+    cubierta, tieneCumbrera, ventana, marcasOllaos, costuraIzq, costuraDcha,
+    bastillaBorde, bastillaInterior,
     anchoDesde: { x: frente[0].x, y: baseY + 35 },
     anchoHasta: { x: frente.at(-1)!.x, y: baseY + 35 },
     altoDesde: { x: frente[0].x - 42, y: baseY },
@@ -360,14 +370,15 @@ function PanelVista({
             coronación (tipos 03 y 05) que las superficies no alcanzan. */}
         <path d={`${d.contornoFrente} Z`} fill="url(#lateralInterior)" fillOpacity="0.6" stroke="none" />
         <polygon points={puntosSvg(d.lateralIzq)} fill="url(#lateralInterior)" fillOpacity="0.82" stroke="none" />
-        {d.tieneCumbrera ? (
-          <>
-            <path d={d.cubiertaIzquierda!} fill="url(#cubiertaIzquierda)" stroke="none" />
-            <path d={d.cubiertaDerecha!} fill="url(#cubiertaDerecha)" stroke="none" />
-          </>
-        ) : (
-          <path d={d.cubiertaCompleta} fill="url(#cubiertaIzquierda)" stroke="none" />
-        )}
+        {d.cubierta.map((franja, indice) => (
+          <polygon
+            key={indice}
+            points={puntosSvg(franja.puntos)}
+            fill={franja.lado === "dcha" ? "url(#cubiertaDerecha)" : "url(#cubiertaIzquierda)"}
+            stroke={franja.lado === "dcha" ? "url(#cubiertaDerecha)" : "url(#cubiertaIzquierda)"}
+            strokeWidth="1"
+          />
+        ))}
         <polygon points={puntosSvg(d.lateralDcha)} fill="url(#lateral)" stroke="none" />
       </g>
 
@@ -395,14 +406,15 @@ function PanelVista({
           stroke="#4c6468" strokeWidth="2" strokeLinecap="round"
         />
       ))}
-      {/* Bastilla de enfundar: refuerzo de todo el perímetro → doble línea. */}
+      <path d={d.contornoFrente} fill="none" stroke="#122d32" strokeWidth="3.6" strokeLinecap="round" strokeLinejoin="round" />
+      {/* Bastilla de enfundar: refuerzo perimetral inferior, donde los ollaos →
+          banda de doble línea a lo largo de los bordes de base visibles. */}
       {bastilla && (
         <>
-          <path d={d.contornoFrente} fill="none" stroke="#122d32" strokeWidth="7.5" strokeLinecap="round" strokeLinejoin="round" />
-          <path d={d.contornoFrente} fill="none" stroke="#eef4f1" strokeWidth="3.8" strokeLinecap="round" strokeLinejoin="round" />
+          <path d={d.bastillaBorde} fill="none" stroke="#122d32" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <path d={d.bastillaInterior} fill="none" stroke="#122d32" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
         </>
       )}
-      <path d={d.contornoFrente} fill="none" stroke="#122d32" strokeWidth={bastilla ? 1.6 : 3.6} strokeLinecap="round" strokeLinejoin="round" />
       {d.marcasOllaos.map((marca, indice) => (
         <circle
           key={indice}
@@ -438,9 +450,9 @@ function PanelVista({
       )}
       {bastilla && (
         <text
-          x={d.costuraDcha.x - 10}
-          y={(d.costuraDcha.yBase + d.costuraDcha.yTop) / 2 + (hayRecogida ? 14 : 0)}
-          textAnchor="end" fontSize="9" fontWeight="800" fontFamily={FUENTE_PLANO}
+          x={(d.frente[0].x + d.frente.at(-1)!.x) / 2}
+          y={d.baseY + 16}
+          textAnchor="middle" fontSize="9" fontWeight="800" fontFamily={FUENTE_PLANO}
           fill="#8a6410" stroke="#ffffff" strokeWidth="5" paintOrder="stroke" strokeLinejoin="round"
         >
           BASTILLA ENFUNDAR
@@ -581,11 +593,13 @@ export function Escena3D(props: Escena3DProps) {
               <stop offset="0" stopColor={colores.techoClaro} />
               <stop offset="1" stopColor={colores.lateralClaro} />
             </linearGradient>
-            <linearGradient id="cubiertaIzquierda" x1="0" y1="1" x2="1" y2="0">
+            {/* En coordenadas de usuario: las franjas de cubierta comparten un
+                sombreado continuo aunque sean polígonos independientes. */}
+            <linearGradient id="cubiertaIzquierda" gradientUnits="userSpaceOnUse" x1="145" y1="250" x2="640" y2="100">
               <stop offset="0" stopColor={colores.techoClaro} />
               <stop offset="1" stopColor={colores.techo} />
             </linearGradient>
-            <linearGradient id="cubiertaDerecha" x1="0" y1="0" x2="1" y2="1">
+            <linearGradient id="cubiertaDerecha" gradientUnits="userSpaceOnUse" x1="145" y1="100" x2="640" y2="250">
               <stop offset="0" stopColor={colores.techo} />
               <stop offset="1" stopColor={colores.lateralClaro} />
             </linearGradient>
