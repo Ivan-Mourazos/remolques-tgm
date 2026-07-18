@@ -184,7 +184,12 @@ export function ResultadosLona({
   return (
     <div className="flex flex-col gap-2">
       <Resumen columnas={7}>
-        <Dato label="Lona hecha" valor={`${fmt(res.lonaHecha.largo)} × ${fmt(res.lonaHecha.ancho)}`} />
+        <Dato
+          label="Lona hecha"
+          valor={res.lonaHecha.anchoAtras != null && res.lonaHecha.anchoAtras !== res.lonaHecha.ancho
+            ? `${fmt(res.lonaHecha.largo)} × ${fmt(res.lonaHecha.ancho)} del. / ${fmt(res.lonaHecha.anchoAtras)} tras.`
+            : `${fmt(res.lonaHecha.largo)} × ${fmt(res.lonaHecha.ancho)}`}
+        />
         <Dato label={`Contorno corte (+${fmt(res.ajusteContorno)})`} valor={res.contornoAjustado ? fmt(res.contornoAjustado) : "—"} />
         <Dato label="Paño delantero" valor={`${fmt(res.panoDelantero.ancho)} × ${fmt(res.panoDelantero.alto)}`} />
         <Dato label="Paño trasero" valor={`${fmt(res.panoTrasero.ancho)} × ${fmt(res.panoTrasero.alto)}`} />

@@ -127,7 +127,12 @@ function datosLona(ws: Worksheet, rec: PlanteamientoRecord, material?: Material)
   const r = rec.result as LonaResult;
   seccion(ws, 5, "DATOS INTRODUCIDOS");
   campoPar(ws, 6, ["Cantidad", i.cantidad], ["Largo pedido", num(i.largo)]);
-  campoPar(ws, 7, ["Ancho pedido", num(i.ancho)], ["Alto delante", num(i.altoDelante)]);
+  campoPar(ws, 7, [
+    "Ancho pedido",
+    (i.anchoAtras ?? 0) > 0 && i.anchoAtras !== i.ancho
+      ? `${num(i.ancho)} del. / ${num(i.anchoAtras)} tras.`
+      : num(i.ancho),
+  ], ["Alto delante", num(i.altoDelante)]);
   campoPar(ws, 8, ["Alto detrás", num(i.altoAtras)], ["Aguas", num(i.aguas ?? 0)]);
   campoPar(ws, 9, ["Perfil", nombrePerfil(i.tipoPerfil)], ["Contorno remolque", num(r.contornoIntroducido)]);
   campoPar(ws, 10, ["Recoge delante", r.recogeDelanteTexto], ["Recoge atrás", r.recogeAtrasTexto]);

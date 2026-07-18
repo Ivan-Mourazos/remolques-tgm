@@ -136,6 +136,9 @@ function DatosLona({ rec }: { rec: PlanteamientoRecord }) {
         </View>
       </View>
       <Dato etiqueta="MEDIDA LONA HECHA" valor={`${fmt(r.lonaHecha.largo)} X ${fmt(r.lonaHecha.ancho)}`} />
+      {(i.anchoAtras ?? 0) > 0 && i.anchoAtras !== i.ancho && (
+        <Dato etiqueta="" valor={`ANCHO DELANTE ${fmt(i.ancho)} / DETRÁS ${fmt(i.anchoAtras!)}`} />
+      )}
       <Dato etiqueta="" valor={i.altoAtras !== i.altoDelante
         ? `ALTO DELANTE ${fmt(i.altoDelante)} / DETRÁS ${fmt(i.altoAtras)}`
         : `ALTO ${fmt(i.altoDelante)}`} />

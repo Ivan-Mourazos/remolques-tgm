@@ -24,7 +24,7 @@ describe("calcLona — caso real AR2602796", () => {
   const res = calcLona(base, DEFAULT_PARAMS);
 
   it("lona hecha 251 x 152", () => {
-    expect(res.lonaHecha).toEqual({ largo: 251, ancho: 152 });
+    expect(res.lonaHecha).toEqual({ largo: 251, ancho: 152, anchoAtras: 152 });
   });
   it("paños delantero/trasero 154 x 66,5", () => {
     expect(res.panoDelantero).toMatchObject({ ancho: 154, alto: 66.5 });
@@ -90,6 +90,22 @@ describe("calcLona — variantes", () => {
     expect(res.panoContorno).toBeNull();
     expect(res.metrosTela).toBe(0);
   });
+  it("remolque sesgado: cada cara usa su ancho (paños y ollaos)", () => {
+    const res = calcLona({ ...base, recogeAtras: "NO", anchoAtras: 140 }, DEFAULT_PARAMS);
+    expect(res.panoDelantero.ancho).toBe(154); // 151 + 3
+    expect(res.panoTrasero.ancho).toBe(143);   // 140 + 3
+    expect(res.lonaHecha).toEqual({ largo: 251, ancho: 152, anchoAtras: 141 });
+    // ollaos de cada cara sobre su propio ancho hecho
+    expect(res.reparto.delante.at(-1)).toBe(149.5); // 152 - 2,5
+    expect(res.reparto.atras.at(-1)).toBe(138.5);   // 141 - 2,5
+  });
+
+  it("sin ancho trasero indicado, ambas caras usan el mismo", () => {
+    const res = calcLona({ ...base, anchoAtras: 0 }, DEFAULT_PARAMS);
+    expect(res.lonaHecha.anchoAtras).toBe(152);
+    expect(res.reparto.delante).toEqual(res.reparto.atras);
+  });
+
   it("cambiar las alturas no altera el contorno calculado", () => {
     const res = calcLona({ ...base, altoAtras: 64 }, DEFAULT_PARAMS);
     expect(res.contornoAjustado).toBe(282);

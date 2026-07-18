@@ -65,6 +65,7 @@ export function FormularioLona({
           <CampoNum label="Cantidad" value={input.cantidad} onChange={(v) => set("cantidad", v)} />
           <CampoNum label="Largo" value={input.largo} onChange={(v) => set("largo", v)} />
           <CampoNum label="Ancho" value={input.ancho} onChange={(v) => set("ancho", v)} />
+          <CampoNum label="Ancho detrás" value={input.anchoAtras ?? 0} onChange={(v) => set("anchoAtras", v)} />
           <CampoNum label="Alto delante" value={input.altoDelante} onChange={(v) => set("altoDelante", v)} />
           <CampoNum label="Alto detrás" value={input.altoAtras} onChange={(v) => set("altoAtras", v)} />
           {["TIPO 02", "TIPO 03"].includes(input.tipoPerfil) && (
