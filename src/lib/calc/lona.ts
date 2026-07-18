@@ -17,6 +17,8 @@ export interface CabeceraInput {
 export interface LonaInput {
   cabecera: CabeceraInput;
   cantidad: number; largo: number; ancho: number;
+  /** Ancho trasero si el remolque va sesgado; 0 o ausente = igual al delantero. */
+  anchoAtras?: number;
   altoDelante: number; altoAtras: number;
   /** Caída desde la cumbrera hasta los hombros del perfil. */
   aguas?: number;
@@ -46,7 +48,7 @@ export interface LonaInput {
 export interface Pano { ancho: number; alto: number; etiqueta: string }
 
 export interface LonaResult {
-  lonaHecha: { largo: number; ancho: number };
+  lonaHecha: { largo: number; ancho: number; anchoAtras: number };
   contornoIntroducido: number;
   ajusteContorno: number;
   contornoAjustado: number;
@@ -64,9 +66,11 @@ export function calcLona(input: LonaInput, params: CalcParams): LonaResult {
   const recDel = findRecogida(params, input.recogeDelante);
   const recAtr = findRecogida(params, input.recogeAtras);
 
+  const anchoAtras = (input.anchoAtras ?? 0) > 0 ? input.anchoAtras! : input.ancho;
   const lonaHecha = {
     largo: r1(input.largo + params.demasiaLonaHecha),
     ancho: r1(input.ancho + params.demasiaLonaHecha),
+    anchoAtras: r1(anchoAtras + params.demasiaLonaHecha),
   };
 
   const ajuste = ajusteContorno(params, input.tipoPerfil);
@@ -89,7 +93,7 @@ export function calcLona(input: LonaInput, params: CalcParams): LonaResult {
   };
   const demasiaTrasera = USAR_COLUMNA_ATRAS ? recAtr.atras : recAtr.delante;
   const panoTrasero: Pano = {
-    ancho: r1(input.ancho + demasiaTrasera),
+    ancho: r1(anchoAtras + demasiaTrasera),
     alto: r1(input.altoAtras + params.demasiaAlto),
     etiqueta: "PAÑO TRASERO",
   };
@@ -106,13 +110,16 @@ export function calcLona(input: LonaInput, params: CalcParams): LonaResult {
         }
       : null;
 
-  const ollaos = calcOllaos(lonaHecha.largo, lonaHecha.ancho, input.pasoOllaos, params, input.primerOllao);
+  const ollaos = calcOllaos(
+    lonaHecha.largo, lonaHecha.ancho, input.pasoOllaos, params,
+    input.primerOllao, lonaHecha.anchoAtras,
+  );
   const reparto =
     input.modoOllaos === "SEGUN SE INDICA"
       ? input.ollaosManuales
       : {
           laterales: ollaos.largo.posiciones,
-          atras: ollaos.ancho.posiciones,
+          atras: ollaos.anchoAtras.posiciones,
           delante: ollaos.ancho.posiciones,
         };
 

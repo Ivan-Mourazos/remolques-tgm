@@ -246,7 +246,7 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
       </div>
       <div className="flex flex-col gap-4">
         {tipo === "lona" ? (
-          <Escena3D modo="lona" largo={lona.largo} ancho={lona.ancho}
+          <Escena3D modo="lona" largo={lona.largo} ancho={lona.ancho} anchoAtras={lona.anchoAtras}
             altoDelante={lona.altoDelante} altoAtras={lona.altoAtras}
             aguas={lona.aguas} radioCumbrera={lona.radioCumbrera}
             radioEsquina={lona.radioEsquina} chaflan={lona.chaflan}

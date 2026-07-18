@@ -2,7 +2,7 @@ import { excelRound } from "@/lib/calc/redondeo";
 import type { CalcParams } from "@/lib/calc/params";
 
 export interface EjeOllaos { n: number; dist: number; posiciones: number[] }
-export interface OllaosResult { largo: EjeOllaos; ancho: EjeOllaos }
+export interface OllaosResult { largo: EjeOllaos; ancho: EjeOllaos; anchoAtras: EjeOllaos }
 
 function eje(medida: number, paso: number, params: CalcParams, primerOllao?: number): EjeOllaos {
   if (!(medida > 0) || !(paso > 0)) return { n: 0, dist: 0, posiciones: [] };
@@ -29,9 +29,15 @@ export function calcOllaos(
   medidaLargo: number, medidaAncho: number, paso: number, params: CalcParams,
   /** Distancia del primer (y último) ollao al borde; si falta, la de los parámetros. */
   primerOllao?: number,
+  /** Ancho trasero hecho (remolque sesgado); si falta, igual al delantero. */
+  medidaAnchoAtras?: number,
 ): OllaosResult {
+  const ancho = eje(medidaAncho, paso, params, primerOllao);
   return {
     largo: eje(medidaLargo, paso, params, primerOllao),
-    ancho: eje(medidaAncho, paso, params, primerOllao),
+    ancho,
+    anchoAtras: medidaAnchoAtras != null && medidaAnchoAtras !== medidaAncho
+      ? eje(medidaAnchoAtras, paso, params, primerOllao)
+      : ancho,
   };
 }

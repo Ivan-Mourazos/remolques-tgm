@@ -13,6 +13,8 @@ export interface Escena3DProps {
   modo: "lona" | "baqueton";
   largo: number;
   ancho: number;
+  /** Ancho trasero si el remolque va sesgado; 0 o ausente = igual al delantero. */
+  anchoAtras?: number;
   altoDelante: number;
   altoAtras: number;
   aguas?: number;
@@ -199,7 +201,8 @@ interface OpcionesVista {
   modo: "lona" | "baqueton";
   tipoPerfil: TipoPerfil;
   largo: number;
-  ancho: number;
+  anchoNear: number;
+  anchoFar: number;
   altoNear: number;
   altoFar: number;
   aguas: number;
@@ -215,21 +218,21 @@ interface OpcionesVista {
 
 function calcularVista(o: OpcionesVista) {
   const perfil = o.modo === "baqueton" ? "TIPO 01" : o.tipoPerfil;
-  const opts = (alto: number) => ({
-    ancho: o.ancho,
+  const opts = (ancho: number, alto: number) => ({
+    ancho,
     altoDelante: alto,
     alturaPico: o.aguas,
     radioCumbrera: o.radioCumbrera,
-    chaflan: o.chaflan > 0 ? o.chaflan : Math.min(18, o.ancho * 0.1, alto * 0.25),
-    radio: o.radioEsquina > 0 ? o.radioEsquina : Math.min(18, o.ancho * 0.1, alto * 0.25),
+    chaflan: o.chaflan > 0 ? o.chaflan : Math.min(18, ancho * 0.1, alto * 0.25),
+    radio: o.radioEsquina > 0 ? o.radioEsquina : Math.min(18, ancho * 0.1, alto * 0.25),
   });
-  const forma = perfilForma(perfil, opts(o.altoNear));
+  const forma = perfilForma(perfil, opts(o.anchoNear, o.altoNear));
   const near = forma.puntos;
-  const far = perfilForma(perfil, opts(o.altoFar)).puntos;
+  const far = perfilForma(perfil, opts(o.anchoFar, o.altoFar)).puntos;
   const maxY = Math.max(...near.map(([, y]) => y), ...far.map(([, y]) => y), 1);
   // Una única escala mantiene la proporción real ancho/alto. La profundidad
   // se comprime en perspectiva para que largos grandes sigan cabiendo en A4.
-  const escala = Math.min(290 / Math.max(o.ancho, 1), 205 / maxY);
+  const escala = Math.min(290 / Math.max(o.anchoNear, o.anchoFar, 1), 205 / maxY);
   const profundidadX = Math.min(205, Math.max(110, o.largo * escala * 0.48));
   const profundidadY = Math.min(100, Math.max(62, o.largo * escala * 0.24));
   const origenX = 145;
@@ -240,7 +243,8 @@ function calcularVista(o: OpcionesVista) {
       y: baseY - y * escala - dy,
     }));
   const frente = proyecta(near, 0, 0);
-  const fondo = proyecta(far, profundidadX, profundidadY);
+  // El sesgado es simétrico: la cara del fondo se centra respecto a la cercana.
+  const fondo = proyecta(far, profundidadX + ((o.anchoNear - o.anchoFar) / 2) * escala, profundidadY);
   const indicePicoFrente = near.reduce(
     (mejor, [, y], indice) => y > near[mejor][1] ? indice : mejor,
     0,
@@ -277,7 +281,7 @@ function calcularVista(o: OpcionesVista) {
   const contornoFrente = caminoPerfil(frente, usaCurvas);
   const hombroDerecho = frente.at(-2)!;
   const picoFrente = frente[indicePicoFrente];
-  const ventanaLocal = o.conVentana ? calcularVentanaFrontal(near, o.ancho) : null;
+  const ventanaLocal = o.conVentana ? calcularVentanaFrontal(near, o.anchoNear) : null;
   const ventana = ventanaLocal ? {
     x: origenX + ventanaLocal.x * escala,
     y: baseY - (ventanaLocal.y + ventanaLocal.alto) * escala,
@@ -298,7 +302,7 @@ function calcularVista(o: OpcionesVista) {
   const lateralDesde = o.lateralesDesdeFar ? fondo.at(-1)! : frente.at(-1)!;
   const lateralHasta = o.lateralesDesdeFar ? frente.at(-1)! : fondo.at(-1)!;
   const marcasOllaos = [
-    ...enTramo(o.ollaosNear, o.ancho, frente[0], frente.at(-1)!),
+    ...enTramo(o.ollaosNear, o.anchoNear, frente[0], frente.at(-1)!),
     ...enTramo(o.ollaosLaterales, o.largo, lateralDesde, lateralHasta),
   ];
   // Costuras verticales paño–contorno («el alto de los lados»): donde va la recogida.
@@ -342,12 +346,13 @@ function calcularVista(o: OpcionesVista) {
 type VistaCalculada = ReturnType<typeof calcularVista>;
 
 function PanelVista({
-  d, titulo, etiquetaAlto, altoNear, ancho, largo, mostrarLargo, mostrarAguas, aguas,
+  d, titulo, etiquetaAlto, etiquetaAncho, altoNear, ancho, largo, mostrarLargo, mostrarAguas, aguas,
   recogida, bastilla, modo,
 }: {
   d: VistaCalculada;
   titulo: string;
   etiquetaAlto: string;
+  etiquetaAncho: string;
   altoNear: number;
   ancho: number;
   largo: number;
@@ -464,7 +469,7 @@ function PanelVista({
 
       <line x1={d.frente[0].x} y1={d.baseY + 5} x2={d.frente[0].x} y2={d.baseY + 42} stroke={COLOR_GUIA} />
       <line x1={d.frente.at(-1)!.x} y1={d.baseY + 5} x2={d.frente.at(-1)!.x} y2={d.baseY + 42} stroke={COLOR_GUIA} />
-      <Cota desde={d.anchoDesde} hasta={d.anchoHasta} texto={`ANCHO ${fmt(ancho)}`} textoDy={22} />
+      <Cota desde={d.anchoDesde} hasta={d.anchoHasta} texto={`${etiquetaAncho} ${fmt(ancho)}`} textoDy={22} />
 
       <line x1={d.frente[0].x - 5} y1={d.altoDesde.y} x2={d.altoDesde.x - 7} y2={d.altoDesde.y} stroke={COLOR_GUIA} />
       <line x1={d.frente[0].x - 5} y1={d.altoHasta.y} x2={d.altoHasta.x - 7} y2={d.altoHasta.y} stroke={COLOR_GUIA} />
@@ -512,13 +517,13 @@ export function Escena3D(props: Escena3DProps) {
     : (props.altoAtras > 0 ? props.altoAtras : props.altoDelante);
   const valido = props.largo > 0 && props.ancho > 0 && altoDelante > 0;
 
+  const anchoAtras = (props.anchoAtras ?? 0) > 0 ? props.anchoAtras! : props.ancho;
   const vistas = useMemo(() => {
     if (!valido) return null;
     const base = {
       modo: props.modo,
       tipoPerfil: props.tipoPerfil,
       largo: props.largo,
-      ancho: props.ancho,
       aguas: props.aguas ?? 0,
       radioCumbrera: props.radioCumbrera ?? 0,
       radioEsquina: props.radioEsquina ?? 0,
@@ -526,6 +531,8 @@ export function Escena3D(props: Escena3DProps) {
     };
     const delantera = calcularVista({
       ...base,
+      anchoNear: props.ancho,
+      anchoFar: anchoAtras,
       altoNear: altoDelante,
       altoFar: altoAtras,
       conVentana: props.modo === "lona" && (props.ventana ?? false),
@@ -535,6 +542,8 @@ export function Escena3D(props: Escena3DProps) {
     });
     const trasera = calcularVista({
       ...base,
+      anchoNear: anchoAtras,
+      anchoFar: props.ancho,
       altoNear: altoAtras,
       altoFar: altoDelante,
       conVentana: false,
@@ -546,7 +555,7 @@ export function Escena3D(props: Escena3DProps) {
   }, [
     valido, props.modo, props.tipoPerfil, props.ancho, props.largo,
     props.aguas, props.radioCumbrera, props.radioEsquina, props.chaflan,
-    props.ventana, props.ollaos, altoDelante, altoAtras,
+    props.ventana, props.ollaos, altoDelante, altoAtras, anchoAtras,
   ]);
 
   useEffect(() => {
@@ -621,6 +630,7 @@ export function Escena3D(props: Escena3DProps) {
             d={vistas.delantera}
             titulo="VISTA DELANTERA"
             etiquetaAlto={props.modo === "baqueton" ? "BAQUETÓN" : "ALTO DEL."}
+            etiquetaAncho={anchoAtras !== props.ancho ? "ANCHO DEL." : "ANCHO"}
             altoNear={altoDelante}
             ancho={props.ancho}
             largo={props.largo}
@@ -636,8 +646,9 @@ export function Escena3D(props: Escena3DProps) {
               d={vistas.trasera}
               titulo="VISTA TRASERA"
               etiquetaAlto={props.modo === "baqueton" ? "BAQUETÓN" : "ALTO TRAS."}
+              etiquetaAncho={anchoAtras !== props.ancho ? "ANCHO TRAS." : "ANCHO"}
               altoNear={altoAtras}
-              ancho={props.ancho}
+              ancho={anchoAtras}
               largo={props.largo}
               mostrarLargo={false}
               mostrarAguas={false}
