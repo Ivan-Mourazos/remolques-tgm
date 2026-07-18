@@ -251,6 +251,8 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
             aguas={lona.aguas} radioCumbrera={lona.radioCumbrera}
             radioEsquina={lona.radioEsquina} chaflan={lona.chaflan}
             ollaos={resLona.reparto}
+            recogeDelante={lona.recogeDelante} recogeAtras={lona.recogeAtras}
+            bastillaEnfundar={lona.bastillaEnfundar}
             tipoPerfil={lona.tipoPerfil} ventana={lona.ventana} material={lona.material}
             observaciones={lona.observaciones}
             onObservacionesChange={(observaciones) => setLona((actual) => ({ ...actual, observaciones }))}

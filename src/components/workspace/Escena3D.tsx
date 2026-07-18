@@ -24,6 +24,11 @@ export interface Escena3DProps {
   chaflan?: number;
   tipoPerfil: TipoPerfil;
   ventana?: boolean;
+  /** Recogidas: unión vertical del paño de contorno con los paños delantero/trasero. */
+  recogeDelante?: string;
+  recogeAtras?: string;
+  /** Refuerzo perimetral: se dibuja como contorno de doble línea. */
+  bastillaEnfundar?: boolean;
   material?: string;
   observaciones?: string;
   onObservacionesChange?: (value: string) => void;
@@ -82,6 +87,8 @@ const FUENTE_PLANO = "'Plus Jakarta Sans','Segoe UI',Arial,sans-serif";
 const COLOR_COTA = "#6b7f83";
 const COLOR_TEXTO_COTA = "#33484d";
 const COLOR_GUIA = "#a3b4b6";
+const COLOR_RECOGIDA = "#17383e";
+const ANCHO_PANEL = 780;
 
 function Cota({
   desde, hasta, texto, rotacion = 0, textoDx = 0, textoDy = -7,
@@ -108,6 +115,378 @@ function Cota({
   );
 }
 
+interface Costura { x: number; yBase: number; yTop: number }
+
+/** Símbolo de la recogida sobre la costura vertical paño–contorno. */
+function SimboloRecogida({ costura, tipo }: { costura: Costura; tipo: string }) {
+  const { x, yBase, yTop } = costura;
+  const alto = yBase - yTop;
+  if (alto < 14 || tipo === "NO" || !tipo) return null;
+
+  if (tipo === "GOMA") {
+    // cuerda elástica en zigzag a lo largo de la costura
+    const paso = 13;
+    const n = Math.max(2, Math.floor(alto / paso));
+    let d = `M ${x.toFixed(1)} ${yBase.toFixed(1)}`;
+    for (let i = 1; i <= n; i += 1) {
+      const y = yBase - (alto * i) / n;
+      const dx = i % 2 === 1 ? 5 : -5;
+      d += ` L ${(x + dx).toFixed(1)} ${y.toFixed(1)}`;
+    }
+    return <path d={d} fill="none" stroke={COLOR_RECOGIDA} strokeWidth="1.6" strokeLinejoin="round" />;
+  }
+
+  if (tipo === "CREMALLERA") {
+    // doble línea con dientes
+    const dientes: Punto[] = [];
+    for (let y = yBase - 6; y > yTop + 4; y -= 8) dientes.push({ x, y });
+    return (
+      <g stroke={COLOR_RECOGIDA} strokeWidth="1.3">
+        <line x1={x - 3} y1={yBase} x2={x - 3} y2={yTop} />
+        <line x1={x + 3} y1={yBase} x2={x + 3} y2={yTop} />
+        {dientes.map((p, i) => (
+          <line key={i} x1={p.x - 3} y1={p.y} x2={p.x + 3} y2={p.y} />
+        ))}
+      </g>
+    );
+  }
+
+  if (tipo === "VELCRO") {
+    // franja rayada pegada a la costura
+    const rayas: number[] = [];
+    for (let y = yBase - 4; y > yTop + 3; y -= 7) rayas.push(y);
+    return (
+      <g stroke={COLOR_RECOGIDA} strokeWidth="1.2">
+        <rect x={x - 4} y={yTop} width={8} height={alto} fill="none" strokeWidth="1" />
+        {rayas.map((y, i) => (
+          <line key={i} x1={x - 4} y1={y} x2={x + 4} y2={y - 4} />
+        ))}
+      </g>
+    );
+  }
+
+  if (tipo.startsWith("PUENTES")) {
+    // trabillas repartidas por la costura
+    const trabillas: number[] = [];
+    for (let y = yBase - 12; y > yTop + 6; y -= 22) trabillas.push(y);
+    return (
+      <g stroke={COLOR_RECOGIDA} strokeWidth="1.5" fill="#ffffff">
+        {trabillas.map((y, i) => (
+          <rect key={i} x={x - 4.5} y={y - 4} width={9} height={9} rx={2} />
+        ))}
+      </g>
+    );
+  }
+
+  return null;
+}
+
+interface OpcionesVista {
+  modo: "lona" | "baqueton";
+  tipoPerfil: TipoPerfil;
+  largo: number;
+  ancho: number;
+  altoNear: number;
+  altoFar: number;
+  aguas: number;
+  radioCumbrera: number;
+  radioEsquina: number;
+  chaflan: number;
+  conVentana: boolean;
+  ollaosNear: number[];
+  ollaosLaterales: number[];
+  /** true en la vista delantera: los laterales se cuentan desde el fondo (atrás). */
+  lateralesDesdeFar: boolean;
+}
+
+function calcularVista(o: OpcionesVista) {
+  const perfil = o.modo === "baqueton" ? "TIPO 01" : o.tipoPerfil;
+  const opts = (alto: number) => ({
+    ancho: o.ancho,
+    altoDelante: alto,
+    alturaPico: o.aguas,
+    radioCumbrera: o.radioCumbrera,
+    chaflan: o.chaflan > 0 ? o.chaflan : Math.min(18, o.ancho * 0.1, alto * 0.25),
+    radio: o.radioEsquina > 0 ? o.radioEsquina : Math.min(18, o.ancho * 0.1, alto * 0.25),
+  });
+  const forma = perfilForma(perfil, opts(o.altoNear));
+  const near = forma.puntos;
+  const far = perfilForma(perfil, opts(o.altoFar)).puntos;
+  const maxY = Math.max(...near.map(([, y]) => y), ...far.map(([, y]) => y), 1);
+  // Una única escala mantiene la proporción real ancho/alto. La profundidad
+  // se comprime en perspectiva para que largos grandes sigan cabiendo en A4.
+  const escala = Math.min(290 / Math.max(o.ancho, 1), 205 / maxY);
+  const profundidadX = Math.min(205, Math.max(110, o.largo * escala * 0.48));
+  const profundidadY = Math.min(100, Math.max(62, o.largo * escala * 0.24));
+  const origenX = 145;
+  const baseY = 344;
+  const proyecta = (puntos: Array<[number, number]>, dx: number, dy: number) =>
+    puntos.map(([x, y]) => ({
+      x: origenX + x * escala + dx,
+      y: baseY - y * escala - dy,
+    }));
+  const frente = proyecta(near, 0, 0);
+  const fondo = proyecta(far, profundidadX, profundidadY);
+  const indicePicoFrente = near.reduce(
+    (mejor, [, y], indice) => y > near[mejor][1] ? indice : mejor,
+    0,
+  );
+  const indicePicoFondo = far.reduce(
+    (mejor, [, y], indice) => y > far[mejor][1] ? indice : mejor,
+    0,
+  );
+  const techoFrente = frente.slice(1, -1);
+  const techoFondo = fondo.slice(1, -1);
+  const picoTechoFrente = indicePicoFrente - 1;
+  const picoTechoFondo = indicePicoFondo - 1;
+  const tieneCumbrera = o.modo === "lona"
+    && o.aguas > 0
+    && ["TIPO 02", "TIPO 03"].includes(o.tipoPerfil)
+    && picoTechoFrente > 0
+    && picoTechoFrente < techoFrente.length - 1;
+  // El spline solo suaviza la curva estética del TIPO 03 sin radio conocido.
+  // TIPO 05 y TIPO 03 con radio ya traen el arco discretizado en puntos
+  // densos: dibujarlos lineales es exacto y evita que el suavizado rebase
+  // el contorno en las uniones curva-recta.
+  const usaCurvas = perfil === "TIPO 03" && !(o.radioCumbrera > 0 && o.aguas > 0);
+  const cubiertaCompleta = superficieCubierta(techoFrente, techoFondo, usaCurvas);
+  const cubiertaIzquierda = tieneCumbrera
+    ? superficieCubierta(
+      techoFrente.slice(0, picoTechoFrente + 1),
+      techoFondo.slice(0, picoTechoFondo + 1),
+      usaCurvas,
+    )
+    : null;
+  const cubiertaDerecha = tieneCumbrera
+    ? superficieCubierta(
+      techoFrente.slice(picoTechoFrente),
+      techoFondo.slice(picoTechoFondo),
+      usaCurvas,
+    )
+    : null;
+  const lateralIzq = [frente[1], frente[0], fondo[0], fondo[1]];
+  const lateralDcha = [frente.at(-2)!, frente.at(-1)!, fondo.at(-1)!, fondo.at(-2)!];
+  const aristasLongitudinales = forma.aristas.map((indice) => ({
+    desde: frente[indice],
+    hasta: fondo[indice],
+  }));
+  const contornoFrente = caminoPerfil(frente, usaCurvas);
+  const coronacionFondo = caminoTecho(techoFondo, usaCurvas);
+  const hombroDerecho = frente.at(-2)!;
+  const picoFrente = frente[indicePicoFrente];
+  const ventanaLocal = o.conVentana ? calcularVentanaFrontal(near, o.ancho) : null;
+  const ventana = ventanaLocal ? {
+    x: origenX + ventanaLocal.x * escala,
+    y: baseY - (ventanaLocal.y + ventanaLocal.alto) * escala,
+    ancho: ventanaLocal.ancho * escala,
+    alto: ventanaLocal.alto * escala,
+    radio: Math.min(9, 4 * escala),
+  } : null;
+  // Marcas de ollaos sobre las aristas de base visibles (la trasera de esta
+  // vista queda oculta tras el faldón).
+  const interpola = (a: Punto, b: Punto, t: number): Punto => ({
+    x: a.x + (b.x - a.x) * t,
+    y: a.y + (b.y - a.y) * t,
+  });
+  const enTramo = (posiciones: number[], medida: number, desde: Punto, hasta: Punto) =>
+    medida > 0
+      ? posiciones.filter((p) => p >= 0 && p <= medida).map((p) => interpola(desde, hasta, p / medida))
+      : [];
+  const lateralDesde = o.lateralesDesdeFar ? fondo.at(-1)! : frente.at(-1)!;
+  const lateralHasta = o.lateralesDesdeFar ? frente.at(-1)! : fondo.at(-1)!;
+  const marcasOllaos = [
+    ...enTramo(o.ollaosNear, o.ancho, frente[0], frente.at(-1)!),
+    ...enTramo(o.ollaosLaterales, o.largo, lateralDesde, lateralHasta),
+  ];
+  // Costuras verticales paño–contorno («el alto de los lados»): donde va la recogida.
+  const costuraIzq: Costura = { x: frente[0].x, yBase: frente[0].y, yTop: frente[1].y };
+  const costuraDcha: Costura = { x: frente.at(-1)!.x, yBase: frente.at(-1)!.y, yTop: frente.at(-2)!.y };
+  const xCotaAguas = frente.at(-1)!.x + 34;
+  return {
+    frente, fondo, lateralIzq, lateralDcha, aristasLongitudinales, contornoFrente, coronacionFondo,
+    cubiertaCompleta, cubiertaIzquierda, cubiertaDerecha,
+    tieneCumbrera, ventana, marcasOllaos, costuraIzq, costuraDcha,
+    anchoDesde: { x: frente[0].x, y: baseY + 35 },
+    anchoHasta: { x: frente.at(-1)!.x, y: baseY + 35 },
+    altoDesde: { x: frente[0].x - 42, y: baseY },
+    altoHasta: { x: frente[0].x - 42, y: baseY - o.altoNear * escala },
+    largoDesde: { x: frente.at(-1)!.x + 20, y: frente.at(-1)!.y + 15 },
+    largoHasta: { x: fondo.at(-1)!.x + 20, y: fondo.at(-1)!.y + 15 },
+    // Redondeado: atan2 puede diferir en el último bit entre Node y navegador
+    // y provocaría un aviso de hidratación en el atributo transform.
+    anguloLargo: Math.round(Math.atan2(-profundidadY, profundidadX) * 180 / Math.PI * 100) / 100,
+    aguasDesde: { x: xCotaAguas, y: baseY - (o.altoNear - o.aguas) * escala },
+    aguasHasta: { x: xCotaAguas, y: baseY - o.altoNear * escala },
+    aguasGuiaHombro: {
+      desde: hombroDerecho,
+      hasta: { x: xCotaAguas + 6, y: baseY - (o.altoNear - o.aguas) * escala },
+    },
+    aguasGuiaPico: { desde: picoFrente, hasta: { x: xCotaAguas + 6, y: baseY - o.altoNear * escala } },
+    baseY,
+  };
+}
+
+type VistaCalculada = ReturnType<typeof calcularVista>;
+
+function PanelVista({
+  d, titulo, etiquetaAlto, altoNear, ancho, largo, mostrarLargo, mostrarAguas, aguas,
+  recogida, bastilla, modo,
+}: {
+  d: VistaCalculada;
+  titulo: string;
+  etiquetaAlto: string;
+  altoNear: number;
+  ancho: number;
+  largo: number;
+  mostrarLargo: boolean;
+  mostrarAguas: boolean;
+  aguas: number;
+  recogida: string;
+  bastilla: boolean;
+  modo: "lona" | "baqueton";
+}) {
+  const hayRecogida = recogida !== "" && recogida !== "NO";
+  return (
+    <g>
+      <text
+        x={40} y={95} fontSize="12" fontWeight="800" letterSpacing="2"
+        fontFamily={FUENTE_PLANO} fill="#71878a"
+      >
+        {titulo}
+      </text>
+      {/* Techo y lateral muestran el color de lona; la cara cercana queda abierta. */}
+      <g filter="url(#sombraLona)">
+        {/* Relleno del hueco completo: cubre también las zonas curvas de la
+            coronación (tipos 03 y 05) que las superficies no alcanzan. */}
+        <path d={`${d.contornoFrente} Z`} fill="url(#lateralInterior)" fillOpacity="0.6" stroke="none" />
+        <polygon points={puntosSvg(d.lateralIzq)} fill="url(#lateralInterior)" fillOpacity="0.82" stroke="none" />
+        {d.tieneCumbrera ? (
+          <>
+            <path d={d.cubiertaIzquierda!} fill="url(#cubiertaIzquierda)" stroke="none" />
+            <path d={d.cubiertaDerecha!} fill="url(#cubiertaDerecha)" stroke="none" />
+          </>
+        ) : (
+          <path d={d.cubiertaCompleta} fill="url(#cubiertaIzquierda)" stroke="none" />
+        )}
+        <polygon points={puntosSvg(d.lateralDcha)} fill="url(#lateral)" stroke="none" />
+      </g>
+
+      {d.ventana && (
+        <rect
+          x={d.ventana.x} y={d.ventana.y}
+          width={d.ventana.ancho} height={d.ventana.alto}
+          rx={d.ventana.radio}
+          fill="none" stroke="#0f766e" strokeWidth="2.2"
+        />
+      )}
+
+      {/* Únicamente se conservan los bordes visibles de la lona. */}
+      <path d={d.coronacionFondo} fill="none" stroke="#7d9297" strokeWidth="2" strokeLinecap="round" />
+      <line
+        x1={d.fondo.at(-2)!.x} y1={d.fondo.at(-2)!.y}
+        x2={d.fondo.at(-1)!.x} y2={d.fondo.at(-1)!.y}
+        stroke="#7d9297" strokeWidth="2" strokeLinecap="round"
+      />
+      {d.aristasLongitudinales.map((arista, indice) => (
+        <line
+          key={indice}
+          x1={arista.desde.x} y1={arista.desde.y}
+          x2={arista.hasta.x} y2={arista.hasta.y}
+          stroke="#4c6468" strokeWidth="2" strokeLinecap="round"
+        />
+      ))}
+      {/* Bastilla de enfundar: refuerzo de todo el perímetro → doble línea. */}
+      {bastilla && (
+        <>
+          <path d={d.contornoFrente} fill="none" stroke="#122d32" strokeWidth="7.5" strokeLinecap="round" strokeLinejoin="round" />
+          <path d={d.contornoFrente} fill="none" stroke="#eef4f1" strokeWidth="3.8" strokeLinecap="round" strokeLinejoin="round" />
+        </>
+      )}
+      <path d={d.contornoFrente} fill="none" stroke="#122d32" strokeWidth={bastilla ? 1.6 : 3.6} strokeLinecap="round" strokeLinejoin="round" />
+      {d.marcasOllaos.map((marca, indice) => (
+        <circle
+          key={indice}
+          cx={marca.x} cy={marca.y} r="3"
+          fill="#ffffff" stroke="#4c6468" strokeWidth="1.4"
+        />
+      ))}
+      {modo === "baqueton" && (
+        <path
+          d={d.contornoFrente} fill="none" stroke="#d3a024"
+          strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round"
+        />
+      )}
+
+      {/* Recogida: unión del paño de contorno con el paño de esta cara. */}
+      {hayRecogida && (
+        <g>
+          <SimboloRecogida costura={d.costuraIzq} tipo={recogida} />
+          <SimboloRecogida costura={d.costuraDcha} tipo={recogida} />
+          <text
+            x={d.costuraDcha.x - 10}
+            y={(d.costuraDcha.yBase + d.costuraDcha.yTop) / 2}
+            textAnchor="end"
+            fontSize={recogida.length > 16 ? 9 : 11}
+            fontWeight="800"
+            fontFamily={FUENTE_PLANO}
+            fill={COLOR_TEXTO_COTA}
+            stroke="#ffffff" strokeWidth="5" paintOrder="stroke" strokeLinejoin="round"
+          >
+            {recogida}
+          </text>
+        </g>
+      )}
+      {bastilla && (
+        <text
+          x={d.costuraDcha.x - 10}
+          y={(d.costuraDcha.yBase + d.costuraDcha.yTop) / 2 + (hayRecogida ? 14 : 0)}
+          textAnchor="end" fontSize="9" fontWeight="800" fontFamily={FUENTE_PLANO}
+          fill="#8a6410" stroke="#ffffff" strokeWidth="5" paintOrder="stroke" strokeLinejoin="round"
+        >
+          BASTILLA ENFUNDAR
+        </text>
+      )}
+
+      <line x1={d.frente[0].x} y1={d.baseY + 5} x2={d.frente[0].x} y2={d.baseY + 42} stroke={COLOR_GUIA} />
+      <line x1={d.frente.at(-1)!.x} y1={d.baseY + 5} x2={d.frente.at(-1)!.x} y2={d.baseY + 42} stroke={COLOR_GUIA} />
+      <Cota desde={d.anchoDesde} hasta={d.anchoHasta} texto={`ANCHO ${fmt(ancho)}`} textoDy={22} />
+
+      <line x1={d.frente[0].x - 5} y1={d.altoDesde.y} x2={d.altoDesde.x - 7} y2={d.altoDesde.y} stroke={COLOR_GUIA} />
+      <line x1={d.frente[0].x - 5} y1={d.altoHasta.y} x2={d.altoHasta.x - 7} y2={d.altoHasta.y} stroke={COLOR_GUIA} />
+      <Cota
+        desde={d.altoDesde} hasta={d.altoHasta}
+        texto={`${etiquetaAlto} ${fmt(altoNear)}`}
+        rotacion={-90} textoDy={-9}
+      />
+
+      {mostrarLargo && (
+        <Cota
+          desde={d.largoDesde} hasta={d.largoHasta}
+          texto={`LARGO ${fmt(largo)}`} rotacion={d.anguloLargo} textoDy={-10}
+        />
+      )}
+      {mostrarAguas && (
+        <g>
+          <line
+            x1={d.aguasGuiaHombro.desde.x} y1={d.aguasGuiaHombro.desde.y}
+            x2={d.aguasGuiaHombro.hasta.x} y2={d.aguasGuiaHombro.hasta.y}
+            stroke={COLOR_GUIA} strokeWidth="1"
+          />
+          <line
+            x1={d.aguasGuiaPico.desde.x} y1={d.aguasGuiaPico.desde.y}
+            x2={d.aguasGuiaPico.hasta.x} y2={d.aguasGuiaPico.hasta.y}
+            stroke={COLOR_GUIA} strokeWidth="1"
+          />
+          <Cota
+            desde={d.aguasDesde} hasta={d.aguasHasta}
+            texto={`AGUAS ${fmt(aguas)}`} rotacion={-90} textoDx={-11} textoDy={0}
+          />
+        </g>
+      )}
+    </g>
+  );
+}
+
 export function Escena3D(props: Escena3DProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const colores = useMemo(() => coloresMaterial(props.material ?? ""), [props.material]);
@@ -118,143 +497,37 @@ export function Escena3D(props: Escena3DProps) {
     : (props.altoAtras > 0 ? props.altoAtras : props.altoDelante);
   const valido = props.largo > 0 && props.ancho > 0 && altoDelante > 0;
 
-  const dibujo = useMemo(() => {
+  const vistas = useMemo(() => {
     if (!valido) return null;
-    const perfil = props.modo === "baqueton" ? "TIPO 01" : props.tipoPerfil;
-    const opts = (alto: number) => ({
+    const base = {
+      modo: props.modo,
+      tipoPerfil: props.tipoPerfil,
+      largo: props.largo,
       ancho: props.ancho,
-      altoDelante: alto,
-      alturaPico: props.aguas ?? 0,
+      aguas: props.aguas ?? 0,
       radioCumbrera: props.radioCumbrera ?? 0,
-      chaflan: (props.chaflan ?? 0) > 0 ? props.chaflan : Math.min(18, props.ancho * 0.1, alto * 0.25),
-      radio: (props.radioEsquina ?? 0) > 0 ? props.radioEsquina : Math.min(18, props.ancho * 0.1, alto * 0.25),
-    });
-    const forma = perfilForma(perfil, opts(altoDelante));
-    const delantero = forma.puntos;
-    const trasero = perfilForma(perfil, opts(altoAtras)).puntos;
-    const maxY = Math.max(...delantero.map(([, y]) => y), ...trasero.map(([, y]) => y), 1);
-    // Una única escala mantiene la proporción real ancho/alto. La profundidad
-    // se comprime en perspectiva para que largos grandes sigan cabiendo en A4.
-    const escala = Math.min(290 / Math.max(props.ancho, 1), 205 / maxY);
-    const profundidadX = Math.min(205, Math.max(110, props.largo * escala * 0.48));
-    const profundidadY = Math.min(100, Math.max(62, props.largo * escala * 0.24));
-    const origenX = 145;
-    const baseY = 344;
-    const proyecta = (puntos: Array<[number, number]>, dx: number, dy: number) =>
-      puntos.map(([x, y]) => ({
-        x: origenX + x * escala + dx,
-        y: baseY - y * escala - dy,
-      }));
-    const frente = proyecta(delantero, 0, 0);
-    const fondo = proyecta(trasero, profundidadX, profundidadY);
-    const indicePicoFrente = delantero.reduce(
-      (mejor, [, y], indice) => y > delantero[mejor][1] ? indice : mejor,
-      0,
-    );
-    const indicePicoFondo = trasero.reduce(
-      (mejor, [, y], indice) => y > trasero[mejor][1] ? indice : mejor,
-      0,
-    );
-    const techoFrente = frente.slice(1, -1);
-    const techoFondo = fondo.slice(1, -1);
-    const picoTechoFrente = indicePicoFrente - 1;
-    const picoTechoFondo = indicePicoFondo - 1;
-    const tieneCumbrera = props.modo === "lona"
-      && (props.aguas ?? 0) > 0
-      && ["TIPO 02", "TIPO 03"].includes(props.tipoPerfil)
-      && picoTechoFrente > 0
-      && picoTechoFrente < techoFrente.length - 1;
-    // El spline solo suaviza la curva estética del TIPO 03 sin radio conocido.
-    // TIPO 05 y TIPO 03 con radio ya traen el arco discretizado en puntos
-    // densos: dibujarlos lineales es exacto y evita que el suavizado rebase
-    // el contorno en las uniones curva-recta.
-    const usaCurvas = perfil === "TIPO 03"
-      && !((props.radioCumbrera ?? 0) > 0 && (props.aguas ?? 0) > 0);
-    const cubiertaCompleta = superficieCubierta(techoFrente, techoFondo, usaCurvas);
-    const cubiertaIzquierda = tieneCumbrera
-      ? superficieCubierta(
-        techoFrente.slice(0, picoTechoFrente + 1),
-        techoFondo.slice(0, picoTechoFondo + 1),
-        usaCurvas,
-      )
-      : null;
-    const cubiertaDerecha = tieneCumbrera
-      ? superficieCubierta(
-        techoFrente.slice(picoTechoFrente),
-        techoFondo.slice(picoTechoFondo),
-        usaCurvas,
-      )
-      : null;
-    const lateralIzq = [frente[1], frente[0], fondo[0], fondo[1]];
-    const lateralDcha = [frente.at(-2)!, frente.at(-1)!, fondo.at(-1)!, fondo.at(-2)!];
-    const aristasLongitudinales = forma.aristas.map((indice) => ({
-      desde: frente[indice],
-      hasta: fondo[indice],
-    }));
-    const contornoFrente = caminoPerfil(frente, usaCurvas);
-    const coronacionFondo = caminoTecho(techoFondo, usaCurvas);
-    const hombroDerecho = frente.at(-2)!;
-    const picoFrente = frente[indicePicoFrente];
-    const picoFondo = fondo[indicePicoFondo];
-    const ventanaLocal = props.modo === "lona" && props.ventana
-      ? calcularVentanaFrontal(delantero, props.ancho)
-      : null;
-    const ventana = ventanaLocal ? {
-      x: origenX + ventanaLocal.x * escala,
-      y: baseY - (ventanaLocal.y + ventanaLocal.alto) * escala,
-      ancho: ventanaLocal.ancho * escala,
-      alto: ventanaLocal.alto * escala,
-      radio: Math.min(9, 4 * escala),
-    } : null;
-    // Marcas de ollaos sobre las aristas de base visibles.
-    const interpola = (a: Punto, b: Punto, t: number): Punto => ({
-      x: a.x + (b.x - a.x) * t,
-      y: a.y + (b.y - a.y) * t,
-    });
-    const enTramo = (posiciones: number[], medida: number, desde: Punto, hasta: Punto) =>
-      medida > 0
-        ? posiciones.filter((p) => p >= 0 && p <= medida).map((p) => interpola(desde, hasta, p / medida))
-        : [];
-    // Solo en aristas visibles: el borde trasero queda oculto tras el faldón
-    // y sus ollaos parecerían manchas sobre la lona.
-    const marcasOllaos = props.ollaos
-      ? [
-          // delante: borde inferior frontal, de izquierda a derecha
-          ...enTramo(props.ollaos.delante, props.ancho, frente[0], frente.at(-1)!),
-          // laterales: borde inferior derecho, de atrás a adelante
-          ...enTramo(props.ollaos.laterales, props.largo, fondo.at(-1)!, frente.at(-1)!),
-        ]
-      : [];
-    const xCotaAguas = frente.at(-1)!.x + 34;
-    const xCotaAltoTras = fondo.at(-1)!.x + 34;
-    return {
-      frente, fondo, lateralIzq, lateralDcha, aristasLongitudinales, contornoFrente, coronacionFondo,
-      cubiertaCompleta, cubiertaIzquierda, cubiertaDerecha,
-      tieneCumbrera, picoFrente, picoFondo, ventana,
-      marcasOllaos,
-      altoTrasDesde: { x: xCotaAltoTras, y: fondo.at(-1)!.y },
-      altoTrasHasta: { x: xCotaAltoTras, y: fondo.at(-2)!.y },
-      anchoDesde: { x: frente[0].x, y: baseY + 35 },
-      anchoHasta: { x: frente.at(-1)!.x, y: baseY + 35 },
-      altoDesde: { x: frente[0].x - 42, y: baseY },
-      altoHasta: { x: frente[0].x - 42, y: baseY - altoDelante * escala },
-      largoDesde: { x: frente.at(-1)!.x + 20, y: frente.at(-1)!.y + 15 },
-      largoHasta: { x: fondo.at(-1)!.x + 20, y: fondo.at(-1)!.y + 15 },
-      // Redondeado: atan2 puede diferir en el último bit entre Node y navegador
-      // y provocaría un aviso de hidratación en el atributo transform.
-      anguloLargo: Math.round(Math.atan2(-profundidadY, profundidadX) * 180 / Math.PI * 100) / 100,
-      aguasDesde: {
-        x: xCotaAguas,
-        y: baseY - (altoDelante - (props.aguas ?? 0)) * escala,
-      },
-      aguasHasta: {
-        x: xCotaAguas,
-        y: baseY - altoDelante * escala,
-      },
-      aguasGuiaHombro: { desde: hombroDerecho, hasta: { x: xCotaAguas + 6, y: baseY - (altoDelante - (props.aguas ?? 0)) * escala } },
-      aguasGuiaPico: { desde: picoFrente, hasta: { x: xCotaAguas + 6, y: baseY - altoDelante * escala } },
-      baseY,
+      radioEsquina: props.radioEsquina ?? 0,
+      chaflan: props.chaflan ?? 0,
     };
+    const delantera = calcularVista({
+      ...base,
+      altoNear: altoDelante,
+      altoFar: altoAtras,
+      conVentana: props.modo === "lona" && (props.ventana ?? false),
+      ollaosNear: props.ollaos?.delante ?? [],
+      ollaosLaterales: props.ollaos?.laterales ?? [],
+      lateralesDesdeFar: true,
+    });
+    const trasera = calcularVista({
+      ...base,
+      altoNear: altoAtras,
+      altoFar: altoDelante,
+      conVentana: false,
+      ollaosNear: props.ollaos?.atras ?? [],
+      ollaosLaterales: props.ollaos?.laterales ?? [],
+      lateralesDesdeFar: false,
+    });
+    return { delantera, trasera };
   }, [
     valido, props.modo, props.tipoPerfil, props.ancho, props.largo,
     props.aguas, props.radioCumbrera, props.radioEsquina, props.chaflan,
@@ -270,6 +543,11 @@ export function Escena3D(props: Escena3DProps) {
     return () => onSnapshotReady(null);
   }, [onSnapshotReady]);
 
+  const mostrarAguas = props.modo === "lona"
+    && (props.aguas ?? 0) > 0
+    && ["TIPO 02", "TIPO 03"].includes(props.tipoPerfil);
+  const bastilla = props.modo === "lona" && (props.bastillaEnfundar ?? false);
+
   return (
     <div className="relative h-[clamp(360px,44vh,480px)] w-full overflow-hidden rounded-[24px] border border-white/80 bg-white shadow-[0_18px_50px_rgb(15_23_42/0.09),0_2px_8px_rgb(15_23_42/0.04)] ring-1 ring-line/70">
       <div className="absolute left-6 top-5 z-10 rounded-2xl border border-white/80 bg-white/85 px-3.5 py-2.5 shadow-[0_8px_24px_rgb(15_23_42/0.06)] backdrop-blur-md">
@@ -278,17 +556,17 @@ export function Escena3D(props: Escena3DProps) {
         </p>
         <p className="text-base font-bold text-ink">Perspectiva fija · cotas en cm</p>
       </div>
-      {dibujo ? (
+      {vistas ? (
         <svg
           ref={svgRef}
-          viewBox="0 0 780 440"
-          width={780}
+          viewBox="0 0 1560 440"
+          width={1560}
           height={440}
           className="h-[calc(100%-64px)] w-full"
           role="img"
           aria-label={`Perspectiva técnica de ${props.modo === "lona" ? "lona de remolque" : "baquetón"}: largo ${fmt(props.largo)}, ancho ${fmt(props.ancho)}`}
         >
-          <title>Perspectiva técnica acotada</title>
+          <title>Perspectiva técnica acotada (vistas delantera y trasera)</title>
           <defs>
             <linearGradient id="lienzo" x1="0" y1="0" x2="1" y2="1">
               <stop offset="0" stopColor="#fcfdfc" />
@@ -318,125 +596,39 @@ export function Escena3D(props: Escena3DProps) {
               <feDropShadow dx="0" dy="10" stdDeviation="10" floodColor="#0e2a2f" floodOpacity="0.16" />
             </filter>
           </defs>
-          <rect width="780" height="440" fill="url(#lienzo)" />
+          <rect width="1560" height="440" fill="url(#lienzo)" />
           <rect x="18" y="68" width="744" height="350" rx="18" fill="#ffffff" fillOpacity="0.64" stroke="#ffffff" />
-          {/* Techo y lateral muestran el color de lona; el frente queda abierto. */}
-          <g filter="url(#sombraLona)">
-            {/* Relleno del hueco frontal completo: cubre también las zonas
-                curvas de la coronación (tipos 03 y 05) que las superficies
-                de techo y lateral no alcanzan. */}
-            <path
-              d={`${dibujo.contornoFrente} Z`}
-              fill="url(#lateralInterior)" fillOpacity="0.6" stroke="none"
+          <rect x="798" y="68" width="744" height="350" rx="18" fill="#ffffff" fillOpacity="0.64" stroke="#ffffff" />
+          <PanelVista
+            d={vistas.delantera}
+            titulo="VISTA DELANTERA"
+            etiquetaAlto={props.modo === "baqueton" ? "BAQUETÓN" : "ALTO DEL."}
+            altoNear={altoDelante}
+            ancho={props.ancho}
+            largo={props.largo}
+            mostrarLargo
+            mostrarAguas={mostrarAguas}
+            aguas={props.aguas ?? 0}
+            recogida={props.modo === "lona" ? (props.recogeDelante ?? "") : ""}
+            bastilla={bastilla}
+            modo={props.modo}
+          />
+          <g transform={`translate(${ANCHO_PANEL} 0)`}>
+            <PanelVista
+              d={vistas.trasera}
+              titulo="VISTA TRASERA"
+              etiquetaAlto={props.modo === "baqueton" ? "BAQUETÓN" : "ALTO TRAS."}
+              altoNear={altoAtras}
+              ancho={props.ancho}
+              largo={props.largo}
+              mostrarLargo={false}
+              mostrarAguas={false}
+              aguas={props.aguas ?? 0}
+              recogida={props.modo === "lona" ? (props.recogeAtras ?? "") : ""}
+              bastilla={bastilla}
+              modo={props.modo}
             />
-            <polygon
-              points={puntosSvg(dibujo.lateralIzq)}
-              fill="url(#lateralInterior)" fillOpacity="0.82" stroke="none"
-            />
-            {dibujo.tieneCumbrera ? (
-              <>
-                <path d={dibujo.cubiertaIzquierda!} fill="url(#cubiertaIzquierda)" stroke="none" />
-                <path d={dibujo.cubiertaDerecha!} fill="url(#cubiertaDerecha)" stroke="none" />
-              </>
-            ) : (
-              <path d={dibujo.cubiertaCompleta} fill="url(#cubiertaIzquierda)" stroke="none" />
-            )}
-            <polygon points={puntosSvg(dibujo.lateralDcha)} fill="url(#lateral)" stroke="none" />
           </g>
-
-          {dibujo.ventana && (
-            <g>
-              <rect
-                x={dibujo.ventana.x} y={dibujo.ventana.y}
-                width={dibujo.ventana.ancho} height={dibujo.ventana.alto}
-                rx={dibujo.ventana.radio}
-                fill="none" stroke="#0f766e" strokeWidth="2.2"
-              />
-            </g>
-          )}
-
-          {/* Únicamente se conservan los bordes visibles de la lona. */}
-          <path d={dibujo.coronacionFondo} fill="none" stroke="#7d9297" strokeWidth="2" strokeLinecap="round" />
-          <line
-            x1={dibujo.fondo.at(-2)!.x} y1={dibujo.fondo.at(-2)!.y}
-            x2={dibujo.fondo.at(-1)!.x} y2={dibujo.fondo.at(-1)!.y}
-            stroke="#7d9297" strokeWidth="2" strokeLinecap="round"
-          />
-          {dibujo.aristasLongitudinales.map((arista, indice) => (
-            <line
-              key={indice}
-              x1={arista.desde.x} y1={arista.desde.y}
-              x2={arista.hasta.x} y2={arista.hasta.y}
-              stroke="#4c6468" strokeWidth="2" strokeLinecap="round"
-            />
-          ))}
-          <path d={dibujo.contornoFrente} fill="none" stroke="#122d32" strokeWidth="3.6" strokeLinecap="round" strokeLinejoin="round" />
-          {dibujo.marcasOllaos.map((marca, indice) => (
-            <circle
-              key={indice}
-              cx={marca.x} cy={marca.y} r="3"
-              fill="#ffffff" stroke="#4c6468" strokeWidth="1.4"
-            />
-          ))}
-          {props.modo === "baqueton" && (
-            <path
-              d={dibujo.contornoFrente} fill="none" stroke="#d3a024"
-              strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round"
-            />
-          )}
-
-          <line x1={dibujo.frente[0].x} y1={dibujo.baseY + 5} x2={dibujo.frente[0].x} y2={dibujo.baseY + 42} stroke={COLOR_GUIA} />
-          <line x1={dibujo.frente.at(-1)!.x} y1={dibujo.baseY + 5} x2={dibujo.frente.at(-1)!.x} y2={dibujo.baseY + 42} stroke={COLOR_GUIA} />
-          <Cota desde={dibujo.anchoDesde} hasta={dibujo.anchoHasta} texto={`ANCHO ${fmt(props.ancho)}`} textoDy={22} />
-
-          <line x1={dibujo.frente[0].x - 5} y1={dibujo.altoDesde.y} x2={dibujo.altoDesde.x - 7} y2={dibujo.altoDesde.y} stroke={COLOR_GUIA} />
-          <line x1={dibujo.frente[0].x - 5} y1={dibujo.altoHasta.y} x2={dibujo.altoHasta.x - 7} y2={dibujo.altoHasta.y} stroke={COLOR_GUIA} />
-          <Cota
-            desde={dibujo.altoDesde} hasta={dibujo.altoHasta}
-            texto={`${props.modo === "baqueton" ? "BAQUETÓN" : "ALTO DEL."} ${fmt(altoDelante)}`}
-            rotacion={-90} textoDy={-9}
-          />
-
-          <Cota
-            desde={dibujo.largoDesde} hasta={dibujo.largoHasta}
-            texto={`LARGO ${fmt(props.largo)}`} rotacion={dibujo.anguloLargo} textoDy={-10}
-          />
-          {props.modo === "lona" && (props.aguas ?? 0) > 0 && ["TIPO 02", "TIPO 03"].includes(props.tipoPerfil) && (
-            <g>
-              <line
-                x1={dibujo.aguasGuiaHombro.desde.x} y1={dibujo.aguasGuiaHombro.desde.y}
-                x2={dibujo.aguasGuiaHombro.hasta.x} y2={dibujo.aguasGuiaHombro.hasta.y}
-                stroke={COLOR_GUIA} strokeWidth="1"
-              />
-              <line
-                x1={dibujo.aguasGuiaPico.desde.x} y1={dibujo.aguasGuiaPico.desde.y}
-                x2={dibujo.aguasGuiaPico.hasta.x} y2={dibujo.aguasGuiaPico.hasta.y}
-                stroke={COLOR_GUIA} strokeWidth="1"
-              />
-              <Cota
-                desde={dibujo.aguasDesde} hasta={dibujo.aguasHasta}
-                texto={`AGUAS ${fmt(props.aguas ?? 0)}`} rotacion={-90} textoDx={-11} textoDy={0}
-              />
-            </g>
-          )}
-          {props.modo === "lona" && altoAtras !== altoDelante && (
-            <g>
-              <line
-                x1={dibujo.fondo.at(-1)!.x + 5} y1={dibujo.altoTrasDesde.y}
-                x2={dibujo.altoTrasDesde.x + 7} y2={dibujo.altoTrasDesde.y}
-                stroke={COLOR_GUIA}
-              />
-              <line
-                x1={dibujo.fondo.at(-2)!.x + 5} y1={dibujo.altoTrasHasta.y}
-                x2={dibujo.altoTrasHasta.x + 7} y2={dibujo.altoTrasHasta.y}
-                stroke={COLOR_GUIA}
-              />
-              <Cota
-                desde={dibujo.altoTrasDesde} hasta={dibujo.altoTrasHasta}
-                texto={`ALTO TRAS. ${fmt(altoAtras)}`} rotacion={-90} textoDy={-9}
-              />
-            </g>
-          )}
         </svg>
       ) : (
         <div className="flex h-[calc(100%-64px)] flex-col items-center justify-center gap-2 px-6 text-center">
