@@ -199,7 +199,13 @@ function plano(ws: Worksheet, wb: Workbook, snapshotPng: string | null, material
     return;
   }
   const imageId = wb.addImage({ base64: snapshotPng, extension: "png" });
-  ws.addImage(imageId, "G6:R24");
+  // La vista doble es panorámica (1560×440): se centra en el panel conservando
+  // la proporción en lugar de estirarla al rango completo.
+  ws.addImage(imageId, {
+    tl: { col: 6.1, row: 8.6 },
+    ext: { width: 780, height: 220 },
+    editAs: "oneCell",
+  });
 }
 
 function tablaOllaos(
