@@ -264,14 +264,17 @@ function calcularVista(o: OpcionesVista) {
   // el contorno en las uniones curva-recta.
   const usaCurvas = perfil === "TIPO 03" && !(o.radioCumbrera > 0 && o.aguas > 0);
   const cubierta = franjasCubierta(techoFrente, techoFondo, picoTechoFrente, tieneCumbrera);
-  const lateralIzq = [frente[1], frente[0], fondo[0], fondo[1]];
   const lateralDcha = [frente.at(-2)!, frente.at(-1)!, fondo.at(-1)!, fondo.at(-2)!];
+  // Las aristas se cortan antes de llegar al fondo: en la realidad el propio
+  // remolque las va ocultando hacia el final.
   const aristasLongitudinales = forma.aristas.map((indice) => ({
     desde: frente[indice],
-    hasta: fondo[indice],
+    hasta: {
+      x: frente[indice].x + (fondo[indice].x - frente[indice].x) * 0.65,
+      y: frente[indice].y + (fondo[indice].y - frente[indice].y) * 0.65,
+    },
   }));
   const contornoFrente = caminoPerfil(frente, usaCurvas);
-  const coronacionFondo = caminoTecho(techoFondo, usaCurvas);
   const hombroDerecho = frente.at(-2)!;
   const picoFrente = frente[indicePicoFrente];
   const ventanaLocal = o.conVentana ? calcularVentanaFrontal(near, o.ancho) : null;
@@ -313,7 +316,7 @@ function calcularVista(o: OpcionesVista) {
     + ` L ${puntoSvg({ x: fondo.at(-1)!.x + normalLateral.x, y: fondo.at(-1)!.y + normalLateral.y })}`;
   const xCotaAguas = frente.at(-1)!.x + 34;
   return {
-    frente, fondo, lateralIzq, lateralDcha, aristasLongitudinales, contornoFrente, coronacionFondo,
+    frente, fondo, lateralDcha, aristasLongitudinales, contornoFrente,
     cubierta, tieneCumbrera, ventana, marcasOllaos, costuraIzq, costuraDcha,
     bastillaBorde, bastillaInterior,
     anchoDesde: { x: frente[0].x, y: baseY + 35 },
@@ -366,10 +369,8 @@ function PanelVista({
       </text>
       {/* Techo y lateral muestran el color de lona; la cara cercana queda abierta. */}
       <g filter="url(#sombraLona)">
-        {/* Relleno del hueco completo: cubre también las zonas curvas de la
-            coronación (tipos 03 y 05) que las superficies no alcanzan. */}
-        <path d={`${d.contornoFrente} Z`} fill="url(#lateralInterior)" fillOpacity="0.6" stroke="none" />
-        <polygon points={puntosSvg(d.lateralIzq)} fill="url(#lateralInterior)" fillOpacity="0.82" stroke="none" />
+        {/* El pinche (paño delantero o trasero) cubre la cara cercana. */}
+        <path d={`${d.contornoFrente} Z`} fill="url(#pinche)" stroke="none" />
         {d.cubierta.map((franja, indice) => (
           <polygon
             key={indice}
@@ -383,21 +384,23 @@ function PanelVista({
       </g>
 
       {d.ventana && (
-        <rect
-          x={d.ventana.x} y={d.ventana.y}
-          width={d.ventana.ancho} height={d.ventana.alto}
-          rx={d.ventana.radio}
-          fill="none" stroke="#0f766e" strokeWidth="2.2"
-        />
+        <g>
+          {/* A través de la ventana se intuye el interior en penumbra. */}
+          <rect
+            x={d.ventana.x} y={d.ventana.y}
+            width={d.ventana.ancho} height={d.ventana.alto}
+            rx={d.ventana.radio}
+            fill="#0e2a2f" fillOpacity="0.38"
+          />
+          <rect
+            x={d.ventana.x} y={d.ventana.y}
+            width={d.ventana.ancho} height={d.ventana.alto}
+            rx={d.ventana.radio}
+            fill="none" stroke="#0f766e" strokeWidth="2.2"
+          />
+        </g>
       )}
 
-      {/* Únicamente se conservan los bordes visibles de la lona. */}
-      <path d={d.coronacionFondo} fill="none" stroke="#7d9297" strokeWidth="2" strokeLinecap="round" />
-      <line
-        x1={d.fondo.at(-2)!.x} y1={d.fondo.at(-2)!.y}
-        x2={d.fondo.at(-1)!.x} y2={d.fondo.at(-1)!.y}
-        stroke="#7d9297" strokeWidth="2" strokeLinecap="round"
-      />
       {d.aristasLongitudinales.map((arista, indice) => (
         <line
           key={indice}
@@ -589,7 +592,8 @@ export function Escena3D(props: Escena3DProps) {
               <stop offset="0" stopColor={colores.lateralClaro} />
               <stop offset="1" stopColor={colores.lateral} />
             </linearGradient>
-            <linearGradient id="lateralInterior" x1="1" y1="0" x2="0" y2="1">
+            {/* Paño delantero/trasero (pinche): plano frontal, más luminoso que el faldón. */}
+            <linearGradient id="pinche" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0" stopColor={colores.techoClaro} />
               <stop offset="1" stopColor={colores.lateralClaro} />
             </linearGradient>
