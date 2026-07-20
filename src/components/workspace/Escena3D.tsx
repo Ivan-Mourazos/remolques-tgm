@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
-import { controlesCatmullRom, type Punto2D } from "@/lib/geometry/curva";
+import type { Punto2D } from "@/lib/geometry/curva";
 import { perfilForma } from "@/lib/geometry/perfil";
 import { calcularVentanaFrontal } from "@/lib/geometry/ventana";
 import { coloresMaterial } from "@/lib/geometry/color-lona";
@@ -18,8 +18,10 @@ export interface Escena3DProps {
   altoDelante: number;
   altoAtras: number;
   aguas?: number;
-  /** Radio real del arco de cumbrera (TIPO 03); si falta se usa la curva estética. */
+  /** Radio del arco de cumbrera (TIPO 03); 0 = pico vivo. */
   radioCumbrera?: number;
+  /** Radio de los hombros (TIPO 03); 0 = esquina viva. */
+  radioHombro?: number;
   /** Radio real de esquina (TIPO 05); si falta se usa uno estético. */
   radioEsquina?: number;
   /** Chaflán real de esquina (TIPO 04); si falta se usa uno estético. */
@@ -49,34 +51,19 @@ const puntosSvg = (puntos: Punto[]) =>
 
 const puntoSvg = ({ x, y }: Punto) => `${x.toFixed(1)} ${y.toFixed(1)}`;
 
-/** Curva Catmull-Rom convertida a Bézier, contenida y sin suavizar los laterales. */
-function caminoCurvo(puntos: Punto[], mover = true): string {
-  if (puntos.length === 0) return "";
-  let d = mover ? `M ${puntoSvg(puntos[0])}` : "";
-  if (puntos.length === 1) return d;
-  for (let i = 0; i < puntos.length - 1; i += 1) {
-    const p2 = puntos[i + 1];
-    const { c1, c2 } = controlesCatmullRom(puntos, i);
-    d += ` C ${puntoSvg(c1)} ${puntoSvg(c2)} ${puntoSvg(p2)}`;
-  }
-  return d;
-}
-
 function caminoLineal(puntos: Punto[], mover = true): string {
   if (puntos.length === 0) return "";
   const inicio = mover ? `M ${puntoSvg(puntos[0])}` : "";
   return puntos.slice(1).reduce((camino, punto) => `${camino} L ${puntoSvg(punto)}`, inicio);
 }
 
-function caminoTecho(puntos: Punto[], curvo: boolean, mover = true): string {
-  return curvo ? caminoCurvo(puntos, mover) : caminoLineal(puntos, mover);
-}
-
-function caminoPerfil(puntos: Punto[], curvo: boolean): string {
+// Todos los perfiles se dibujan lineales: los arcos ya vienen discretizados
+// en puntos densos y el pico del TIPO 03 con radio 0 debe quedar afilado.
+function caminoPerfil(puntos: Punto[]): string {
   const baseIzquierda = puntos[0];
   const baseDerecha = puntos.at(-1)!;
   const cubierta = puntos.slice(1, -1);
-  return `M ${puntoSvg(baseIzquierda)} L ${puntoSvg(cubierta[0])}${caminoTecho(cubierta, curvo, false)} L ${puntoSvg(baseDerecha)}`;
+  return `M ${puntoSvg(baseIzquierda)} L ${puntoSvg(cubierta[0])}${caminoLineal(cubierta, false)} L ${puntoSvg(baseDerecha)}`;
 }
 
 /**
@@ -117,7 +104,7 @@ function Cota({
     <g>
       <line
         x1={desde.x} y1={desde.y} x2={hasta.x} y2={hasta.y}
-        stroke={COLOR_COTA} strokeWidth="1.2" markerStart="url(#cota)" markerEnd="url(#cota)"
+        stroke={COLOR_COTA} strokeWidth="1" markerStart="url(#cota)" markerEnd="url(#cota)"
       />
       <text
         x={cx} y={cy} textAnchor="middle" fontSize="13" fontWeight="800"
@@ -207,6 +194,7 @@ interface OpcionesVista {
   altoFar: number;
   aguas: number;
   radioCumbrera: number;
+  radioHombro: number;
   radioEsquina: number;
   chaflan: number;
   conVentana: boolean;
@@ -223,6 +211,7 @@ function calcularVista(o: OpcionesVista) {
     altoDelante: alto,
     alturaPico: o.aguas,
     radioCumbrera: o.radioCumbrera,
+    radioHombro: o.radioHombro,
     chaflan: o.chaflan > 0 ? o.chaflan : Math.min(18, ancho * 0.1, alto * 0.25),
     radio: o.radioEsquina > 0 ? o.radioEsquina : Math.min(18, ancho * 0.1, alto * 0.25),
   });
@@ -262,23 +251,13 @@ function calcularVista(o: OpcionesVista) {
     && ["TIPO 02", "TIPO 03"].includes(o.tipoPerfil)
     && picoTechoFrente > 0
     && picoTechoFrente < techoFrente.length - 1;
-  // El spline solo suaviza la curva estética del TIPO 03 sin radio conocido.
-  // TIPO 05 y TIPO 03 con radio ya traen el arco discretizado en puntos
-  // densos: dibujarlos lineales es exacto y evita que el suavizado rebase
-  // el contorno en las uniones curva-recta.
-  const usaCurvas = perfil === "TIPO 03" && !(o.radioCumbrera > 0 && o.aguas > 0);
   const cubierta = franjasCubierta(techoFrente, techoFondo, picoTechoFrente, tieneCumbrera);
   const lateralDcha = [frente.at(-2)!, frente.at(-1)!, fondo.at(-1)!, fondo.at(-2)!];
-  // Las aristas se cortan antes de llegar al fondo: en la realidad el propio
-  // remolque las va ocultando hacia el final.
   const aristasLongitudinales = forma.aristas.map((indice) => ({
     desde: frente[indice],
-    hasta: {
-      x: frente[indice].x + (fondo[indice].x - frente[indice].x) * 0.65,
-      y: frente[indice].y + (fondo[indice].y - frente[indice].y) * 0.65,
-    },
+    hasta: fondo[indice],
   }));
-  const contornoFrente = caminoPerfil(frente, usaCurvas);
+  const contornoFrente = caminoPerfil(frente);
   const hombroDerecho = frente.at(-2)!;
   const picoFrente = frente[indicePicoFrente];
   const ventanaLocal = o.conVentana ? calcularVentanaFrontal(near, o.anchoNear) : null;
@@ -301,19 +280,23 @@ function calcularVista(o: OpcionesVista) {
       : [];
   const lateralDesde = o.lateralesDesdeFar ? fondo.at(-1)! : frente.at(-1)!;
   const lateralHasta = o.lateralesDesdeFar ? frente.at(-1)! : fondo.at(-1)!;
-  const marcasOllaos = [
-    ...enTramo(o.ollaosNear, o.anchoNear, frente[0], frente.at(-1)!),
-    ...enTramo(o.ollaosLaterales, o.largo, lateralDesde, lateralHasta),
-  ];
-  // Costuras verticales paño–contorno («el alto de los lados»): donde va la recogida.
-  const costuraIzq: Costura = { x: frente[0].x, yBase: frente[0].y, yTop: frente[1].y };
-  const costuraDcha: Costura = { x: frente.at(-1)!.x, yBase: frente.at(-1)!.y, yTop: frente.at(-2)!.y };
-  // Bastilla de enfundar: banda paralela a los bordes de base visibles.
+  // Normal del borde lateral, apuntando hacia dentro de la lona.
   const largoLateral = Math.hypot(fondo.at(-1)!.x - frente.at(-1)!.x, fondo.at(-1)!.y - frente.at(-1)!.y);
   const normalLateral = {
     x: ((fondo.at(-1)!.y - frente.at(-1)!.y) / largoLateral) * 6,
     y: (-(fondo.at(-1)!.x - frente.at(-1)!.x) / largoLateral) * 6,
   };
+  // Los ollaos van por dentro de la lona, no sobre el borde.
+  const marcasOllaos = [
+    ...enTramo(o.ollaosNear, o.anchoNear, frente[0], frente.at(-1)!)
+      .map((p) => ({ x: p.x, y: p.y - 5 })),
+    ...enTramo(o.ollaosLaterales, o.largo, lateralDesde, lateralHasta)
+      .map((p) => ({ x: p.x + normalLateral.x * 0.8, y: p.y + normalLateral.y * 0.8 })),
+  ];
+  // Costuras verticales paño–contorno («el alto de los lados»): donde va la recogida.
+  const costuraIzq: Costura = { x: frente[0].x, yBase: frente[0].y, yTop: frente[1].y };
+  const costuraDcha: Costura = { x: frente.at(-1)!.x, yBase: frente.at(-1)!.y, yTop: frente.at(-2)!.y };
+  // Bastilla de enfundar: banda paralela a los bordes de base visibles.
   const bastillaBorde = `M ${puntoSvg(frente[0])} L ${puntoSvg(frente.at(-1)!)} L ${puntoSvg(fondo.at(-1)!)}`;
   const bastillaInterior = `M ${puntoSvg({ x: frente[0].x, y: frente[0].y - 6 })}`
     + ` L ${puntoSvg({ x: frente.at(-1)!.x, y: frente.at(-1)!.y - 6 })}`
@@ -401,7 +384,7 @@ function PanelVista({
             x={d.ventana.x} y={d.ventana.y}
             width={d.ventana.ancho} height={d.ventana.alto}
             rx={d.ventana.radio}
-            fill="none" stroke="#0f766e" strokeWidth="2.2"
+            fill="none" stroke="#0f766e" strokeWidth="1.8"
           />
         </g>
       )}
@@ -411,29 +394,29 @@ function PanelVista({
           key={indice}
           x1={arista.desde.x} y1={arista.desde.y}
           x2={arista.hasta.x} y2={arista.hasta.y}
-          stroke="#4c6468" strokeWidth="2" strokeLinecap="round"
+          stroke="#4c6468" strokeWidth="1.3" strokeLinecap="round"
         />
       ))}
-      <path d={d.contornoFrente} fill="none" stroke="#122d32" strokeWidth="3.6" strokeLinecap="round" strokeLinejoin="round" />
+      <path d={d.contornoFrente} fill="none" stroke="#122d32" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
       {/* Bastilla de enfundar: refuerzo perimetral inferior, donde los ollaos →
           banda de doble línea a lo largo de los bordes de base visibles. */}
       {bastilla && (
         <>
-          <path d={d.bastillaBorde} fill="none" stroke="#122d32" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          <path d={d.bastillaInterior} fill="none" stroke="#122d32" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+          <path d={d.bastillaBorde} fill="none" stroke="#122d32" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+          <path d={d.bastillaInterior} fill="none" stroke="#122d32" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
         </>
       )}
       {d.marcasOllaos.map((marca, indice) => (
         <circle
           key={indice}
-          cx={marca.x} cy={marca.y} r="3"
-          fill="#ffffff" stroke="#4c6468" strokeWidth="1.4"
+          cx={marca.x} cy={marca.y} r="2"
+          fill="#ffffff" stroke="#4c6468" strokeWidth="1"
         />
       ))}
       {modo === "baqueton" && (
         <path
           d={d.contornoFrente} fill="none" stroke="#d3a024"
-          strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round"
+          strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"
         />
       )}
 
@@ -526,6 +509,7 @@ export function Escena3D(props: Escena3DProps) {
       largo: props.largo,
       aguas: props.aguas ?? 0,
       radioCumbrera: props.radioCumbrera ?? 0,
+      radioHombro: props.radioHombro ?? 0,
       radioEsquina: props.radioEsquina ?? 0,
       chaflan: props.chaflan ?? 0,
     };
@@ -554,7 +538,7 @@ export function Escena3D(props: Escena3DProps) {
     return { delantera, trasera };
   }, [
     valido, props.modo, props.tipoPerfil, props.ancho, props.largo,
-    props.aguas, props.radioCumbrera, props.radioEsquina, props.chaflan,
+    props.aguas, props.radioCumbrera, props.radioHombro, props.radioEsquina, props.chaflan,
     props.ventana, props.ollaos, altoDelante, altoAtras, anchoAtras,
   ]);
 

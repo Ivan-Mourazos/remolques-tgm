@@ -248,7 +248,7 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
         {tipo === "lona" ? (
           <Escena3D modo="lona" largo={lona.largo} ancho={lona.ancho} anchoAtras={lona.anchoAtras}
             altoDelante={lona.altoDelante} altoAtras={lona.altoAtras}
-            aguas={lona.aguas} radioCumbrera={lona.radioCumbrera}
+            aguas={lona.aguas} radioCumbrera={lona.radioCumbrera} radioHombro={lona.radioHombro}
             radioEsquina={lona.radioEsquina} chaflan={lona.chaflan}
             ollaos={resLona.reparto}
             recogeDelante={lona.recogeDelante} recogeAtras={lona.recogeAtras}

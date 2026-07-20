@@ -70,6 +70,26 @@ describe("perfilPuntos", () => {
     expect(puntos[tIzq][0]).toBeCloseTo(150 - puntos[tDer][0], 9);
   });
 
+  it("TIPO 03 con radio de hombro: tangencias sobre el lateral y arcos en el círculo", () => {
+    const { puntos, aristas } = perfilForma("TIPO 03", {
+      ancho: 150, altoDelante: 100, alturaPico: 20, radioHombro: 15,
+    });
+    // pico vivo → 3 aristas: hombro izq, pico, hombro der
+    expect(aristas).toHaveLength(3);
+    const theta = Math.atan2(20, 75);
+    const t = 15 * Math.tan((Math.PI / 2 - theta) / 2);
+    expect(puntos[aristas[0]]).toEqual([0, 80 - t]);
+    expect(puntos[aristas[1]]).toEqual([75, 100]);
+    expect(puntos[aristas[2]][0]).toBeCloseTo(150, 9);
+    expect(puntos[aristas[2]][1]).toBeCloseTo(80 - t, 9);
+    // los puntos del arco izquierdo están a distancia rh del centro
+    const centro = { x: 15, y: 80 - t };
+    const arco = puntos.filter(([x, y]) => x > 0 && x < 20 && y > 80 - t && y < 100);
+    for (const [x, y] of arco) {
+      expect(Math.hypot(x - centro.x, y - centro.y)).toBeCloseTo(15, 9);
+    }
+  });
+
   it("expone nombres de perfil claros para oficina técnica", () => {
     expect(nombrePerfil("TIPO 04")).toContain("chaflanes");
     expect(nombrePerfil("TIPO 05")).toContain("esquinas curvas");
