@@ -69,6 +69,7 @@ export function calcLona(input: LonaInput, params: CalcParams): LonaResult {
   const recAtr = findRecogida(params, input.recogeAtras);
 
   const anchoAtras = (input.anchoAtras ?? 0) > 0 ? input.anchoAtras! : input.ancho;
+  const altoAtras = input.altoAtras > 0 ? input.altoAtras : input.altoDelante;
   const lonaHecha = {
     largo: r1(input.largo + params.demasiaLonaHecha),
     ancho: r1(input.ancho + params.demasiaLonaHecha),
@@ -96,7 +97,7 @@ export function calcLona(input: LonaInput, params: CalcParams): LonaResult {
   const demasiaTrasera = USAR_COLUMNA_ATRAS ? recAtr.atras : recAtr.delante;
   const panoTrasero: Pano = {
     ancho: r1(anchoAtras + demasiaTrasera),
-    alto: r1(input.altoAtras + params.demasiaAlto),
+    alto: r1(altoAtras + params.demasiaAlto),
     etiqueta: "PAÑO TRASERO",
   };
 

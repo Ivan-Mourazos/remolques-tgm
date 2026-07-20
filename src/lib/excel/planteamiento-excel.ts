@@ -133,7 +133,10 @@ function datosLona(ws: Worksheet, rec: PlanteamientoRecord, material?: Material)
       ? `${num(i.ancho)} del. / ${num(i.anchoAtras)} tras.`
       : num(i.ancho),
   ], ["Alto delante", num(i.altoDelante)]);
-  campoPar(ws, 8, ["Alto detrás", num(i.altoAtras)], ["Aguas", num(i.aguas ?? 0)]);
+  campoPar(ws, 8, [
+    "Alto detrás",
+    num(i.altoAtras > 0 ? i.altoAtras : i.altoDelante),
+  ], ["Aguas", num(i.aguas ?? 0)]);
   campoPar(ws, 9, ["Perfil", nombrePerfil(i.tipoPerfil)], ["Contorno remolque", num(r.contornoIntroducido)]);
   campoPar(ws, 10, ["Recoge delante", r.recogeDelanteTexto], ["Recoge atrás", r.recogeAtrasTexto]);
   campoPar(ws, 11, ["Bastilla enfundar", siNo(i.bastillaEnfundar)], ["Ventana", siNo(i.ventana)]);

@@ -100,6 +100,11 @@ describe("calcLona — variantes", () => {
     expect(res.reparto.atras.at(-1)).toBe(138.5);   // 141 - 2,5
   });
 
+  it("alto detrás vacío (0) = igual que delante", () => {
+    const res = calcLona({ ...base, altoAtras: 0 }, DEFAULT_PARAMS);
+    expect(res.panoTrasero.alto).toBe(res.panoDelantero.alto);
+  });
+
   it("sin ancho trasero indicado, ambas caras usan el mismo", () => {
     const res = calcLona({ ...base, anchoAtras: 0 }, DEFAULT_PARAMS);
     expect(res.lonaHecha.anchoAtras).toBe(152);
