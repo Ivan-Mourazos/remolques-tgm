@@ -122,6 +122,8 @@ function Reparto({ reparto, modo, primerOllao }: {
 function DatosLona({ rec }: { rec: PlanteamientoRecord }) {
   const i = rec.input as LonaInput;
   const r = rec.result as LonaResult;
+  // vacío (0) = igual que delante
+  const altoAtras = i.altoAtras > 0 ? i.altoAtras : i.altoDelante;
   const panos = [
     `${i.cantidad} PAÑO DE ${fmt(r.panoDelantero.ancho)} x ${fmt(r.panoDelantero.alto)}`,
     `${i.cantidad} PAÑO DE ${fmt(r.panoTrasero.ancho)} x ${fmt(r.panoTrasero.alto)}`,
@@ -139,8 +141,8 @@ function DatosLona({ rec }: { rec: PlanteamientoRecord }) {
       {(i.anchoAtras ?? 0) > 0 && i.anchoAtras !== i.ancho && (
         <Dato etiqueta="" valor={`ANCHO DELANTE ${fmt(i.ancho)} / DETRÁS ${fmt(i.anchoAtras!)}`} />
       )}
-      <Dato etiqueta="" valor={i.altoAtras !== i.altoDelante
-        ? `ALTO DELANTE ${fmt(i.altoDelante)} / DETRÁS ${fmt(i.altoAtras)}`
+      <Dato etiqueta="" valor={altoAtras !== i.altoDelante
+        ? `ALTO DELANTE ${fmt(i.altoDelante)} / DETRÁS ${fmt(altoAtras)}`
         : `ALTO ${fmt(i.altoDelante)}`} />
       <Dato etiqueta="CONTORNO DE CORTE" valor={r.contornoAjustado ? fmt(r.contornoAjustado) : "PENDIENTE"} />
       <Dato etiqueta="ARCO" valor={i.cabecera.cliente || i.tipoPerfil} />
