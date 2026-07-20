@@ -22,17 +22,16 @@ export function FormularioLona({
     alto: input.altoDelante,
     aguas: input.aguas,
     radioCumbrera: input.radioCumbrera,
+    radioHombro: input.radioHombro,
     radioEsquina: input.radioEsquina,
     chaflan: input.chaflan,
   });
   const contornoExacto = calculado == null ? null : excelRound(calculado, 1);
-  const faltaDato = input.tipoPerfil === "TIPO 03" && (input.aguas ?? 0) > 0 && !(input.radioCumbrera ?? 0)
-    ? "radio de cumbrera"
-    : input.tipoPerfil === "TIPO 04" && !(input.chaflan ?? 0)
-      ? "chaflán"
-      : input.tipoPerfil === "TIPO 05" && !(input.radioEsquina ?? 0)
-        ? "radio"
-        : null;
+  const faltaDato = input.tipoPerfil === "TIPO 04" && !(input.chaflan ?? 0)
+    ? "chaflán"
+    : input.tipoPerfil === "TIPO 05" && !(input.radioEsquina ?? 0)
+      ? "radio"
+      : null;
   const set = <K extends keyof LonaInput>(k: K, v: LonaInput[K]) => onChange({ ...input, [k]: v });
   const setCab = (k: keyof LonaInput["cabecera"], v: string) =>
     onChange({ ...input, cabecera: { ...input.cabecera, [k]: v } });
@@ -72,7 +71,10 @@ export function FormularioLona({
             <CampoNum label="Aguas" value={input.aguas ?? 0} onChange={(v) => set("aguas", v)} />
           )}
           {input.tipoPerfil === "TIPO 03" && (
-            <CampoNum label="Radio cumbrera" value={input.radioCumbrera ?? 0} onChange={(v) => set("radioCumbrera", v)} />
+            <>
+              <CampoNum label="Radio cumbrera" value={input.radioCumbrera ?? 0} onChange={(v) => set("radioCumbrera", v)} />
+              <CampoNum label="Radio hombro" value={input.radioHombro ?? 0} onChange={(v) => set("radioHombro", v)} />
+            </>
           )}
           {input.tipoPerfil === "TIPO 04" && (
             <CampoNum label="Chaflán esquina" value={input.chaflan ?? 0} onChange={(v) => set("chaflan", v)} />

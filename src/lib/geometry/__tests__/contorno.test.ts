@@ -17,21 +17,35 @@ describe("contornoCalculado", () => {
     expect(contornoCalculado("TIPO 02", { ancho: 150, alto: 100, aguas: 0 })).toBe(350);
   });
 
-  it("TIPO 03: exige el radio de cumbrera", () => {
-    expect(contornoCalculado("TIPO 03", { ancho: 150, alto: 100, aguas: 20 })).toBeNull();
+  it("TIPO 03 sin radios calcula como pico puro (TIPO 02)", () => {
+    const pico = contornoCalculado("TIPO 02", { ancho: 150, alto: 100, aguas: 20 });
+    expect(contornoCalculado("TIPO 03", { ancho: 150, alto: 100, aguas: 20, radioCumbrera: 0, radioHombro: 0 }))
+      .toBeCloseTo(pico!, 10);
+    expect(contornoCalculado("TIPO 03", { ancho: 150, alto: 100, aguas: 20 }))
+      .toBeCloseTo(pico!, 10);
   });
 
-  it("TIPO 03: vertientes más arco tangente de radio conocido", () => {
-    const conRadio = contornoCalculado("TIPO 03", { ancho: 150, alto: 100, aguas: 20, radioCumbrera: 30 })!;
-    // queda entre el pico puro (TIPO 02) y el arco completo entre hombros
-    const pico = contornoCalculado("TIPO 02", { ancho: 150, alto: 100, aguas: 20 })!;
-    const rMax = (75 ** 2 + 20 ** 2) / (2 * 20);
-    const arcoCompleto = 2 * 80 + 2 * rMax * Math.asin(75 / rMax);
-    expect(conRadio).toBeGreaterThan(pico);
-    expect(conRadio).toBeLessThan(arcoCompleto);
-    // radio enorme → se acota al arco completo
-    expect(contornoCalculado("TIPO 03", { ancho: 150, alto: 100, aguas: 20, radioCumbrera: 99999 }))
-      .toBeCloseTo(arcoCompleto, 9);
+  it("TIPO 03: cada radio recorta exactamente su esquina teórica", () => {
+    const w = 150, h = 100, c = 20;
+    const a = w / 2;
+    const theta = Math.atan2(c, a);
+    const L = Math.hypot(a, c);
+    const vivo = 2 * (h - c) + 2 * L;
+    // recorte de una esquina de giro phi y radio r: 2·r·tan(phi/2) − r·phi
+    const recorte = (r: number, phi: number) => 2 * r * Math.tan(phi / 2) - r * phi;
+
+    const soloCumbrera = contornoCalculado("TIPO 03", { ancho: w, alto: h, aguas: c, radioCumbrera: 30 })!;
+    expect(soloCumbrera).toBeCloseTo(vivo - recorte(30, 2 * theta), 9);
+
+    const soloHombros = contornoCalculado("TIPO 03", { ancho: w, alto: h, aguas: c, radioHombro: 15 })!;
+    expect(soloHombros).toBeCloseTo(vivo - 2 * recorte(15, Math.PI / 2 - theta), 9);
+
+    const ambos = contornoCalculado("TIPO 03", { ancho: w, alto: h, aguas: c, radioCumbrera: 30, radioHombro: 15 })!;
+    expect(ambos).toBeCloseTo(vivo - recorte(30, 2 * theta) - 2 * recorte(15, Math.PI / 2 - theta), 9);
+
+    // redondear siempre acorta respecto a la esquina viva
+    expect(ambos).toBeLessThan(soloCumbrera);
+    expect(soloCumbrera).toBeLessThan(vivo);
   });
 
   it("TIPO 03 sin aguas equivale al recto (no necesita radio)", () => {

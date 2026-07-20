@@ -14,7 +14,7 @@ export function emptyLona(): LonaInput {
   return {
     cabecera: cabecera(),
     cantidad: 1, largo: 0, ancho: 0, anchoAtras: 0, altoDelante: 0, altoAtras: 0, aguas: 0,
-    radioCumbrera: 0, radioEsquina: 0, chaflan: 0,
+    radioCumbrera: 0, radioHombro: 0, radioEsquina: 0, chaflan: 0,
     contorno: 0, tipoPerfil: "TIPO 01",
     recogeDelante: "NO", recogeAtras: "NO",
     bastillaEnfundar: false, ventana: false, rotulacion: false,
