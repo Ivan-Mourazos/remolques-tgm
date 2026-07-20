@@ -50,25 +50,34 @@ export function perfilForma(tipo: TipoPerfil, opts: PerfilOpts): PerfilForma {
       const cumbrera = cumbreraRedondeada(w, h, pico, opts.radioCumbrera ?? 0);
       if (cumbrera) {
         // Geometría real: hombro, vertiente recta y arco tangente de cumbrera.
+        // Las aristas van en los hombros y en las tangencias vertiente–arco;
+        // el vértice del arco es superficie lisa, sin arista.
         const hombro = h - pico;
         const { centro, semiangulo, radio: rc, tangenteIzquierda } = cumbrera;
+        const conVertiente = cumbrera.vertiente > 1e-9;
         const pasos = 8;
         const arcoPuntos: Pt[] = Array.from({ length: pasos + 1 }, (_, i) => {
           const beta = Math.PI / 2 + semiangulo - (2 * semiangulo * i) / pasos;
           return [centro.x + rc * Math.cos(beta), centro.y + rc * Math.sin(beta)];
         });
         const puntos: Pt[] = [[0, 0], [0, hombro]];
-        if (cumbrera.vertiente > 1e-9) puntos.push([tangenteIzquierda.x, tangenteIzquierda.y]);
-        for (const p of arcoPuntos) {
+        const aristas: number[] = [1];
+        const anadir = (p: Pt) => {
           const previo = puntos.at(-1)!;
           if (Math.hypot(p[0] - previo[0], p[1] - previo[1]) > 1e-9) puntos.push(p);
+        };
+        if (conVertiente) {
+          anadir([tangenteIzquierda.x, tangenteIzquierda.y]);
+          aristas.push(puntos.length - 1); // tangencia izquierda
         }
-        if (cumbrera.vertiente > 1e-9) {
-          puntos.push([w - tangenteIzquierda.x, tangenteIzquierda.y]);
+        for (const p of arcoPuntos) anadir(p);
+        if (conVertiente) {
+          anadir([w - tangenteIzquierda.x, tangenteIzquierda.y]);
+          aristas.push(puntos.length - 1); // tangencia derecha
         }
         puntos.push([w, hombro], [w, 0]);
-        const apice = puntos.findIndex(([, y]) => Math.abs(y - h) < 1e-9);
-        return { puntos, aristas: [1, apice, puntos.length - 2] };
+        aristas.push(puntos.length - 2);
+        return { puntos, aristas };
       }
       // Sin radio conocido: curva estética suavizada dentro de la altura total.
       const sub = Math.min(r, pico, w / 4);
