@@ -57,6 +57,19 @@ describe("perfilPuntos", () => {
     expect(t3.puntos[t3.aristas[1]]).toEqual([75, 100]);
   });
 
+  it("TIPO 03 con radio: aristas en las tangencias, no en el vértice liso", () => {
+    const { puntos, aristas } = perfilForma("TIPO 03", {
+      ancho: 150, altoDelante: 100, alturaPico: 20, radioCumbrera: 60,
+    });
+    expect(aristas).toHaveLength(4); // hombros + dos tangencias
+    // ninguna arista en el vértice del arco (superficie lisa)
+    for (const i of aristas) expect(puntos[i][1]).toBeLessThan(100);
+    // tangencias simétricas a la misma altura
+    const [, tIzq, tDer] = aristas;
+    expect(puntos[tIzq][1]).toBeCloseTo(puntos[tDer][1], 9);
+    expect(puntos[tIzq][0]).toBeCloseTo(150 - puntos[tDer][0], 9);
+  });
+
   it("expone nombres de perfil claros para oficina técnica", () => {
     expect(nombrePerfil("TIPO 04")).toContain("chaflanes");
     expect(nombrePerfil("TIPO 05")).toContain("esquinas curvas");
