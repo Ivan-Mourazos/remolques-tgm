@@ -64,6 +64,16 @@ describe("contornoCalculado", () => {
       .toBeCloseTo(2 * 75 + 100 + Math.PI * 25, 10);
   });
 
+  it("caso real SCAD: 150 ancho (151 hecha) × 124,3 alto, aguas 9,3, hombros R10", () => {
+    // La línea rosa del CAD (remolque terminado, sobre la lona hecha) mide 375,86;
+    // la fórmula exacta con ancho hecho 151 da 375,73 (≈1 mm de tolerancia de croquis).
+    const contorno = contornoCalculado("TIPO 03", {
+      ancho: 151, alto: 124.3, aguas: 9.3, radioHombro: 10, radioCumbrera: 0,
+    })!;
+    expect(contorno).toBeGreaterThan(375.5);
+    expect(contorno).toBeLessThan(376.1);
+  });
+
   it("medidas incompletas devuelven null", () => {
     expect(contornoCalculado("TIPO 01", { ancho: 0, alto: 100 })).toBeNull();
     expect(contornoCalculado("TIPO 01", { ancho: 150, alto: 0 })).toBeNull();

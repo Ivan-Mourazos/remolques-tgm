@@ -17,8 +17,10 @@ export function FormularioLona({
   const ajuste = ajusteContorno(params ?? DEFAULT_PARAMS, input.tipoPerfil);
   const contornoVisible = input.contorno
     ?? Math.max((input.contornoScad ?? 0) - ajuste, 0);
+  // El contorno se desarrolla sobre la LONA HECHA (ancho + demasía), no sobre
+  // el remolque pedido: validado contra la línea rosa del CAD de oficina técnica.
   const calculado = contornoCalculado(input.tipoPerfil, {
-    ancho: input.ancho,
+    ancho: input.ancho + (params ?? DEFAULT_PARAMS).demasiaLonaHecha,
     alto: input.altoDelante,
     aguas: input.aguas,
     radioCumbrera: input.radioCumbrera,
