@@ -280,9 +280,9 @@ function calcularVista(o: OpcionesVista) {
     const hayMedidas = o.ventanaAncho > 0 && o.ventanaAlto > 0;
     // Normalmente las cotas quedan fuera: ancho debajo y alto a la izquierda.
     // En paños muy ajustados pasan dentro de la ventana para no pisar el contorno.
-    const anchoDentro = baseY - bordeInferior < 30 && alto >= 34;
+    const anchoDentro = baseY - bordeInferior < 44 && alto >= 44;
     const altoDentro = x - origenX < 32 && ancho >= 34;
-    const yCotaAncho = anchoDentro ? bordeInferior - 12 : bordeInferior + 18;
+    const yCotaAncho = anchoDentro ? bordeInferior - 25 : bordeInferior + 12;
     const xCotaAlto = altoDentro ? x + 12 : x - 18;
     return {
       x, y, ancho, alto,
@@ -458,7 +458,7 @@ function PanelVista({
                   x2={guia.hasta.x} y2={guia.hasta.y} stroke={COLOR_GUIA} strokeWidth="1" />
               ))}
               <Cota desde={d.ventana.cotas.ancho.desde} hasta={d.ventana.cotas.ancho.hasta}
-                texto={d.ventana.cotas.ancho.texto} />
+                texto={d.ventana.cotas.ancho.texto} textoDy={17} />
               {d.ventana.cotas.alto.guias.map((guia, indice) => (
                 <line key={`alto-${indice}`} x1={guia.desde.x} y1={guia.desde.y}
                   x2={guia.hasta.x} y2={guia.hasta.y} stroke={COLOR_GUIA} strokeWidth="1" />
