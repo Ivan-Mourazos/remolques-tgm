@@ -94,9 +94,10 @@ function TablaReparto({ reparto }: { reparto: RepartoOllaos }) {
 }
 
 function EditorOllaos({
-  reparto, onChange,
+  reparto, error, onChange,
 }: {
   reparto: RepartoOllaos;
+  error?: string;
   onChange: (reparto: RepartoOllaos) => void;
 }) {
   const cambiar = (clave: ClaveReparto, indice: number, texto: string) => {
@@ -112,7 +113,7 @@ function EditorOllaos({
   };
 
   return (
-    <div className="overflow-hidden rounded-xl border border-line-2 bg-surface shadow-[0_3px_14px_rgb(14_45_49/0.05)]">
+    <div className={`overflow-hidden rounded-xl border bg-surface shadow-[0_3px_14px_rgb(14_45_49/0.05)] ${error ? "border-red-500/70" : "border-line-2"}`}>
       <div className="flex flex-wrap items-center justify-between gap-1 border-b border-line bg-surface-2 px-3 py-2">
         <p className="text-[11px] font-extrabold uppercase tracking-[0.1em] text-ink-2">Ollaos a medida</p>
         <p className="text-[10px] font-semibold text-muted-2">Posiciones desde el origen · cm</p>
@@ -125,7 +126,7 @@ function EditorOllaos({
               <div className="flex items-center justify-between gap-2 lg:block">
                 <p className="text-[10px] font-bold leading-tight text-ink-2">{nombre}</p>
                 <span className="shrink-0 rounded-md bg-surface-3 px-1.5 py-0.5 text-[9px] font-extrabold text-muted">
-                  {posiciones.length} ollaos
+                  {posiciones.length} {posiciones.length === 1 ? "ollao" : "ollaos"}
                 </span>
               </div>
               <div className="grid grid-cols-4 gap-1 sm:grid-cols-6 xl:grid-cols-12">
@@ -133,6 +134,8 @@ function EditorOllaos({
                   <label key={indice} className="min-w-0">
                     <span className="mb-0.5 block text-center text-[8px] font-extrabold text-muted-2">{indice + 1}</span>
                     <input
+                      data-campo={clave === "laterales" && indice === 0 ? "ollaosManuales" : undefined}
+                      aria-invalid={Boolean(error && posiciones.length === 0)}
                       aria-label={`${nombre}, ollao ${indice + 1}`}
                       type="number"
                       inputMode="decimal"
@@ -150,22 +153,24 @@ function EditorOllaos({
           );
         })}
       </div>
+      {error && <p role="alert" className="border-t border-red-200 bg-red-50 px-3 py-2 text-[10px] font-bold text-red-700">{error}</p>}
     </div>
   );
 }
 
 function Ollaos({
-  modo, reparto, primerOllao, onChange,
+  modo, reparto, primerOllao, error, onChange,
 }: {
   modo: "REPARTIDOS" | "SEGUN SE INDICA";
   reparto: RepartoOllaos;
   primerOllao: number;
+  error?: string;
   onChange: (reparto: RepartoOllaos) => void;
 }) {
   return (
     <div className="flex flex-col gap-1">
       {modo === "SEGUN SE INDICA"
-        ? <EditorOllaos reparto={reparto} onChange={onChange} />
+        ? <EditorOllaos reparto={reparto} error={error} onChange={onChange} />
         : <TablaReparto reparto={reparto} />}
       {modo === "REPARTIDOS" && (
         <p className="text-[10px] font-semibold text-muted">
@@ -177,11 +182,12 @@ function Ollaos({
 }
 
 export function ResultadosLona({
-  res, modoOllaos, primerOllao, onOllaosChange,
+  res, modoOllaos, primerOllao, errorOllaos, onOllaosChange,
 }: {
   res: LonaResult;
   modoOllaos: "REPARTIDOS" | "SEGUN SE INDICA";
   primerOllao: number;
+  errorOllaos?: string;
   onOllaosChange: (reparto: RepartoOllaos) => void;
 }) {
   return (
@@ -200,7 +206,7 @@ export function ResultadosLona({
         <Dato label="Recoge delante" valor={res.recogeDelanteTexto} />
         <Dato label="Recoge atrás" valor={res.recogeAtrasTexto} />
       </Resumen>
-      <Ollaos modo={modoOllaos} reparto={res.reparto} primerOllao={primerOllao} onChange={onOllaosChange} />
+      <Ollaos modo={modoOllaos} reparto={res.reparto} primerOllao={primerOllao} error={errorOllaos} onChange={onOllaosChange} />
       {res.notas.length > 0 && (
         <ul className="list-inside list-disc text-[11px] font-semibold text-gold-2">
           {res.notas.map((n) => <li key={n}>{n}</li>)}
@@ -211,11 +217,12 @@ export function ResultadosLona({
 }
 
 export function ResultadosBaqueton({
-  res, modoOllaos, primerOllao, onOllaosChange,
+  res, modoOllaos, primerOllao, errorOllaos, onOllaosChange,
 }: {
   res: BaquetonResult;
   modoOllaos: "REPARTIDOS" | "SEGUN SE INDICA";
   primerOllao: number;
+  errorOllaos?: string;
   onOllaosChange: (reparto: RepartoOllaos) => void;
 }) {
   return (
@@ -228,7 +235,7 @@ export function ResultadosBaqueton({
         <Dato label="Baquetón" valor={res.baquetonTrasero ? `Trasero ${fmt(res.baquetonTrasero)}` : "EN LÍNEA"} />
         <Dato label="Superficie" valor={`${fmt(res.superficieM2)} m²/ud`} />
       </Resumen>
-      <Ollaos modo={modoOllaos} reparto={res.reparto} primerOllao={primerOllao} onChange={onOllaosChange} />
+      <Ollaos modo={modoOllaos} reparto={res.reparto} primerOllao={primerOllao} error={errorOllaos} onChange={onOllaosChange} />
       {res.notas.length > 0 && (
         <ul className="list-inside list-disc text-[11px] font-semibold text-gold-2">
           {res.notas.map((n) => <li key={n}>{n}</li>)}

@@ -32,3 +32,18 @@ body {
   font-family: var(--font-jakarta), "Avenir Next", "Segoe UI Variable", sans-serif;
   letter-spacing: -0.018em;
 }
+
+:focus-visible {
+  scroll-margin-block: 72px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

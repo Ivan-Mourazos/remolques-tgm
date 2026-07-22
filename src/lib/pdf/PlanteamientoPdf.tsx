@@ -5,9 +5,10 @@ import type { PlanteamientoRecord } from "@/lib/store/types";
 import type { LonaInput, LonaResult } from "@/lib/calc/lona";
 import type { BaquetonInput, BaquetonResult } from "@/lib/calc/baqueton";
 import { nombrePerfil } from "@/lib/calc/params";
+import { datosGeometriaPdf } from "@/lib/pdf/datos-geometria";
 
 const s = StyleSheet.create({
-  page: { padding: 16, fontSize: 8.5, fontFamily: "Helvetica", color: "#171717" },
+  page: { padding: 10, fontSize: 8.5, fontFamily: "Helvetica", color: "#171717" },
   marco: { border: "1 solid #171717" },
   cabecera: { height: 66, flexDirection: "row" },
   logo: {
@@ -30,14 +31,17 @@ const s = StyleSheet.create({
     borderTop: "1 solid #171717", borderBottom: "1 solid #171717",
   },
   bandaTexto: { fontSize: 10, fontFamily: "Helvetica-Bold" },
-  cuerpo: { height: 350, flexDirection: "row", padding: 13 },
-  datos: { width: 350, paddingRight: 10, justifyContent: "center" },
-  dibujo: { flex: 1, alignItems: "center", justifyContent: "center", paddingLeft: 4 },
-  foto: { width: 430, height: 310, objectFit: "contain" },
+  cuerpo: { minHeight: 300, flexDirection: "row", padding: 8 },
+  datos: { width: 250, paddingRight: 8, justifyContent: "flex-start" },
+  dibujo: {
+    flex: 1, minHeight: 215, alignItems: "center", justifyContent: "center", padding: 2,
+    backgroundColor: "#f5f8f7", border: "0.6 solid #d4dfdb", borderRadius: 5,
+  },
+  foto: { width: "100%", height: 240, objectFit: "contain" },
   sinPlano: { color: "#a3a3a3" },
   filaDato: { flexDirection: "row", marginBottom: 4 },
   etiqueta: {
-    width: 118, fontSize: 8.2, fontFamily: "Helvetica-Bold", textDecoration: "underline",
+    width: 96, fontSize: 8, fontFamily: "Helvetica-Bold", textDecoration: "underline",
   },
   valor: { flex: 1, fontSize: 8.8, fontFamily: "Helvetica-Bold", lineHeight: 1.2 },
   bloque: { flexDirection: "row", marginBottom: 5 },
@@ -145,11 +149,20 @@ function DatosLona({ rec }: { rec: PlanteamientoRecord }) {
         ? `ALTO DELANTE ${fmt(i.altoDelante)} / DETRÁS ${fmt(altoAtras)}`
         : `ALTO ${fmt(i.altoDelante)}`} />
       <Dato etiqueta="CONTORNO DE CORTE" valor={r.contornoAjustado ? fmt(r.contornoAjustado) : "PENDIENTE"} />
-      <Dato etiqueta="ARCO" valor={i.cabecera.cliente || i.tipoPerfil} />
       <Dato etiqueta="PERFIL" valor={nombrePerfil(i.tipoPerfil)} />
+      <View style={s.bloque}>
+        <Text style={s.etiqueta}>GEOMETRÍA:</Text>
+        <View style={s.bloqueValores}>
+          {datosGeometriaPdf(i).map((dato) => <Text key={dato} style={s.valorLinea}>{dato}</Text>)}
+        </View>
+      </View>
       <Dato etiqueta="RECOGE DELANTE" valor={r.recogeDelanteTexto} />
       <Dato etiqueta="RECOGE ATRÁS" valor={r.recogeAtrasTexto} />
-      <Dato etiqueta="VENTANA" valor={i.ventana ? "SÍ" : "NO"} />
+      <Dato etiqueta="VENTANA" valor={i.ventana
+        ? (i.ventanaAncho ?? 0) > 0 && (i.ventanaAlto ?? 0) > 0
+          ? `SÍ · ${fmt(i.ventanaAncho!)} X ${fmt(i.ventanaAlto!)} CM`
+          : "SÍ · MEDIDAS PENDIENTES"
+        : "NO"} />
       <View style={s.separacion} />
       <Dato etiqueta="ROTULACIÓN:" valor={i.rotulacion ? "SÍ" : "NO"} />
       <View style={s.separacion} />

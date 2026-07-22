@@ -50,5 +50,6 @@ describe("FileStore", () => {
     expect(todos[0].numeroPedido).toBe("AR2699999");
     expect(await store.list({ texto: "yagüe" })).toHaveLength(1);
     expect(await store.list({ tipo: "baqueton" })).toHaveLength(0);
+    expect(await store.list({ pedido: "AR.26.02796" })).toHaveLength(1);
   });
 });

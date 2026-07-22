@@ -28,10 +28,12 @@ export function calcularVentanaFrontal(
   perfil: PerfilPunto[],
   anchoRemolque: number,
   margenCubierta = 5,
+  medidas?: { ancho?: number; alto?: number },
 ): VentanaFrontal | null {
   if (anchoRemolque <= 0) return null;
   const margenLateral = Math.min(20, Math.max(5, anchoRemolque * 0.15));
-  const anchoVentana = Math.min(50, anchoRemolque - margenLateral * 2);
+  const anchoSolicitado = (medidas?.ancho ?? 0) > 0 ? medidas!.ancho! : 50;
+  const anchoVentana = Math.min(anchoSolicitado, anchoRemolque - margenLateral * 2);
   if (anchoVentana < 4) return null;
   const x = (anchoRemolque - anchoVentana) / 2;
   const alturaIzquierda = alturaPerfilEnX(perfil, x);
@@ -39,7 +41,8 @@ export function calcularVentanaFrontal(
   if (alturaIzquierda == null || alturaDerecha == null) return null;
   const bordeSuperior = Math.min(alturaIzquierda, alturaDerecha) - margenCubierta;
   const margenInferior = Math.min(8, bordeSuperior * 0.18);
-  const altoVentana = Math.min(anchoVentana * 0.7, bordeSuperior - margenInferior);
+  const altoSolicitado = (medidas?.alto ?? 0) > 0 ? medidas!.alto! : anchoVentana * 0.7;
+  const altoVentana = Math.min(altoSolicitado, bordeSuperior - margenInferior);
   if (altoVentana < 4) return null;
   const y = bordeSuperior - altoVentana;
   return { x, y, ancho: anchoVentana, alto: altoVentana };

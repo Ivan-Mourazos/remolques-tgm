@@ -28,4 +28,11 @@ describe("calcularVentanaFrontal", () => {
     expect(ventana!.y).toBeCloseTo(95.4, 5);
     expect(ventana!.alto).toBeCloseTo(19.6, 5);
   });
+
+  it("respeta las medidas de fabricación introducidas", () => {
+    const perfil = perfilPuntos("TIPO 01", { ancho: 180, altoDelante: 140 });
+    expect(calcularVentanaFrontal(perfil, 180, 5, { ancho: 80, alto: 45 })).toEqual({
+      x: 50, y: 90, ancho: 80, alto: 45,
+    });
+  });
 });

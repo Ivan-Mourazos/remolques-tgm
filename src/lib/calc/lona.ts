@@ -37,6 +37,9 @@ export interface LonaInput {
   tipoPerfil: TipoPerfil;
   recogeDelante: string; recogeAtras: string;
   bastillaEnfundar: boolean; ventana: boolean;
+  /** Medidas exteriores de la ventana en cm. */
+  ventanaAncho?: number;
+  ventanaAlto?: number;
   /** Solo se indica si va rotulado; el contenido no forma parte del planteamiento. */
   rotulacion: boolean;
   modoOllaos: "REPARTIDOS" | "SEGUN SE INDICA";
@@ -138,7 +141,12 @@ export function calcLona(input: LonaInput, params: CalcParams): LonaResult {
     notas.push("GOMA: preparar orejas por lado.");
   }
   if (input.bastillaEnfundar) notas.push("Bastilla de enfundar: paño contorno con demasía 13.");
-  if (input.ventana) notas.push("Ventana indicada: verificar en taller.");
+  if (input.ventana) {
+    const medida = (input.ventanaAncho ?? 0) > 0 && (input.ventanaAlto ?? 0) > 0
+      ? ` (${r1(input.ventanaAncho!)} × ${r1(input.ventanaAlto!)} cm)`
+      : "";
+    notas.push(`Ventana indicada${medida}: verificar en taller.`);
+  }
   if (input.rotulacion) notas.push("Incluye rotulación.");
 
   return {

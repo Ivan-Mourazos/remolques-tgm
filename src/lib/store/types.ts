@@ -22,7 +22,7 @@ export interface PlanteamientoRecord {
 export interface ListadoFiltro {
   texto?: string;
   tipo?: TipoPlanteamiento;
-  /** Igualdad exacta con el nº de pedido (todas las versiones de un pedido). */
+  /** Mismo nº de pedido normalizado (admite AR260… y AR.26.0…). */
   pedido?: string;
   limit?: number;
 }

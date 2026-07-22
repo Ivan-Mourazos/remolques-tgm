@@ -74,12 +74,13 @@ export function perfilForma(tipo: TipoPerfil, opts: PerfilOpts): PerfilForma {
       if (rh > 0) {
         const t = rh * tanHombro;
         anadir([0, lateral - t]);
-        aristas.push(puntos.length - 1);
+        aristas.push(puntos.length - 1); // tangencia con el lateral
         const centro = { x: rh, y: lateral - t };
         for (let i = 1; i <= 5; i += 1) {
           const beta = Math.PI - (anguloHombro * i) / 5;
           anadir([centro.x + rh * Math.cos(beta), centro.y + rh * Math.sin(beta)]);
         }
+        aristas.push(puntos.length - 1); // tangencia con la vertiente
       } else {
         anadir([0, lateral]);
         aristas.push(puntos.length - 1);
@@ -108,6 +109,7 @@ export function perfilForma(tipo: TipoPerfil, opts: PerfilOpts): PerfilForma {
         for (let i = 5; i >= 0; i -= 1) {
           const beta = (anguloHombro * i) / 5;
           anadir([centro.x + rh * Math.cos(beta), centro.y + rh * Math.sin(beta)]);
+          if (i === 5) aristas.push(puntos.length - 1); // tangencia con la vertiente
         }
         aristas.push(puntos.length - 1); // tangencia con el lateral
       } else {

@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import type { ListadoFiltro, PlanteamientoRecord, PlanteamientoStore } from "@/lib/store/types";
 import { DEFAULT_PARAMS, type CalcParams } from "@/lib/calc/params";
 import { normalizarParams } from "@/lib/calc/validar-params";
+import { normalizarNumeroPedido } from "@/lib/pedidos/numero-pedido";
 
 /** Driver de desarrollo: dos ficheros JSON en `data/`. */
 export class FileStore implements PlanteamientoStore {
@@ -25,7 +26,10 @@ export class FileStore implements PlanteamientoStore {
   async list(filtro?: ListadoFiltro): Promise<PlanteamientoRecord[]> {
     let recs = this.readAll();
     if (filtro?.tipo) recs = recs.filter((r) => r.tipo === filtro.tipo);
-    if (filtro?.pedido) recs = recs.filter((r) => r.numeroPedido === filtro.pedido);
+    if (filtro?.pedido) {
+      const pedido = normalizarNumeroPedido(filtro.pedido);
+      recs = recs.filter((r) => normalizarNumeroPedido(r.numeroPedido) === pedido);
+    }
     if (filtro?.texto) {
       const t = filtro.texto.toLowerCase();
       recs = recs.filter(

@@ -74,19 +74,35 @@ describe("perfilPuntos", () => {
     const { puntos, aristas } = perfilForma("TIPO 03", {
       ancho: 150, altoDelante: 100, alturaPico: 20, radioHombro: 15,
     });
-    // pico vivo → 3 aristas: hombro izq, pico, hombro der
-    expect(aristas).toHaveLength(3);
+    // Cada hombro aporta sus dos tangencias y el pico vivo una arista.
+    expect(aristas).toHaveLength(5);
     const theta = Math.atan2(20, 75);
     const t = 15 * Math.tan((Math.PI / 2 - theta) / 2);
     expect(puntos[aristas[0]]).toEqual([0, 80 - t]);
-    expect(puntos[aristas[1]]).toEqual([75, 100]);
-    expect(puntos[aristas[2]][0]).toBeCloseTo(150, 9);
-    expect(puntos[aristas[2]][1]).toBeCloseTo(80 - t, 9);
+    expect(puntos[aristas[1]][0]).toBeGreaterThan(0);
+    expect(puntos[aristas[1]][1]).toBeGreaterThan(80 - t);
+    expect(puntos[aristas[2]]).toEqual([75, 100]);
+    expect(puntos[aristas[3]][0]).toBeLessThan(150);
+    expect(puntos[aristas[3]][1]).toBeGreaterThan(80 - t);
+    expect(puntos[aristas[4]][0]).toBeCloseTo(150, 9);
+    expect(puntos[aristas[4]][1]).toBeCloseTo(80 - t, 9);
     // los puntos del arco izquierdo están a distancia rh del centro
     const centro = { x: 15, y: 80 - t };
     const arco = puntos.filter(([x, y]) => x > 0 && x < 20 && y > 80 - t && y < 100);
     for (const [x, y] of arco) {
       expect(Math.hypot(x - centro.x, y - centro.y)).toBeCloseTo(15, 9);
+    }
+  });
+
+  it("TIPO 03 con ambos radios expone las seis tangencias longitudinales", () => {
+    const { puntos, aristas } = perfilForma("TIPO 03", {
+      ancho: 150, altoDelante: 100, alturaPico: 20, radioHombro: 15, radioCumbrera: 10,
+    });
+    expect(aristas).toHaveLength(6);
+    expect(aristas).toEqual([...aristas].sort((a, b) => a - b));
+    for (const indice of aristas) {
+      expect(indice).toBeGreaterThan(0);
+      expect(indice).toBeLessThan(puntos.length - 1);
     }
   });
 

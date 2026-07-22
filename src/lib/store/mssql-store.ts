@@ -2,6 +2,7 @@ import sql from "mssql";
 import type { ListadoFiltro, PlanteamientoRecord, PlanteamientoStore } from "@/lib/store/types";
 import { DEFAULT_PARAMS, type CalcParams } from "@/lib/calc/params";
 import { normalizarParams } from "@/lib/calc/validar-params";
+import { normalizarNumeroPedido } from "@/lib/pedidos/numero-pedido";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function rowToRecord(row: any): PlanteamientoRecord {
@@ -55,12 +56,13 @@ export class MssqlStore implements PlanteamientoStore {
     const req = pool.request()
       .input("limit", sql.Int, filtro?.limit ?? 200)
       .input("tipo", sql.VarChar, filtro?.tipo ?? null)
-      .input("pedido", sql.VarChar, filtro?.pedido ?? null)
+      .input("pedido", sql.VarChar, filtro?.pedido ? normalizarNumeroPedido(filtro.pedido) : null)
       .input("texto", sql.NVarChar, filtro?.texto ? `%${filtro.texto}%` : null);
     const res = await req.query(`
       SELECT TOP (@limit) * FROM dbo.Planteamientos
       WHERE (@tipo IS NULL OR Tipo = @tipo)
-        AND (@pedido IS NULL OR NumeroPedido = @pedido)
+        AND (@pedido IS NULL OR
+          REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(UPPER(NumeroPedido), '.', ''), '-', ''), '/', ''), '_', ''), ' ', '') = @pedido)
         AND (@texto IS NULL OR NumeroPedido LIKE @texto OR Cliente LIKE @texto)
       ORDER BY UpdatedAt DESC`);
     return res.recordset.map(rowToRecord);

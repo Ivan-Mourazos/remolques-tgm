@@ -2,8 +2,8 @@ import type { LonaInput } from "@/lib/calc/lona";
 import type { BaquetonInput } from "@/lib/calc/baqueton";
 import { DEFAULT_PARAMS } from "@/lib/calc/params";
 
-// La versión "10" es fija: solo marca el archivo como planteamiento en el
-// nombre del Excel (PEDIDO-10.xlsx); no se muestra ni se edita en la app.
+// La posición interna comienza en 10; las siguientes piezas del pedido usan
+// 11, 12… El PDF agrupado conserva siempre el nombre final PEDIDO-10.pdf.
 const cabecera = () => ({
   numeroPedido: "", version: "10", cliente: "", revision: "", realizadoPor: "",
   ordenFabricacion: "", fecha: new Date().toISOString().slice(0, 10), fechaSalida: "",
@@ -17,7 +17,7 @@ export function emptyLona(): LonaInput {
     radioCumbrera: 0, radioHombro: 0, radioEsquina: 0, chaflan: 0,
     contorno: 0, tipoPerfil: "TIPO 01",
     recogeDelante: "NO", recogeAtras: "NO",
-    bastillaEnfundar: false, ventana: false, rotulacion: false,
+    bastillaEnfundar: false, ventana: false, ventanaAncho: 0, ventanaAlto: 0, rotulacion: false,
     modoOllaos: "REPARTIDOS", pasoOllaos: DEFAULT_PARAMS.pasoOllaosDefecto,
     primerOllao: DEFAULT_PARAMS.primerOllao,
     ollaosManuales: sinOllaos(), material: "", observaciones: "",

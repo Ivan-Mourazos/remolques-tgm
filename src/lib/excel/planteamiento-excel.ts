@@ -139,7 +139,14 @@ function datosLona(ws: Worksheet, rec: PlanteamientoRecord, material?: Material)
   ], ["Aguas", num(i.aguas ?? 0)]);
   campoPar(ws, 9, ["Perfil", nombrePerfil(i.tipoPerfil)], ["Contorno remolque", num(r.contornoIntroducido)]);
   campoPar(ws, 10, ["Recoge delante", r.recogeDelanteTexto], ["Recoge atrás", r.recogeAtrasTexto]);
-  campoPar(ws, 11, ["Bastilla enfundar", siNo(i.bastillaEnfundar)], ["Ventana", siNo(i.ventana)]);
+  campoPar(ws, 11, ["Bastilla enfundar", siNo(i.bastillaEnfundar)], [
+    "Ventana",
+    i.ventana
+      ? (i.ventanaAncho ?? 0) > 0 && (i.ventanaAlto ?? 0) > 0
+        ? `${num(i.ventanaAncho!)} × ${num(i.ventanaAlto!)} cm`
+        : "SÍ · MEDIDAS PENDIENTES"
+      : "NO",
+  ]);
   campoPar(ws, 12, ["Ollaos", i.modoOllaos], ["Paso objetivo", num(i.pasoOllaos)]);
   campoAncho(ws, 13, "Material", i.material || "-");
   campoPar(ws, 14, ["Bobina almacén", material?.codigoBobina ?? "MANUAL"], ["Stock Arzúa", material?.stockArzua ?? "-"]);

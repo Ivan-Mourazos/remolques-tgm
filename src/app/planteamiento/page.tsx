@@ -10,13 +10,13 @@ export default async function PlanteamientoPage({
   let inicial: WorkspaceInicial | undefined;
   if (desde) {
     const rec = await getStore().get(desde);
-    if (rec) inicial = { tipo: rec.tipo, input: rec.input }; // sin id: copia nueva
+    if (rec) inicial = { id: rec.id, tipo: rec.tipo, input: rec.input };
   }
   return (
     <section>
       <div className="mb-2.5">
         <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-gold-2">Oficina técnica</p>
-        <h1 className="mt-0.5 text-[26px] font-extrabold tracking-[-0.045em] text-ink">Nuevo planteamiento</h1>
+        <h1 className="mt-0.5 text-[26px] font-extrabold tracking-[-0.045em] text-ink">Planteamientos por pedido</h1>
       </div>
       <Workspace inicial={inicial} key={desde ?? "nuevo"} />
     </section>

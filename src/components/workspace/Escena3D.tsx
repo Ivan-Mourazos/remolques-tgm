@@ -3,6 +3,10 @@
 import { useEffect, useMemo, useRef } from "react";
 import type { Punto2D } from "@/lib/geometry/curva";
 import { perfilForma } from "@/lib/geometry/perfil";
+import {
+  aristaLongitudinalVisible,
+  recortarFueraDePoligono,
+} from "@/lib/geometry/visibilidad";
 import { calcularVentanaFrontal } from "@/lib/geometry/ventana";
 import { coloresMaterial } from "@/lib/geometry/color-lona";
 import type { TipoPerfil } from "@/lib/calc/params";
@@ -22,12 +26,14 @@ export interface Escena3DProps {
   radioCumbrera?: number;
   /** Radio de los hombros (TIPO 03); 0 = esquina viva. */
   radioHombro?: number;
-  /** Radio real de esquina (TIPO 05); si falta se usa uno estético. */
+  /** Radio real de esquina (TIPO 05). */
   radioEsquina?: number;
-  /** Chaflán real de esquina (TIPO 04); si falta se usa uno estético. */
+  /** Chaflán real de esquina (TIPO 04). */
   chaflan?: number;
   tipoPerfil: TipoPerfil;
   ventana?: boolean;
+  ventanaAncho?: number;
+  ventanaAlto?: number;
   /** Recogidas: unión vertical del paño de contorno con los paños delantero/trasero. */
   recogeDelante?: string;
   recogeAtras?: string;
@@ -198,6 +204,8 @@ interface OpcionesVista {
   radioEsquina: number;
   chaflan: number;
   conVentana: boolean;
+  ventanaAncho: number;
+  ventanaAlto: number;
   ollaosNear: number[];
   ollaosLaterales: number[];
   /** true en la vista delantera: los laterales se cuentan desde el fondo (atrás). */
@@ -212,8 +220,8 @@ function calcularVista(o: OpcionesVista) {
     alturaPico: o.aguas,
     radioCumbrera: o.radioCumbrera,
     radioHombro: o.radioHombro,
-    chaflan: o.chaflan > 0 ? o.chaflan : Math.min(18, ancho * 0.1, alto * 0.25),
-    radio: o.radioEsquina > 0 ? o.radioEsquina : Math.min(18, ancho * 0.1, alto * 0.25),
+    chaflan: o.chaflan,
+    radio: o.radioEsquina,
   });
   const forma = perfilForma(perfil, opts(o.anchoNear, o.altoNear));
   const near = forma.puntos;
@@ -221,10 +229,10 @@ function calcularVista(o: OpcionesVista) {
   const maxY = Math.max(...near.map(([, y]) => y), ...far.map(([, y]) => y), 1);
   // Una única escala mantiene la proporción real ancho/alto. La profundidad
   // se comprime en perspectiva para que largos grandes sigan cabiendo en A4.
-  const escala = Math.min(290 / Math.max(o.anchoNear, o.anchoFar, 1), 205 / maxY);
-  const profundidadX = Math.min(205, Math.max(110, o.largo * escala * 0.48));
-  const profundidadY = Math.min(100, Math.max(62, o.largo * escala * 0.24));
-  const origenX = 145;
+  const escala = Math.min(340 / Math.max(o.anchoNear, o.anchoFar, 1), 225 / maxY);
+  const profundidadX = Math.min(220, Math.max(120, o.largo * escala * 0.48));
+  const profundidadY = Math.min(100, Math.max(64, o.largo * escala * 0.24));
+  const origenX = 100;
   const baseY = 344;
   const proyecta = (puntos: Array<[number, number]>, dx: number, dy: number) =>
     puntos.map(([x, y]) => ({
@@ -248,21 +256,59 @@ function calcularVista(o: OpcionesVista) {
     && picoTechoFrente < techoFrente.length - 1;
   const cubierta = franjasCubierta(techoFrente, techoFondo, picoTechoFrente, tieneCumbrera);
   const lateralDcha = [frente.at(-2)!, frente.at(-1)!, fondo.at(-1)!, fondo.at(-2)!];
-  const aristasLongitudinales = forma.aristas.map((indice) => ({
-    desde: frente[indice],
-    hasta: fondo[indice],
-  }));
+  // Primero descartamos las aristas cuyas dos caras contiguas miran en
+  // dirección opuesta a la cámara. Después, la cara cercana opaca recorta
+  // cualquier tramo restante que se proyecte dentro de su contorno.
+  const aristasLongitudinales = forma.aristas
+    .filter((indice) => aristaLongitudinalVisible(frente, fondo, indice))
+    .flatMap((indice) => (
+      recortarFueraDePoligono({ desde: frente[indice], hasta: fondo[indice] }, frente)
+    ));
   const contornoFrente = caminoPerfil(frente);
   const hombroDerecho = frente.at(-2)!;
   const picoFrente = frente[indicePicoFrente];
-  const ventanaLocal = o.conVentana ? calcularVentanaFrontal(near, o.anchoNear) : null;
-  const ventana = ventanaLocal ? {
-    x: origenX + ventanaLocal.x * escala,
-    y: baseY - (ventanaLocal.y + ventanaLocal.alto) * escala,
-    ancho: ventanaLocal.ancho * escala,
-    alto: ventanaLocal.alto * escala,
-    radio: Math.min(9, 4 * escala),
-  } : null;
+  const ventanaLocal = o.conVentana ? calcularVentanaFrontal(near, o.anchoNear, 5, {
+    ancho: o.ventanaAncho,
+    alto: o.ventanaAlto,
+  }) : null;
+  const ventana = ventanaLocal ? (() => {
+    const x = origenX + ventanaLocal.x * escala;
+    const y = baseY - (ventanaLocal.y + ventanaLocal.alto) * escala;
+    const ancho = ventanaLocal.ancho * escala;
+    const alto = ventanaLocal.alto * escala;
+    const bordeInferior = y + alto;
+    const hayMedidas = o.ventanaAncho > 0 && o.ventanaAlto > 0;
+    // Normalmente las cotas quedan fuera: ancho debajo y alto a la izquierda.
+    // En paños muy ajustados pasan dentro de la ventana para no pisar el contorno.
+    const anchoDentro = baseY - bordeInferior < 30 && alto >= 34;
+    const altoDentro = x - origenX < 32 && ancho >= 34;
+    const yCotaAncho = anchoDentro ? bordeInferior - 12 : bordeInferior + 18;
+    const xCotaAlto = altoDentro ? x + 12 : x - 18;
+    return {
+      x, y, ancho, alto,
+      radio: Math.min(9, 4 * escala),
+      cotas: hayMedidas ? {
+        ancho: {
+          desde: { x, y: yCotaAncho },
+          hasta: { x: x + ancho, y: yCotaAncho },
+          texto: fmt(o.ventanaAncho),
+          guias: [
+            { desde: { x, y: bordeInferior + (anchoDentro ? -3 : 3) }, hasta: { x, y: yCotaAncho + (anchoDentro ? 4 : 5) } },
+            { desde: { x: x + ancho, y: bordeInferior + (anchoDentro ? -3 : 3) }, hasta: { x: x + ancho, y: yCotaAncho + (anchoDentro ? 4 : 5) } },
+          ],
+        },
+        alto: {
+          desde: { x: xCotaAlto, y },
+          hasta: { x: xCotaAlto, y: y + alto },
+          texto: fmt(o.ventanaAlto),
+          guias: [
+            { desde: { x: x + (altoDentro ? 3 : -3), y }, hasta: { x: xCotaAlto + (altoDentro ? -4 : -5), y } },
+            { desde: { x: x + (altoDentro ? 3 : -3), y: y + alto }, hasta: { x: xCotaAlto + (altoDentro ? -4 : -5), y: y + alto } },
+          ],
+        },
+      } : null,
+    };
+  })() : null;
   // Marcas de ollaos sobre las aristas de base visibles (la trasera de esta
   // vista queda oculta tras el faldón).
   const interpola = (a: Punto, b: Punto, t: number): Punto => ({
@@ -296,17 +342,41 @@ function calcularVista(o: OpcionesVista) {
   const bastillaInterior = `M ${puntoSvg({ x: frente[0].x, y: frente[0].y - 6 })}`
     + ` L ${puntoSvg({ x: frente.at(-1)!.x, y: frente.at(-1)!.y - 6 })}`
     + ` L ${puntoSvg({ x: fondo.at(-1)!.x + normalLateral.x, y: fondo.at(-1)!.y + normalLateral.y })}`;
+  const chaflanCota = o.modo === "lona" && o.tipoPerfil === "TIPO 04" && o.chaflan > 0
+    ? (() => {
+        const inicio = frente.at(-3)!;
+        const fin = frente.at(-2)!;
+        const dx = fin.x - inicio.x;
+        const dy = fin.y - inicio.y;
+        const longitud = Math.hypot(dx, dy) || 1;
+        const normalInterior = { x: -dy / longitud, y: dx / longitud };
+        // La línea y su texto se separan de la arista siguiendo la perpendicular
+        // del chaflán, para que la medida quede claramente dentro del paño.
+        const desplaza = { x: normalInterior.x * 13, y: normalInterior.y * 13 };
+        return {
+          desde: { x: inicio.x + desplaza.x, y: inicio.y + desplaza.y },
+          hasta: { x: fin.x + desplaza.x, y: fin.y + desplaza.y },
+          angulo: Math.round(Math.atan2(dy, dx) * 180 / Math.PI * 100) / 100,
+          texto: fmt(o.chaflan),
+          textoDx: normalInterior.x * 11,
+          textoDy: normalInterior.y * 11,
+        };
+      })()
+    : null;
   const xCotaAguas = frente.at(-1)!.x + 34;
+  const largoPerspectiva = Math.hypot(profundidadX, profundidadY) || 1;
   return {
     frente, fondo, lateralDcha, aristasLongitudinales, contornoFrente,
     cubierta, tieneCumbrera, ventana, marcasOllaos, costuraIzq, costuraDcha,
-    bastillaBorde, bastillaInterior,
+    bastillaBorde, bastillaInterior, chaflanCota,
     anchoDesde: { x: frente[0].x, y: baseY + 35 },
     anchoHasta: { x: frente.at(-1)!.x, y: baseY + 35 },
     altoDesde: { x: frente[0].x - 42, y: baseY },
     altoHasta: { x: frente[0].x - 42, y: baseY - o.altoNear * escala },
     largoDesde: { x: frente.at(-1)!.x + 20, y: frente.at(-1)!.y + 15 },
     largoHasta: { x: fondo.at(-1)!.x + 20, y: fondo.at(-1)!.y + 15 },
+    largoTextoDx: (profundidadY / largoPerspectiva) * 15,
+    largoTextoDy: (profundidadX / largoPerspectiva) * 15,
     // Redondeado: atan2 puede diferir en el último bit entre Node y navegador
     // y provocaría un aviso de hidratación en el atributo transform.
     anguloLargo: Math.round(Math.atan2(-profundidadY, profundidadX) * 180 / Math.PI * 100) / 100,
@@ -345,7 +415,7 @@ function PanelVista({
   return (
     <g>
       <text
-        x={40} y={95} fontSize="12" fontWeight="800" letterSpacing="2"
+        x={40} y={45} fontSize="12" fontWeight="800" letterSpacing="2"
         fontFamily={FUENTE_PLANO} fill="#71878a"
       >
         {titulo}
@@ -381,6 +451,22 @@ function PanelVista({
             rx={d.ventana.radio}
             fill="none" stroke="#0f766e" strokeWidth="1.8"
           />
+          {d.ventana.cotas && (
+            <g>
+              {d.ventana.cotas.ancho.guias.map((guia, indice) => (
+                <line key={`ancho-${indice}`} x1={guia.desde.x} y1={guia.desde.y}
+                  x2={guia.hasta.x} y2={guia.hasta.y} stroke={COLOR_GUIA} strokeWidth="1" />
+              ))}
+              <Cota desde={d.ventana.cotas.ancho.desde} hasta={d.ventana.cotas.ancho.hasta}
+                texto={d.ventana.cotas.ancho.texto} />
+              {d.ventana.cotas.alto.guias.map((guia, indice) => (
+                <line key={`alto-${indice}`} x1={guia.desde.x} y1={guia.desde.y}
+                  x2={guia.hasta.x} y2={guia.hasta.y} stroke={COLOR_GUIA} strokeWidth="1" />
+              ))}
+              <Cota desde={d.ventana.cotas.alto.desde} hasta={d.ventana.cotas.alto.hasta}
+                texto={d.ventana.cotas.alto.texto} rotacion={-90} textoDx={-8} textoDy={0} />
+            </g>
+          )}
         </g>
       )}
 
@@ -444,6 +530,16 @@ function PanelVista({
           BASTILLA ENFUNDAR
         </text>
       )}
+      {d.chaflanCota && (
+        <Cota
+          desde={d.chaflanCota.desde}
+          hasta={d.chaflanCota.hasta}
+          texto={d.chaflanCota.texto}
+          rotacion={d.chaflanCota.angulo}
+          textoDx={d.chaflanCota.textoDx}
+          textoDy={d.chaflanCota.textoDy}
+        />
+      )}
 
       <line x1={d.frente[0].x} y1={d.baseY + 5} x2={d.frente[0].x} y2={d.baseY + 42} stroke={COLOR_GUIA} />
       <line x1={d.frente.at(-1)!.x} y1={d.baseY + 5} x2={d.frente.at(-1)!.x} y2={d.baseY + 42} stroke={COLOR_GUIA} />
@@ -454,13 +550,14 @@ function PanelVista({
       <Cota
         desde={d.altoDesde} hasta={d.altoHasta}
         texto={`${etiquetaAlto} ${fmt(altoNear)}`}
-        rotacion={-90} textoDy={-9}
+        rotacion={-90} textoDx={-16} textoDy={0}
       />
 
       {mostrarLargo && (
         <Cota
           desde={d.largoDesde} hasta={d.largoHasta}
-          texto={`LARGO ${fmt(largo)}`} rotacion={d.anguloLargo} textoDy={-10}
+          texto={`LARGO ${fmt(largo)}`} rotacion={d.anguloLargo}
+          textoDx={d.largoTextoDx} textoDy={d.largoTextoDy}
         />
       )}
       {mostrarAguas && (
@@ -477,7 +574,7 @@ function PanelVista({
           />
           <Cota
             desde={d.aguasDesde} hasta={d.aguasHasta}
-            texto={`AGUAS ${fmt(aguas)}`} rotacion={-90} textoDx={-11} textoDy={0}
+            texto={`AGUAS ${fmt(aguas)}`} rotacion={-90} textoDx={15} textoDy={0}
           />
         </g>
       )}
@@ -493,7 +590,11 @@ export function Escena3D(props: Escena3DProps) {
   const altoAtras = props.modo === "baqueton"
     ? (props.baqueton ?? 0)
     : (props.altoAtras > 0 ? props.altoAtras : props.altoDelante);
-  const valido = props.largo > 0 && props.ancho > 0 && altoDelante > 0;
+  const geometriaPerfilCompleta = props.modo === "baqueton"
+    || (!["TIPO 02", "TIPO 03"].includes(props.tipoPerfil) || (props.aguas ?? 0) > 0)
+      && (props.tipoPerfil !== "TIPO 04" || (props.chaflan ?? 0) > 0)
+      && (props.tipoPerfil !== "TIPO 05" || (props.radioEsquina ?? 0) > 0);
+  const valido = props.largo > 0 && props.ancho > 0 && altoDelante > 0 && geometriaPerfilCompleta;
 
   const anchoAtras = (props.anchoAtras ?? 0) > 0 ? props.anchoAtras! : props.ancho;
   const vistas = useMemo(() => {
@@ -507,6 +608,8 @@ export function Escena3D(props: Escena3DProps) {
       radioHombro: props.radioHombro ?? 0,
       radioEsquina: props.radioEsquina ?? 0,
       chaflan: props.chaflan ?? 0,
+      ventanaAncho: props.ventanaAncho ?? 0,
+      ventanaAlto: props.ventanaAlto ?? 0,
     };
     const delantera = calcularVista({
       ...base,
@@ -534,7 +637,7 @@ export function Escena3D(props: Escena3DProps) {
   }, [
     valido, props.modo, props.tipoPerfil, props.ancho, props.largo,
     props.aguas, props.radioCumbrera, props.radioHombro, props.radioEsquina, props.chaflan,
-    props.ventana, props.ollaos, altoDelante, altoAtras, anchoAtras,
+    props.ventana, props.ventanaAncho, props.ventanaAlto, props.ollaos, altoDelante, altoAtras, anchoAtras,
   ]);
 
   useEffect(() => {
@@ -552,12 +655,13 @@ export function Escena3D(props: Escena3DProps) {
   const bastilla = props.modo === "lona" && (props.bastillaEnfundar ?? false);
 
   return (
-    <div className="relative h-[clamp(360px,44vh,480px)] w-full overflow-hidden rounded-[24px] border border-white/80 bg-white shadow-[0_18px_50px_rgb(15_23_42/0.09),0_2px_8px_rgb(15_23_42/0.04)] ring-1 ring-line/70">
-      <div className="absolute left-6 top-5 z-10 rounded-2xl border border-white/80 bg-white/85 px-3.5 py-2.5 shadow-[0_8px_24px_rgb(15_23_42/0.06)] backdrop-blur-md">
+    <div className="flex w-full flex-col overflow-hidden rounded-[24px] border border-white/80 bg-white shadow-[0_18px_50px_rgb(15_23_42/0.09),0_2px_8px_rgb(15_23_42/0.04)] ring-1 ring-line/70">
+      <div className="flex h-16 shrink-0 items-center border-b border-line/60 bg-white/90 px-6">
         <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-gold-2">
           Vista Técnica
         </p>
-        <p className="text-base font-bold text-ink">Perspectiva fija · cotas en cm</p>
+        <span className="mx-3 h-4 w-px bg-line" aria-hidden="true" />
+        <p className="text-sm font-bold text-ink sm:text-base">Perspectiva fija · cotas en cm</p>
       </div>
       {vistas ? (
         <svg
@@ -565,7 +669,7 @@ export function Escena3D(props: Escena3DProps) {
           viewBox="0 0 1560 440"
           width={1560}
           height={440}
-          className="h-[calc(100%-64px)] w-full"
+          className="block h-auto w-full"
           role="img"
           aria-label={`Perspectiva técnica de ${props.modo === "lona" ? "lona de remolque" : "baquetón"}: largo ${fmt(props.largo)}, ancho ${fmt(props.ancho)}`}
         >
@@ -603,8 +707,8 @@ export function Escena3D(props: Escena3DProps) {
             </filter>
           </defs>
           <rect width="1560" height="440" fill="url(#lienzo)" />
-          <rect x="18" y="68" width="744" height="350" rx="18" fill="#ffffff" fillOpacity="0.64" stroke="#ffffff" />
-          <rect x="798" y="68" width="744" height="350" rx="18" fill="#ffffff" fillOpacity="0.64" stroke="#ffffff" />
+          <rect x="18" y="18" width="744" height="400" rx="18" fill="#ffffff" fillOpacity="0.64" stroke="#ffffff" />
+          <rect x="798" y="18" width="744" height="400" rx="18" fill="#ffffff" fillOpacity="0.64" stroke="#ffffff" />
           <PanelVista
             d={vistas.delantera}
             titulo="VISTA DELANTERA"
@@ -639,24 +743,32 @@ export function Escena3D(props: Escena3DProps) {
           </g>
         </svg>
       ) : (
-        <div className="flex h-[calc(100%-64px)] flex-col items-center justify-center gap-2 px-6 text-center">
+        <div className="flex min-h-80 flex-col items-center justify-center gap-2 px-6 text-center">
           <svg width="52" height="42" viewBox="0 0 52 42" aria-hidden="true" className="text-line-2">
             <path d="M4 37V15l22-10 22 10v22M4 15l22 10 22-10M26 25v12" fill="none" stroke="currentColor" strokeWidth="2" />
           </svg>
-          <p className="text-sm font-medium text-muted">Introduce largo, ancho y alto para ver la perspectiva</p>
+          <p className="text-sm font-medium text-muted">
+            {props.modo === "baqueton"
+              ? "Introduce largo, ancho y baquetón para ver la perspectiva"
+              : "Completa las medidas y la geometría del perfil para ver la perspectiva"}
+          </p>
           <p className="text-xs text-muted-2">Las cotas aparecerán automáticamente en centímetros.</p>
         </div>
       )}
       {props.onObservacionesChange && (
-        <label className="absolute inset-x-4 bottom-3 z-10 flex h-11 items-center gap-3 rounded-xl border border-line bg-white/90 px-3 shadow-[0_6px_18px_rgb(14_45_49/0.07)] backdrop-blur-md">
-          <span className="shrink-0 text-[10px] font-extrabold uppercase tracking-[0.13em] text-muted">Observaciones</span>
-          <input
-            className="min-w-0 flex-1 rounded-lg border border-line bg-surface-2 px-2.5 py-1.5 text-[12px] font-semibold text-ink outline-none transition focus:border-gold focus:ring-2 focus:ring-gold/15"
-            placeholder="Añadir indicaciones para producción…"
-            value={props.observaciones ?? ""}
-            onChange={(event) => props.onObservacionesChange?.(event.target.value)}
-          />
-        </label>
+        <div className="shrink-0 border-t border-line/70 bg-white/95 p-3">
+          <label className="flex min-w-0 items-center gap-3 rounded-xl border border-line bg-surface/80 px-3 py-2 shadow-[0_3px_12px_rgb(14_45_49/0.05)]">
+            <span className="shrink-0 text-[10px] font-extrabold uppercase tracking-[0.13em] text-muted">Observaciones</span>
+            <input
+              name="observaciones"
+              autoComplete="off"
+              className="min-w-0 flex-1 rounded-lg border border-line bg-surface-2 px-2.5 py-1.5 text-[12px] font-semibold text-ink outline-none transition focus:border-gold focus:ring-2 focus:ring-gold/15"
+              placeholder="Añadir indicaciones para producción…"
+              value={props.observaciones ?? ""}
+              onChange={(event) => props.onObservacionesChange?.(event.target.value)}
+            />
+          </label>
+        </div>
       )}
     </div>
   );

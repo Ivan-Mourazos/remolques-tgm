@@ -1,10 +1,9 @@
 const INVALIDOS = /[<>:"/\\|?*]/g;
 
 /**
- * Un PDF por pedido: sin sufijo de versión. Las versiones (-10, -11…) van
- * dentro del propio PDF, una página por remolque; el sufijo queda para los
- * Excel, que sí se guardan por remolque.
+ * Un PDF por pedido: mantiene el sufijo histórico -10. Los distintos
+ * remolques ya no generan -11, -12…; van como páginas del mismo PDF.
  */
 export function nombrePdf(numeroPedido: string): string {
-  return `${(numeroPedido || "SIN-PEDIDO").replace(INVALIDOS, "_")}.pdf`;
+  return `${(numeroPedido || "SIN-PEDIDO").replace(INVALIDOS, "_")}-10.pdf`;
 }
