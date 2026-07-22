@@ -238,14 +238,9 @@ function calcularVista(o: OpcionesVista) {
     (mejor, [, y], indice) => y > near[mejor][1] ? indice : mejor,
     0,
   );
-  const indicePicoFondo = far.reduce(
-    (mejor, [, y], indice) => y > far[mejor][1] ? indice : mejor,
-    0,
-  );
   const techoFrente = frente.slice(1, -1);
   const techoFondo = fondo.slice(1, -1);
   const picoTechoFrente = indicePicoFrente - 1;
-  const picoTechoFondo = indicePicoFondo - 1;
   const tieneCumbrera = o.modo === "lona"
     && o.aguas > 0
     && ["TIPO 02", "TIPO 03"].includes(o.tipoPerfil)

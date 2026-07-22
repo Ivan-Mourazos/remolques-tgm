@@ -1,19 +1,26 @@
 "use client";
+import type { ReactNode } from "react";
 import type { LonaInput } from "@/lib/calc/lona";
 import type { Material } from "@/lib/calc/materiales-seed";
 import { ajusteContorno, DEFAULT_PARAMS, PERFILES, type CalcParams } from "@/lib/calc/params";
 import { contornoCalculado } from "@/lib/geometry/contorno";
 import { excelRound } from "@/lib/calc/redondeo";
 import { CampoCheck, CampoMaterial, CampoNum, CampoSelect, CampoTexto, Grupo, PasoFormulario } from "@/components/workspace/campos";
+import { MODOS_OLLAOS, opcionesConEtiqueta, TECNICOS } from "@/components/workspace/opciones-formulario";
 
 const fmt = (n: number) => n.toLocaleString("es-ES", { maximumFractionDigits: 1 });
+const PERFILES_VISIBLES = PERFILES.map((perfil) => ({
+  value: perfil.value,
+  label: perfil.label.replace(/ · ([a-záéíóúüñ])/u, (_, letra: string) => ` · ${letra.toLocaleUpperCase("es-ES")}`),
+}));
 
 export function FormularioLona({
-  input, materiales, params, onChange,
+  input, materiales, params, onChange, rpsPanel,
 }: {
   input: LonaInput; materiales: Material[]; params?: CalcParams; onChange: (i: LonaInput) => void;
+  rpsPanel?: ReactNode;
 }) {
-  const RECOGIDAS = (params ?? DEFAULT_PARAMS).recogidas.map((r) => r.nombre);
+  const RECOGIDAS = opcionesConEtiqueta((params ?? DEFAULT_PARAMS).recogidas.map((r) => r.nombre));
   const ajuste = ajusteContorno(params ?? DEFAULT_PARAMS, input.tipoPerfil);
   const contornoVisible = input.contorno
     ?? Math.max((input.contornoScad ?? 0) - ajuste, 0);
@@ -43,14 +50,15 @@ export function FormularioLona({
       <Grupo titulo="Pedido" columnas={3} compacto>
         <CampoTexto label="Nº pedido" value={input.cabecera.numeroPedido} onChange={(v) => setCab("numeroPedido", v)} />
         <CampoTexto label="O.F." value={input.cabecera.ordenFabricacion ?? ""} onChange={(v) => setCab("ordenFabricacion", v)} />
-        <CampoTexto label="Realizado por" value={input.cabecera.realizadoPor} onChange={(v) => setCab("realizadoPor", v)} />
+        <CampoSelect label="Realizado por" value={input.cabecera.realizadoPor} opciones={TECNICOS} onChange={(v) => setCab("realizadoPor", v)} />
         <CampoTexto label="Cliente" span={2} value={input.cabecera.cliente} onChange={(v) => setCab("cliente", v)} />
-        <CampoTexto label="Revisión" value={input.cabecera.revision} onChange={(v) => setCab("revision", v)} />
+        <CampoSelect label="Revisión" value={input.cabecera.revision} opciones={TECNICOS} onChange={(v) => setCab("revision", v)} />
       </Grupo>
+      {rpsPanel}
 
       <div className="space-y-2 rounded-2xl border border-line bg-surface/95 p-2.5 shadow-[0_12px_32px_rgb(14_45_49/0.055)] backdrop-blur-sm">
         <PasoFormulario numero={1} titulo="Forma del remolque" columnas={4}>
-          <CampoSelect label="Tipo" span={2} value={input.tipoPerfil} opciones={[...PERFILES]}
+          <CampoSelect label="Tipo" span={2} value={input.tipoPerfil} opciones={PERFILES_VISIBLES}
             onChange={(v) => set("tipoPerfil", v as LonaInput["tipoPerfil"])} />
           <CampoMaterial compacto span={2} value={input.material} opciones={materiales}
             onChange={(v) => set("material", v)} />
@@ -103,15 +111,21 @@ export function FormularioLona({
           </div>
         </PasoFormulario>
         <PasoFormulario numero={4} titulo="Ajustes finales" columnas={4} ultimo>
-          <CampoSelect label="Ollaos" span={2} value={input.modoOllaos} opciones={["REPARTIDOS", "SEGUN SE INDICA"]}
-            onChange={(v) => set("modoOllaos", v as LonaInput["modoOllaos"])} />
-          {input.modoOllaos === "REPARTIDOS" && (
-            <>
+          <div className="col-span-4 grid grid-cols-4 gap-2 rounded-xl border border-line bg-surface-2/55 p-2">
+            <CampoSelect label="Distribución de ollaos" span={2} value={input.modoOllaos} opciones={MODOS_OLLAOS}
+              onChange={(v) => set("modoOllaos", v as LonaInput["modoOllaos"])} />
+            {input.modoOllaos === "REPARTIDOS" ? (
+              <>
               <CampoNum label="Paso" value={input.pasoOllaos} onChange={(v) => set("pasoOllaos", v)} />
               <CampoNum label="Primer ollao" value={input.primerOllao ?? DEFAULT_PARAMS.primerOllao}
                 onChange={(v) => set("primerOllao", v)} />
-            </>
-          )}
+              </>
+            ) : (
+              <p className="col-span-2 self-end rounded-lg border border-gold/25 bg-gold/8 px-2.5 py-2 text-[10px] font-semibold leading-4 text-ink-2">
+                Introduce las posiciones exactas en el apartado de ollaos del resultado.
+              </p>
+            )}
+          </div>
           <div className="col-span-2">
             <CampoCheck label="Ventana" value={input.ventana} onChange={(v) => set("ventana", v)} />
           </div>

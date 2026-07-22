@@ -112,22 +112,26 @@ function EditorOllaos({
   };
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-line-2 bg-surface shadow-[0_3px_14px_rgb(14_45_49/0.05)]">
-      <div className="flex items-center justify-between border-b border-line bg-surface-2 px-3 py-2">
-        <p className="text-[11px] font-extrabold uppercase tracking-[0.1em] text-ink-2">Ollaos según se indica</p>
-        <p className="text-[10px] font-semibold text-muted-2">Una medida por casilla · cm</p>
+    <div className="overflow-hidden rounded-xl border border-line-2 bg-surface shadow-[0_3px_14px_rgb(14_45_49/0.05)]">
+      <div className="flex flex-wrap items-center justify-between gap-1 border-b border-line bg-surface-2 px-3 py-2">
+        <p className="text-[11px] font-extrabold uppercase tracking-[0.1em] text-ink-2">Ollaos a medida</p>
+        <p className="text-[10px] font-semibold text-muted-2">Posiciones desde el origen · cm</p>
       </div>
-      <table className="w-full min-w-[688px] table-fixed text-[11px] tabular-nums">
-        <ColumnasTabla />
-        <CabeceraTabla />
-        <tbody>
-          {filas.map(({ clave, nombre }) => {
-            const posiciones = reparto[clave];
-            return (
-              <tr key={clave} className="border-b border-line last:border-b-0">
-                <td className="px-2 py-1.5 text-[10px] font-bold leading-tight text-ink-2">{nombre}</td>
+      <div className="divide-y divide-line">
+        {filas.map(({ clave, nombre }) => {
+          const posiciones = reparto[clave];
+          return (
+            <section key={clave} className="grid gap-2 px-2.5 py-2 lg:grid-cols-[164px_minmax(0,1fr)]">
+              <div className="flex items-center justify-between gap-2 lg:block">
+                <p className="text-[10px] font-bold leading-tight text-ink-2">{nombre}</p>
+                <span className="shrink-0 rounded-md bg-surface-3 px-1.5 py-0.5 text-[9px] font-extrabold text-muted">
+                  {posiciones.length} ollaos
+                </span>
+              </div>
+              <div className="grid grid-cols-4 gap-1 sm:grid-cols-6 xl:grid-cols-12">
                 {Array.from({ length: 12 }, (_, indice) => (
-                  <td key={indice} className="p-0.5">
+                  <label key={indice} className="min-w-0">
+                    <span className="mb-0.5 block text-center text-[8px] font-extrabold text-muted-2">{indice + 1}</span>
                     <input
                       aria-label={`${nombre}, ollao ${indice + 1}`}
                       type="number"
@@ -135,18 +139,17 @@ function EditorOllaos({
                       step="0.1"
                       min="0"
                       disabled={indice > posiciones.length}
-                      className="h-7 w-full min-w-9 rounded-md border border-line bg-white px-1 text-center text-[11px] font-bold text-ink outline-none transition focus:border-gold focus:ring-2 focus:ring-gold/15 disabled:cursor-not-allowed disabled:bg-surface-3"
+                      className="h-7 w-full min-w-0 rounded-md border border-line bg-white px-1 text-center text-[11px] font-bold tabular-nums text-ink outline-none transition focus:border-gold focus:ring-2 focus:ring-gold/15 disabled:cursor-not-allowed disabled:bg-surface-3"
                       value={posiciones[indice] ?? ""}
                       onChange={(event) => cambiar(clave, indice, event.target.value)}
                     />
-                  </td>
+                  </label>
                 ))}
-                <td className="px-2 py-1.5 text-center font-extrabold text-ink">{posiciones.length}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+              </div>
+            </section>
+          );
+        })}
+      </div>
     </div>
   );
 }

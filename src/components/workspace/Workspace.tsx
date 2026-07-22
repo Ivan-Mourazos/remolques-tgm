@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { calcLona, type LonaInput } from "@/lib/calc/lona";
 import { calcBaqueton, type BaquetonInput } from "@/lib/calc/baqueton";
 import { DEFAULT_PARAMS, type CalcParams } from "@/lib/calc/params";
@@ -13,6 +13,11 @@ import { FormularioLona } from "@/components/workspace/FormularioLona";
 import { FormularioBaqueton } from "@/components/workspace/FormularioBaqueton";
 import { ResultadosLona, ResultadosBaqueton } from "@/components/workspace/Resultados";
 import { Escena3D } from "@/components/workspace/Escena3D";
+import { ImportadorRps } from "@/components/workspace/ImportadorRps";
+import { crearInputDesdeRps } from "@/lib/rps/aplicar-linea";
+import { materialPreferidoRps } from "@/lib/rps/material-rps";
+import { normalizarNumeroPedidoRps } from "@/lib/rps/numero-pedido";
+import type { LineaPedidoRps, OrigenRps, PedidoRps } from "@/lib/rps/types";
 
 export interface WorkspaceInicial {
   id?: string;
@@ -33,11 +38,26 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
   const [params, setParams] = useState<CalcParams>(DEFAULT_PARAMS);
   const [aviso, setAviso] = useState<string | null>(null);
   const [accion, setAccion] = useState<"guardar" | "pdf" | "excel" | null>(null);
+  const [estadoRps, setEstadoRps] = useState<"idle" | "buscando" | "encontrado" | "no-encontrado" | "error">("idle");
+  const [numeroEstadoRps, setNumeroEstadoRps] = useState("");
+  const [pedidoRps, setPedidoRps] = useState<PedidoRps | null>(null);
+  const [errorRps, setErrorRps] = useState<string | null>(null);
+  const [origenRps, setOrigenRps] = useState<OrigenRps | null>(null);
+  const [reintentoRps, setReintentoRps] = useState(0);
+  const [selectorRpsAbierto, setSelectorRpsAbierto] = useState(true);
   const busy = accion !== null;
   const snapshotRef = useRef<(() => string | null) | null>(null);
+  const materialesRef = useRef<Material[]>([]);
+  const numeroAnteriorRps = useRef(normalizarNumeroPedidoRps(
+    inicial?.input.cabecera.numeroPedido ?? "",
+  ));
+  const ultimaConsultaRps = useRef("");
 
   useEffect(() => {
-    fetch("/api/materiales").then((r) => r.json()).then(setMateriales).catch(() => setMateriales([]));
+    fetch("/api/materiales").then((r) => r.json()).then((data: Material[]) => {
+      materialesRef.current = data;
+      setMateriales(data);
+    }).catch(() => setMateriales([]));
   }, []);
 
   useEffect(() => {
@@ -47,6 +67,104 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
   const resLona = useMemo(() => calcLona(lona, params), [lona, params]);
   const resBaq = useMemo(() => calcBaqueton(baq, params), [baq, params]);
   const input = tipo === "lona" ? lona : baq;
+
+  const aplicarPedidoRps = useCallback((
+    pedido: PedidoRps,
+    linea: LineaPedidoRps,
+    catalogoMateriales: Material[] = materialesRef.current,
+  ) => {
+    const indice = pedido.lineas.findIndex((item) => item.idLinea === linea.idLinea);
+    const realizadoPor = (tipo === "lona" ? lona : baq).cabecera.realizadoPor;
+    const creado = crearInputDesdeRps(
+      pedido, linea, Math.max(indice, 0), catalogoMateriales, params, realizadoPor,
+    );
+    setTipo(creado.tipo);
+    if (creado.tipo === "lona") setLona(creado.input);
+    else setBaq(creado.input);
+    setId(undefined);
+    setOrigenRps({
+      numeroPedido: pedido.numero,
+      numeroLinea: linea.numeroLinea,
+      idLinea: linea.idLinea,
+      ordenFabricacion: linea.ordenFabricacion,
+      importadoEn: new Date().toISOString(),
+    });
+    setSelectorRpsAbierto(false);
+    setAviso(`Línea ${linea.numeroLinea} de RPS aplicada. Todos los campos siguen siendo editables.`);
+  }, [baq, lona, params, tipo]);
+
+  const numeroPedido = input.cabecera.numeroPedido;
+  const numeroPedidoNormalizado = normalizarNumeroPedidoRps(numeroPedido);
+  const pedidoRpsVisible = pedidoRps
+    && normalizarNumeroPedidoRps(pedidoRps.numero) === numeroPedidoNormalizado
+    ? pedidoRps
+    : null;
+  const origenRpsActivo = origenRps
+    && normalizarNumeroPedidoRps(origenRps.numeroPedido) === numeroPedidoNormalizado
+    ? origenRps
+    : null;
+  const estadoRpsVisible = /^[A-Z]{2}\d{5,}$/.test(numeroPedidoNormalizado)
+    && numeroEstadoRps === numeroPedidoNormalizado
+    ? estadoRps
+    : "idle";
+  useEffect(() => {
+    const numero = normalizarNumeroPedidoRps(numeroPedido);
+    const cambioPedido = numero !== numeroAnteriorRps.current;
+    numeroAnteriorRps.current = numero;
+
+    if (!/^[A-Z]{2}\d{5,}$/.test(numero)) {
+      ultimaConsultaRps.current = "";
+      return;
+    }
+    // Un registro reutilizado no se sobrescribe al abrirse. La consulta se
+    // activa en cuanto el usuario cambie el número o pulse Reintentar.
+    if (inicial && !cambioPedido && reintentoRps === 0) return;
+    const clave = `${numero}:${reintentoRps}`;
+    if (ultimaConsultaRps.current === clave) return;
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => {
+      ultimaConsultaRps.current = clave;
+      setNumeroEstadoRps(numero);
+      setEstadoRps("buscando");
+      setErrorRps(null);
+      void fetch(`/api/rps/pedido?numero=${encodeURIComponent(numero)}`, {
+        signal: controller.signal,
+        cache: "no-store",
+      }).then(async (response) => {
+        const payload = await response.json() as { pedido?: PedidoRps | null; error?: string };
+        if (!response.ok) throw new Error(payload.error ?? "No se pudo consultar RPS.");
+        if (!payload.pedido) {
+          setPedidoRps(null);
+          setEstadoRps("no-encontrado");
+          return;
+        }
+        setPedidoRps(payload.pedido);
+        setEstadoRps("encontrado");
+        if (payload.pedido.lineas.length === 1) {
+          let catalogo = materialesRef.current;
+          if (catalogo.length === 0) {
+            catalogo = await fetch("/api/materiales", { cache: "no-store" })
+              .then((respuesta) => respuesta.ok ? respuesta.json() as Promise<Material[]> : []);
+            if (catalogo.length > 0) {
+              materialesRef.current = catalogo;
+              setMateriales(catalogo);
+            }
+          }
+          aplicarPedidoRps(payload.pedido, payload.pedido.lineas[0], catalogo);
+        }
+      }).catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        setPedidoRps(null);
+        setErrorRps(error instanceof Error ? error.message : "No se pudo consultar RPS.");
+        setEstadoRps("error");
+      });
+    }, 450);
+    return () => {
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [aplicarPedidoRps, inicial, numeroPedido, reintentoRps]);
 
   async function doGuardar(): Promise<string | null> {
     try {
@@ -214,6 +332,26 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
     }
   }
 
+  const lineaSeleccionada = pedidoRpsVisible?.lineas.find((linea) => linea.idLinea === origenRpsActivo?.idLinea) ?? null;
+  const panelRps = (
+    <ImportadorRps
+      estado={estadoRpsVisible}
+      pedido={pedidoRpsVisible}
+      error={errorRps}
+      origen={origenRpsActivo}
+      materialAplicado={Boolean(lineaSeleccionada && (
+        lineaSeleccionada.materialSugerido || materialPreferidoRps(lineaSeleccionada, materiales)
+      ))}
+      abierto={selectorRpsAbierto}
+      onAbrir={() => setSelectorRpsAbierto(true)}
+      onAplicar={(linea) => { if (pedidoRpsVisible) aplicarPedidoRps(pedidoRpsVisible, linea); }}
+      onReintentar={() => {
+        ultimaConsultaRps.current = "";
+        setReintentoRps((actual) => actual + 1);
+      }}
+    />
+  );
+
   return (
     <div className="grid gap-3 xl:grid-cols-[480px_minmax(0,1fr)]">
       <div>
@@ -227,9 +365,9 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
           ))}
         </div>
         {tipo === "lona" ? (
-          <FormularioLona input={lona} materiales={materiales} params={params} onChange={setLona} />
+          <FormularioLona input={lona} materiales={materiales} params={params} onChange={setLona} rpsPanel={panelRps} />
         ) : (
-          <FormularioBaqueton input={baq} materiales={materiales} params={params} onChange={setBaq} />
+          <FormularioBaqueton input={baq} materiales={materiales} params={params} onChange={setBaq} rpsPanel={panelRps} />
         )}
         <div className="mt-2.5 flex flex-wrap gap-2">
           <button onClick={guardar} disabled={busy} className="rounded-lg border border-line bg-surface px-3.5 py-2 text-[13px] font-bold text-ink-2 shadow-sm transition-all hover:-translate-y-px hover:border-line-2 hover:shadow-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ink/10 disabled:cursor-wait disabled:opacity-50">

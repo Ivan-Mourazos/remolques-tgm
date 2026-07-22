@@ -1,5 +1,5 @@
 "use client";
-import { useId, type ReactNode } from "react";
+import { useId, useMemo, useState, type ReactNode } from "react";
 import type { Material } from "@/lib/calc/materiales-seed";
 
 const control = "min-h-8 rounded-lg border border-line bg-surface px-2.5 py-1 text-sm font-semibold text-ink shadow-[0_1px_2px_rgb(13_42_47/0.045)] transition-[border-color,box-shadow,background-color] hover:border-line-2 focus-visible:border-gold focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold/15";
@@ -79,6 +79,8 @@ export function CampoSelect(props: {
   ancho?: boolean;
   span?: 1 | 2 | 3;
 }) {
+  const valores = props.opciones.map((opcion) => typeof opcion === "string" ? opcion : opcion.value);
+  const valorFueraDeCatalogo = props.value !== "" && !valores.includes(props.value);
   return (
     <label className={`flex min-w-0 flex-col gap-1 text-[12px] ${columna(props.ancho, props.span)}`}>
       <span className="font-bold text-muted">{props.label}</span>
@@ -86,6 +88,7 @@ export function CampoSelect(props: {
         className={control}
         value={props.value} onChange={(e) => props.onChange(e.target.value)}
       >
+        {valorFueraDeCatalogo && <option value={props.value}>{props.value}</option>}
         {props.opciones.map((opcion) => {
           const value = typeof opcion === "string" ? opcion : opcion.value;
           const label = typeof opcion === "string" ? opcion : opcion.label;
@@ -100,29 +103,144 @@ export function CampoMaterial(props: {
   value: string; opciones: Material[]; onChange: (v: string) => void; span?: 1 | 2 | 3; compacto?: boolean;
 }) {
   const listId = useId();
+  const inputId = useId();
+  const [abierto, setAbierto] = useState(false);
+  const [indiceActivo, setIndiceActivo] = useState(0);
   const material = props.opciones.find((opcion) => opcion.nombre === props.value);
+  const opcionesVisibles = useMemo(() => {
+    const normalizar = (value: string) => value
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .toLocaleUpperCase("es-ES");
+    // Al abrir una bobina ya seleccionada mostramos el catálogo completo para
+    // que cambiarla sea inmediato; al escribir, filtramos por todos los tokens.
+    const consulta = material ? "" : normalizar(props.value).trim();
+    const tokens = consulta.split(/\s+/).filter(Boolean);
+    return [...props.opciones]
+      .filter((opcion) => {
+        const texto = normalizar(`${opcion.nombre} ${opcion.codigoBobina}`);
+        return tokens.every((token) => texto.includes(token));
+      })
+      .sort((a, b) => {
+        const stockA = a.stockArzua == null ? Number.NEGATIVE_INFINITY : Number(a.stockArzua);
+        const stockB = b.stockArzua == null ? Number.NEGATIVE_INFINITY : Number(b.stockArzua);
+        return stockB - stockA || a.nombre.localeCompare(b.nombre, "es");
+      })
+      .slice(0, 10);
+  }, [material, props.opciones, props.value]);
+
+  const elegir = (opcion: Material) => {
+    props.onChange(opcion.nombre);
+    setAbierto(false);
+    setIndiceActivo(0);
+  };
+
   return (
-    <label className={`${columna(true, props.span)} flex min-w-0 flex-col gap-1 text-[12px]`}>
-      <span className="font-bold text-muted">Material</span>
-      <input
-        className={`${control} w-full`}
-        style={props.compacto ? { fontSize: "11px" } : undefined}
-        list={listId}
-        name="material"
-        autoComplete="off"
-        placeholder={props.compacto ? "Buscar lona…" : "Escribe para buscar o introducir otra lona…"}
-        value={props.value}
-        onChange={(event) => props.onChange(event.target.value)}
-      />
-      <datalist id={listId}>
-        {props.opciones.map((material) => (
-          <option
-            key={material.codigoBobina}
-            value={material.nombre}
-            label={`${material.codigoBobina}${material.stockArzua == null ? "" : ` · stock ${material.stockArzua}`}`}
-          />
-        ))}
-      </datalist>
+    <div
+      className={`${columna(true, props.span)} relative flex min-w-0 flex-col gap-1 text-[12px]`}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) setAbierto(false);
+      }}
+    >
+      <label htmlFor={inputId} className="font-bold text-muted">Material</label>
+      <div className="relative">
+        <input
+          id={inputId}
+          className={`${control} w-full pr-8`}
+          style={props.compacto ? { fontSize: "11px" } : undefined}
+          name="material"
+          autoComplete="off"
+          role="combobox"
+          aria-autocomplete="list"
+          aria-expanded={abierto}
+          aria-controls={listId}
+          aria-activedescendant={abierto && opcionesVisibles[indiceActivo] ? `${listId}-${indiceActivo}` : undefined}
+          placeholder={props.compacto ? "Buscar color, RAL o bobina…" : "Buscar color, RAL, gramaje o código…"}
+          value={props.value}
+          onFocus={() => setAbierto(true)}
+          onChange={(event) => {
+            props.onChange(event.target.value);
+            setIndiceActivo(0);
+            setAbierto(true);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") setAbierto(false);
+            if (event.key === "ArrowDown") {
+              event.preventDefault();
+              setAbierto(true);
+              setIndiceActivo((actual) => Math.min(actual + 1, opcionesVisibles.length - 1));
+            }
+            if (event.key === "ArrowUp") {
+              event.preventDefault();
+              setIndiceActivo((actual) => Math.max(actual - 1, 0));
+            }
+            if (event.key === "Enter" && abierto && opcionesVisibles[indiceActivo]) {
+              event.preventDefault();
+              elegir(opcionesVisibles[indiceActivo]);
+            }
+          }}
+        />
+        <button
+          type="button"
+          tabIndex={-1}
+          aria-label={abierto ? "Cerrar catálogo de lonas" : "Abrir catálogo de lonas"}
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => setAbierto((actual) => !actual)}
+          className="absolute inset-y-0 right-0 flex w-8 items-center justify-center text-sm font-black text-muted transition hover:text-gold-2"
+        >
+          {abierto ? "⌃" : "⌄"}
+        </button>
+      </div>
+
+      {abierto && (
+        <div
+          id={listId}
+          role="listbox"
+          className="absolute right-0 top-[52px] z-40 max-h-72 w-[min(680px,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-line bg-surface/98 p-1.5 shadow-[0_18px_48px_rgb(8_35_40/0.20)] backdrop-blur-xl"
+        >
+          <div className="mb-1 flex items-center justify-between px-2 py-1 text-[9px] font-extrabold uppercase tracking-[0.13em] text-muted-2">
+            <span>Bobinas RPS</span>
+            <span>Mayor stock primero</span>
+          </div>
+          {opcionesVisibles.length > 0 ? opcionesVisibles.map((opcion, index) => {
+            const seleccionada = opcion.nombre === props.value;
+            const sinStock = opcion.stockArzua != null && opcion.stockArzua <= 0;
+            return (
+              <button
+                id={`${listId}-${index}`}
+                type="button"
+                role="option"
+                aria-selected={seleccionada}
+                key={opcion.codigoBobina}
+                onMouseDown={(event) => event.preventDefault()}
+                onMouseEnter={() => setIndiceActivo(index)}
+                onClick={() => elegir(opcion)}
+                className={`flex w-full items-center justify-between gap-3 rounded-lg px-2.5 py-2 text-left transition ${
+                  index === indiceActivo ? "bg-surface-3" : "hover:bg-surface-2"
+                } ${seleccionada ? "shadow-[inset_3px_0_0_var(--color-gold)]" : ""}`}
+              >
+                <span className="min-w-0">
+                  <span className="block whitespace-normal text-[11px] font-bold leading-4 text-ink">{opcion.nombre}</span>
+                  <span className="mt-0.5 block font-mono text-[9px] font-bold text-muted">{opcion.codigoBobina}</span>
+                </span>
+                <span className={`shrink-0 rounded-md px-2 py-1 text-[9px] font-extrabold ${
+                  opcion.stockArzua == null
+                    ? "bg-surface-3 text-muted"
+                    : sinStock
+                      ? "bg-red-500/10 text-red-700"
+                      : "bg-gold/15 text-gold-2"
+                }`}>
+                  {opcion.stockArzua == null ? "sin dato" : `Stock ${opcion.stockArzua}`}
+                </span>
+              </button>
+            );
+          }) : (
+            <p className="px-2.5 py-3 text-[11px] font-semibold text-muted">
+              Sin coincidencias en RPS. Puedes conservar el texto como material manual.
+            </p>
+          )}
+        </div>
+      )}
+
       {props.compacto ? (
         <span className="break-words text-[10px] font-bold leading-tight text-gold-2" title={props.value}>
           {material
@@ -143,7 +261,7 @@ export function CampoMaterial(props: {
           ) : null}
         </div>
       )}
-    </label>
+    </div>
   );
 }
 
