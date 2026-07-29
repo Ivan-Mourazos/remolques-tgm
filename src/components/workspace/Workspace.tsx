@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { calcLona, type LonaInput } from "@/lib/calc/lona";
 import { calcBaqueton, type BaquetonInput } from "@/lib/calc/baqueton";
 import { DEFAULT_PARAMS, type CalcParams } from "@/lib/calc/params";
@@ -17,13 +17,13 @@ import { PedidoActivo } from "@/components/workspace/PedidoActivo";
 import { crearInputDesdeRps } from "@/lib/rps/aplicar-linea";
 import { materialPreferidoRps } from "@/lib/rps/material-rps";
 import { normalizarNumeroPedidoRps } from "@/lib/rps/numero-pedido";
-import type { LineaPedidoRps, OrigenRps, PedidoRps } from "@/lib/rps/types";
+import type { LineaPedidoRps, PedidoRps } from "@/lib/rps/types";
 import {
   nombreElementoPedido,
-  remolquesUnicos,
   siguienteVersionPedido,
 } from "@/lib/pedidos/agrupar-pedido";
 import { erroresPlanteamiento } from "@/lib/pedidos/validar-planteamiento";
+import { estadoInicial, reducirWorkspace } from "@/lib/workspace/estado";
 import {
   erroresVisibles as calcularErroresVisibles,
   estadoRpsVisible as calcularEstadoRpsVisible,
@@ -41,34 +41,18 @@ export interface WorkspaceInicial {
 }
 
 export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
-  const [tipo, setTipo] = useState<TipoPlanteamiento>(inicial?.tipo ?? "lona");
-  const [lona, setLona] = useState<LonaInput>(
-    inicial?.tipo === "lona" ? (inicial.input as LonaInput) : emptyLona(),
+  const [estado, despachar] = useReducer(
+    reducirWorkspace,
+    undefined,
+    () => estadoInicial(inicial, { lona: emptyLona(), baqueton: emptyBaqueton() }),
   );
-  const [baq, setBaq] = useState<BaquetonInput>(
-    inicial?.tipo === "baqueton" ? (inicial.input as BaquetonInput) : emptyBaqueton(),
-  );
-  const [id, setId] = useState<string | undefined>(inicial?.id);
-  const [editorActivo, setEditorActivo] = useState(Boolean(inicial));
-  const [numeroPedido, setNumeroPedido] = useState(inicial?.input.cabecera.numeroPedido ?? "");
-  const [clientePedido, setClientePedido] = useState(inicial?.input.cabecera.cliente ?? "");
-  const [registrosPedido, setRegistrosPedido] = useState<PlanteamientoRecord[]>([]);
-  const [cargandoPedido, setCargandoPedido] = useState(Boolean(inicial?.input.cabecera.numeroPedido));
+  const {
+    tipo, lona, baqueton: baq, id, editorActivo, baseGuardada, validacionIntentada,
+    numeroPedido, cliente: clientePedido, registros: registrosPedido, cargandoPedido,
+    rps, aviso, accion,
+  } = estado;
   const [materiales, setMateriales] = useState<Material[]>([]);
   const [params, setParams] = useState<CalcParams>(DEFAULT_PARAMS);
-  const [aviso, setAviso] = useState<string | null>(null);
-  const [accion, setAccion] = useState<"guardar" | "preview" | "pdf" | null>(null);
-  const [estadoRps, setEstadoRps] = useState<"idle" | "buscando" | "encontrado" | "no-encontrado" | "error">("idle");
-  const [numeroEstadoRps, setNumeroEstadoRps] = useState("");
-  const [pedidoRps, setPedidoRps] = useState<PedidoRps | null>(null);
-  const [errorRps, setErrorRps] = useState<string | null>(null);
-  const [origenRps, setOrigenRps] = useState<OrigenRps | null>(null);
-  const [reintentoRps, setReintentoRps] = useState(0);
-  const [selectorRpsAbierto, setSelectorRpsAbierto] = useState(true);
-  const [validacionIntentada, setValidacionIntentada] = useState(false);
-  const [baseGuardada, setBaseGuardada] = useState<string | null>(
-    inicial ? JSON.stringify(inicial.input) : null,
-  );
   const busy = accion !== null;
   const snapshotRef = useRef<(() => string | null) | null>(null);
   const materialesRef = useRef<Material[]>([]);
@@ -121,10 +105,12 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
   }, [hayCambiosSinGuardar]);
 
   const validarYEnfocar = () => {
-    setValidacionIntentada(true);
     const primero = erroresActuales[0];
+    despachar({
+      tipo: "VALIDACION_INTENTADA",
+      aviso: primero ? `Revisa los campos marcados. ${primero.mensaje}` : null,
+    });
     if (!primero) return null;
-    setAviso(`Revisa los campos marcados. ${primero.mensaje}`);
     window.setTimeout(() => {
       const campo = document.querySelector<HTMLElement>(`[data-campo="${primero.campo}"]`);
       campo?.focus();
@@ -143,29 +129,24 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
     const creado = crearInputDesdeRps(
       pedido, linea, Math.max(indice, 0), catalogoMateriales, params, realizadoPor,
     );
-    setTipo(creado.tipo);
-    if (creado.tipo === "lona") setLona(creado.input);
-    else setBaq(creado.input);
-    setNumeroPedido(creado.input.cabecera.numeroPedido);
-    setClientePedido(creado.input.cabecera.cliente);
-    setEditorActivo(true);
-    setId(registrosPedido.find((registro) => registro.version === creado.input.cabecera.version)?.id);
-    setOrigenRps({
-      numeroPedido: pedido.numero,
-      numeroLinea: linea.numeroLinea,
-      idLinea: linea.idLinea,
-      ordenFabricacion: linea.ordenFabricacion,
-      importadoEn: new Date().toISOString(),
+    despachar({
+      tipo: "RPS_APLICADO",
+      tipoElemento: creado.tipo,
+      input: creado.input,
+      origen: {
+        numeroPedido: pedido.numero,
+        numeroLinea: linea.numeroLinea,
+        idLinea: linea.idLinea,
+        ordenFabricacion: linea.ordenFabricacion,
+        importadoEn: new Date().toISOString(),
+      },
+      aviso: `Línea ${linea.numeroLinea} de RPS aplicada. Todos los campos siguen siendo editables.`,
     });
-    setSelectorRpsAbierto(false);
-    setBaseGuardada(null);
-    setValidacionIntentada(false);
-    setAviso(`Línea ${linea.numeroLinea} de RPS aplicada. Todos los campos siguen siendo editables.`);
-  }, [baq, lona, params, registrosPedido, tipo]);
+  }, [baq, lona, params, tipo]);
 
-  const pedidoRpsVisible = calcularPedidoRpsVisible(numeroPedido, pedidoRps);
-  const origenRpsActivo = calcularOrigenRpsActivo(numeroPedido, origenRps);
-  const estadoRpsVisible = calcularEstadoRpsVisible(numeroPedido, numeroEstadoRps, estadoRps);
+  const pedidoRpsVisible = calcularPedidoRpsVisible(numeroPedido, rps.pedido);
+  const origenRpsActivo = calcularOrigenRpsActivo(numeroPedido, rps.origen);
+  const estadoRpsVisible = calcularEstadoRpsVisible(numeroPedido, rps.numeroConsultado, rps.estado);
 
   useEffect(() => {
     const numero = normalizarNumeroPedidoRps(numeroPedido);
@@ -177,22 +158,12 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
         cache: "no-store",
       }).then(async (respuesta) => {
         if (!respuesta.ok) throw new Error(String(respuesta.status));
-        const registros = remolquesUnicos(await respuesta.json() as PlanteamientoRecord[]);
-        setRegistrosPedido(registros);
-        const clienteGuardado = registros.find((registro) => registro.cliente.trim())?.cliente;
-        if (clienteGuardado) {
-          setClientePedido((actual) => actual.trim() ? actual : clienteGuardado);
-          setLona((actual) => actual.cabecera.cliente.trim() ? actual : {
-            ...actual, cabecera: { ...actual.cabecera, cliente: clienteGuardado },
-          });
-          setBaq((actual) => actual.cabecera.cliente.trim() ? actual : {
-            ...actual, cabecera: { ...actual.cabecera, cliente: clienteGuardado },
-          });
-        }
+        despachar({
+          tipo: "REGISTROS_CARGADOS",
+          registros: await respuesta.json() as PlanteamientoRecord[],
+        });
       }).catch((error: unknown) => {
-        if ((error as Error).name !== "AbortError") setRegistrosPedido([]);
-      }).finally(() => {
-        if (!controller.signal.aborted) setCargandoPedido(false);
+        if ((error as Error).name !== "AbortError") despachar({ tipo: "REGISTROS_FALLARON" });
       });
     }, 250);
     return () => {
@@ -212,16 +183,14 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
     }
     // Un registro reutilizado no se sobrescribe al abrirse. La consulta se
     // activa en cuanto el usuario cambie el número o pulse Reintentar.
-    if (inicial && !cambioPedido && reintentoRps === 0) return;
-    const clave = `${numero}:${reintentoRps}`;
+    if (inicial && !cambioPedido && rps.reintento === 0) return;
+    const clave = `${numero}:${rps.reintento}`;
     if (ultimaConsultaRps.current === clave) return;
 
     const controller = new AbortController();
     const timeout = window.setTimeout(() => {
       ultimaConsultaRps.current = clave;
-      setNumeroEstadoRps(numero);
-      setEstadoRps("buscando");
-      setErrorRps(null);
+      despachar({ tipo: "RPS_CONSULTA_INICIADA", numero });
       void fetch(`/api/rps/pedido?numero=${encodeURIComponent(numero)}`, {
         signal: controller.signal,
         cache: "no-store",
@@ -229,12 +198,10 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
         const payload = await response.json() as { pedido?: PedidoRps | null; error?: string };
         if (!response.ok) throw new Error(payload.error ?? "No se pudo consultar RPS.");
         if (!payload.pedido) {
-          setPedidoRps(null);
-          setEstadoRps("no-encontrado");
+          despachar({ tipo: "RPS_NO_ENCONTRADO" });
           return;
         }
-        setPedidoRps(payload.pedido);
-        setEstadoRps("encontrado");
+        despachar({ tipo: "RPS_ENCONTRADO", pedido: payload.pedido });
         if (payload.pedido.lineas.length === 1) {
           let catalogo = materialesRef.current;
           if (catalogo.length === 0) {
@@ -249,45 +216,28 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
         }
       }).catch((error: unknown) => {
         if (controller.signal.aborted) return;
-        setPedidoRps(null);
-        setErrorRps(error instanceof Error ? error.message : "No se pudo consultar RPS.");
-        setEstadoRps("error");
+        despachar({
+          tipo: "RPS_ERROR",
+          mensaje: error instanceof Error ? error.message : "No se pudo consultar RPS.",
+        });
       });
     }, 450);
     return () => {
       window.clearTimeout(timeout);
       controller.abort();
     };
-  }, [aplicarPedidoRps, inicial, numeroPedido, reintentoRps]);
+  }, [aplicarPedidoRps, inicial, numeroPedido, rps.reintento]);
 
   function cambiarNumeroPedido(valor: string) {
     const cambiaPedido = normalizarNumeroPedidoRps(valor) !== normalizarNumeroPedidoRps(numeroPedido);
     if (cambiaPedido && hayCambiosSinGuardar && !window.confirm(
       "Hay cambios sin guardar. ¿Quieres cambiar de pedido y descartarlos?",
     )) return;
-    setNumeroPedido(valor);
-    setLona((actual) => ({ ...actual, cabecera: { ...actual.cabecera, numeroPedido: valor } }));
-    setBaq((actual) => ({ ...actual, cabecera: { ...actual.cabecera, numeroPedido: valor } }));
-    if (cambiaPedido) {
-      setClientePedido("");
-      setLona((actual) => ({ ...actual, cabecera: { ...actual.cabecera, cliente: "" } }));
-      setBaq((actual) => ({ ...actual, cabecera: { ...actual.cabecera, cliente: "" } }));
-      setRegistrosPedido([]);
-      setCargandoPedido(Boolean(normalizarNumeroPedidoRps(valor)));
-      setEditorActivo(false);
-      setId(undefined);
-      setOrigenRps(null);
-      setSelectorRpsAbierto(true);
-      setAviso(null);
-      setBaseGuardada(null);
-      setValidacionIntentada(false);
-    }
+    despachar({ tipo: "PEDIDO_CAMBIADO", valor });
   }
 
   function cambiarClientePedido(valor: string) {
-    setClientePedido(valor);
-    setLona((actual) => ({ ...actual, cabecera: { ...actual.cabecera, cliente: valor } }));
-    setBaq((actual) => ({ ...actual, cabecera: { ...actual.cabecera, cliente: valor } }));
+    despachar({ tipo: "CLIENTE_CAMBIADO", valor });
   }
 
   function puedeCambiarElemento(): boolean {
@@ -298,32 +248,21 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
 
   function seleccionarRegistro(registro: PlanteamientoRecord) {
     if (registro.id === id || !puedeCambiarElemento()) return;
-    setTipo(registro.tipo);
-    if (registro.tipo === "lona") setLona(registro.input as LonaInput);
-    else setBaq(registro.input as BaquetonInput);
-    setNumeroPedido(registro.numeroPedido);
-    setClientePedido(registro.cliente);
-    setId(registro.id);
-    setEditorActivo(true);
-    setOrigenRps(null);
-    setSelectorRpsAbierto(false);
-    setAviso(null);
-    setBaseGuardada(JSON.stringify(registro.input));
-    setValidacionIntentada(false);
+    despachar({ tipo: "REGISTRO_SELECCIONADO", registro });
   }
 
   function nuevoElemento(nuevoTipo: TipoPlanteamiento) {
     if (!numeroPedido.trim()) {
-      setAviso("Introduce primero el número de pedido.");
+      despachar({ tipo: "AVISO_MOSTRADO", texto: "Introduce primero el número de pedido." });
       return;
     }
     if (!puedeCambiarElemento()) return;
-    const base = nuevoTipo === "lona" ? emptyLona() : emptyBaqueton();
+    const plantilla = nuevoTipo === "lona" ? emptyLona() : emptyBaqueton();
     const version = siguienteVersionPedido(registrosPedido);
-    const nuevo = {
-      ...base,
+    const base = {
+      ...plantilla,
       cabecera: {
-        ...base.cabecera,
+        ...plantilla.cabecera,
         numeroPedido,
         cliente: clientePedido,
         version,
@@ -331,26 +270,22 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
         revision: input.cabecera.revision,
       },
     };
-    setTipo(nuevoTipo);
-    if (nuevoTipo === "lona") setLona(nuevo as LonaInput);
-    else setBaq(nuevo as BaquetonInput);
-    setId(undefined);
-    setEditorActivo(true);
-    setOrigenRps(null);
-    setSelectorRpsAbierto(true);
-    setBaseGuardada(null);
-    setValidacionIntentada(false);
-    setAviso(`${nombreElementoPedido(version, nuevoTipo)} añadido al pedido. Completa sus datos y guárdalo.`);
+    despachar({
+      tipo: "ELEMENTO_ANADIDO",
+      tipoElemento: nuevoTipo,
+      base,
+      aviso: `${nombreElementoPedido(version, nuevoTipo)} añadido al pedido. Completa sus datos y guárdalo.`,
+    });
   }
 
   async function doGuardar(): Promise<string | null> {
     if (!editorActivo) {
-      setAviso("Selecciona o añade un elemento antes de guardar.");
+      despachar({ tipo: "AVISO_MOSTRADO", texto: "Selecciona o añade un elemento antes de guardar." });
       return null;
     }
     if (validarYEnfocar()) return null;
     try {
-      setAviso(null);
+      despachar({ tipo: "AVISO_MOSTRADO", texto: null });
       const res = await fetch("/api/planteamientos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -363,29 +298,29 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
         } catch {
           // cuerpo no JSON: dejamos el código de estado
         }
-        setAviso(`Error al guardar: ${detalle}`);
+        despachar({ tipo: "AVISO_MOSTRADO", texto: `Error al guardar: ${detalle}` });
         return null;
       }
       const saved = await res.json() as PlanteamientoRecord;
-      setId(saved.id);
-      setBaseGuardada(JSON.stringify(saved.input));
-      setValidacionIntentada(false);
-      setRegistrosPedido((actuales) => remolquesUnicos([...actuales, saved]));
-      setAviso(`${nombreElementoPedido(saved.version, saved.tipo)} guardado dentro del pedido.`);
+      despachar({
+        tipo: "GUARDADO_OK",
+        registro: saved,
+        aviso: `${nombreElementoPedido(saved.version, saved.tipo)} guardado dentro del pedido.`,
+      });
       return saved.id as string;
     } catch {
-      setAviso("Error de red al guardar");
+      despachar({ tipo: "AVISO_MOSTRADO", texto: "Error de red al guardar" });
       return null;
     }
   }
 
   async function guardar(): Promise<string | null> {
     if (busy) return null;
-    setAccion("guardar");
+    despachar({ tipo: "ACCION_INICIADA", accion: "guardar" });
     try {
       return await doGuardar();
     } finally {
-      setAccion(null);
+      despachar({ tipo: "ACCION_TERMINADA" });
     }
   }
 
@@ -422,9 +357,12 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
     });
 
     if (!resultado.ok) {
-      setAviso(resultado.motivo === "sin-elementos"
-        ? resultado.mensaje
-        : `Error al generar PDF: ${resultado.mensaje}`);
+      despachar({
+        tipo: "AVISO_MOSTRADO",
+        texto: resultado.motivo === "sin-elementos"
+          ? resultado.mensaje
+          : `Error al generar PDF: ${resultado.mensaje}`,
+      });
       return null;
     }
     return {
@@ -438,14 +376,17 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
     if (busy) return;
     const ventana = window.open("", "_blank");
     if (!ventana) {
-      setAviso("El navegador ha bloqueado la vista previa. Permite ventanas emergentes para esta aplicación.");
+      despachar({
+        tipo: "AVISO_MOSTRADO",
+        texto: "El navegador ha bloqueado la vista previa. Permite ventanas emergentes para esta aplicación.",
+      });
       return;
     }
     ventana.opener = null;
     ventana.document.title = "Generando vista previa…";
     ventana.document.body.textContent = "Generando vista previa del planteamiento…";
     ventana.document.body.style.cssText = "font:600 14px sans-serif;color:#17393e;padding:24px";
-    setAccion("preview");
+    despachar({ tipo: "ACCION_INICIADA", accion: "preview" });
     try {
       const generado = await solicitarPdf(false);
       if (!generado) {
@@ -454,39 +395,44 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
       }
       const url = URL.createObjectURL(await generado.respuesta.blob());
       ventana.location.replace(url);
-      setAviso(
-        `Vista previa abierta: ${generado.nombre}. No se ha archivado todavía.`
-        + (generado.omitidos ? ` Se han omitido ${generado.omitidos} registros duplicados o incompletos.` : ""),
-      );
+      despachar({
+        tipo: "AVISO_MOSTRADO",
+        texto: `Vista previa abierta: ${generado.nombre}. No se ha archivado todavía.`
+          + (generado.omitidos ? ` Se han omitido ${generado.omitidos} registros duplicados o incompletos.` : ""),
+      });
     } catch {
       ventana.close();
-      setAviso("Error de red al generar la vista previa del PDF.");
+      despachar({ tipo: "AVISO_MOSTRADO", texto: "Error de red al generar la vista previa del PDF." });
     } finally {
-      setAccion(null);
+      despachar({ tipo: "ACCION_TERMINADA" });
     }
   }
 
   async function generarPdf() {
     if (busy) return;
-    setAccion("pdf");
+    despachar({ tipo: "ACCION_INICIADA", accion: "pdf" });
     try {
       const generado = await solicitarPdf(true);
       if (!generado) return;
       const destinos = Number(generado.respuesta.headers.get("X-Pdf-Destinos") ?? 0);
       const anio = generado.respuesta.headers.get("X-Pdf-Anio") ?? "el año correspondiente";
       if (destinos === 2) {
-        setAviso(
-          `PDF archivado en ESCÁNER/PLANTEAMIENTOS y OFICINA TÉCNICA/${anio}.`
-          + (generado.omitidos ? ` Se han omitido ${generado.omitidos} registros duplicados o incompletos.` : ""),
-        );
+        despachar({
+          tipo: "AVISO_MOSTRADO",
+          texto: `PDF archivado en ESCÁNER/PLANTEAMIENTOS y OFICINA TÉCNICA/${anio}.`
+            + (generado.omitidos ? ` Se han omitido ${generado.omitidos} registros duplicados o incompletos.` : ""),
+        });
       } else {
         descargar(await generado.respuesta.blob(), generado.nombre);
-        setAviso(`PDF descargado (${generado.nombre}). Configura las rutas del servidor para archivarlo automáticamente.`);
+        despachar({
+          tipo: "AVISO_MOSTRADO",
+          texto: `PDF descargado (${generado.nombre}). Configura las rutas del servidor para archivarlo automáticamente.`,
+        });
       }
     } catch {
-      setAviso("Error de red al generar PDF");
+      despachar({ tipo: "AVISO_MOSTRADO", texto: "Error de red al generar PDF" });
     } finally {
-      setAccion(null);
+      despachar({ tipo: "ACCION_TERMINADA" });
     }
   }
 
@@ -495,13 +441,13 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
     <ImportadorRps
       estado={estadoRpsVisible}
       pedido={pedidoRpsVisible}
-      error={errorRps}
+      error={rps.error}
       origen={origenRpsActivo}
       materialAplicado={Boolean(lineaSeleccionada && (
         lineaSeleccionada.materialSugerido || materialPreferidoRps(lineaSeleccionada, materiales)
       ))}
-      abierto={selectorRpsAbierto}
-      onAbrir={() => setSelectorRpsAbierto(true)}
+      abierto={rps.selectorAbierto}
+      onAbrir={() => despachar({ tipo: "RPS_SELECTOR_ABIERTO" })}
       onAplicar={(linea) => {
         if (pedidoRpsVisible && (
           origenRpsActivo?.idLinea === linea.idLinea || puedeCambiarElemento()
@@ -509,7 +455,7 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
       }}
       onReintentar={() => {
         ultimaConsultaRps.current = "";
-        setReintentoRps((actual) => actual + 1);
+        despachar({ tipo: "RPS_REINTENTADO" });
       }}
     />
   );
@@ -555,9 +501,11 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
               </span>
             </div>
             {tipo === "lona" ? (
-              <FormularioLona input={lona} materiales={materiales} params={params} errores={erroresVisibles} onChange={setLona} />
+              <FormularioLona input={lona} materiales={materiales} params={params} errores={erroresVisibles}
+                onChange={(entrada) => despachar({ tipo: "INPUT_CAMBIADO", input: entrada })} />
             ) : (
-              <FormularioBaqueton input={baq} materiales={materiales} params={params} errores={erroresVisibles} onChange={setBaq} />
+              <FormularioBaqueton input={baq} materiales={materiales} params={params} errores={erroresVisibles}
+                onChange={(entrada) => despachar({ tipo: "INPUT_CAMBIADO", input: entrada })} />
             )}
             <button
               onClick={guardar}
@@ -580,7 +528,9 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
                 ventanaAncho={lona.ventanaAncho} ventanaAlto={lona.ventanaAlto}
                 material={lona.material}
                 observaciones={lona.observaciones}
-                onObservacionesChange={(observaciones) => setLona((actual) => ({ ...actual, observaciones }))}
+                onObservacionesChange={(observaciones) => despachar({
+                  tipo: "INPUT_CAMBIADO", input: { ...lona, observaciones },
+                })}
                 onSnapshotReady={(fn) => { snapshotRef.current = fn; }} />
             ) : (
               <Escena3D modo="baqueton" largo={baq.largo} ancho={baq.ancho}
@@ -588,7 +538,9 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
                 baqueton={baq.baqueton} material={baq.material}
                 ollaos={resBaq.reparto}
                 observaciones={baq.observaciones}
-                onObservacionesChange={(observaciones) => setBaq((actual) => ({ ...actual, observaciones }))}
+                onObservacionesChange={(observaciones) => despachar({
+                  tipo: "INPUT_CAMBIADO", input: { ...baq, observaciones },
+                })}
                 onSnapshotReady={(fn) => { snapshotRef.current = fn; }} />
             )}
             {medidasSuficientes && tipo === "lona"
@@ -597,14 +549,18 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
                   modoOllaos={lona.modoOllaos}
                   primerOllao={lona.primerOllao ?? params.primerOllao}
                   errorOllaos={erroresVisibles.ollaosManuales}
-                  onOllaosChange={(ollaosManuales) => setLona((actual) => ({ ...actual, ollaosManuales }))}
+                  onOllaosChange={(ollaosManuales) => despachar({
+                    tipo: "INPUT_CAMBIADO", input: { ...lona, ollaosManuales },
+                  })}
                 />
               : medidasSuficientes && tipo === "baqueton" ? <ResultadosBaqueton
                   res={resBaq}
                   modoOllaos={baq.modoOllaos}
                   primerOllao={baq.primerOllao ?? params.primerOllao}
                   errorOllaos={erroresVisibles.ollaosManuales}
-                  onOllaosChange={(ollaosManuales) => setBaq((actual) => ({ ...actual, ollaosManuales }))}
+                  onOllaosChange={(ollaosManuales) => despachar({
+                    tipo: "INPUT_CAMBIADO", input: { ...baq, ollaosManuales },
+                  })}
                 /> : (
                   <div className="rounded-xl border border-dashed border-line-2 bg-surface/65 px-4 py-5 text-center text-xs font-semibold text-muted">
                     Completa las medidas necesarias para calcular los paños y el reparto de ollaos.
