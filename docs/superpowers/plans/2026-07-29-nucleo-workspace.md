@@ -941,7 +941,7 @@ export type AccionWorkspace =
   | { tipo: "INPUT_CAMBIADO"; input: LonaInput | BaquetonInput }
   | { tipo: "ELEMENTO_ANADIDO"; tipoElemento: TipoPlanteamiento; base: LonaInput | BaquetonInput; aviso: string }
   | { tipo: "REGISTRO_SELECCIONADO"; registro: PlanteamientoRecord }
-  | { tipo: "RPS_APLICADO"; tipoElemento: TipoPlanteamiento; input: LonaInput | BaquetonInput; origen: OrigenRps; aviso: string }
+  | { tipo: "RPS_APLICADO"; tipoElemento: TipoPlanteamiento; input: LonaInput | BaquetonInput; origen: OrigenRps; aviso: string; id?: string }
   | { tipo: "RPS_SELECTOR_ABIERTO" }
   | { tipo: "RPS_REINTENTADO" }
   | { tipo: "REGISTROS_CARGADOS"; registros: PlanteamientoRecord[] }
@@ -1078,7 +1078,12 @@ export function reducirWorkspace(
         numeroPedido: input.cabecera.numeroPedido,
         cliente: input.cabecera.cliente,
         editorActivo: true,
-        id: estado.registros.find((r) => r.version === input.cabecera.version)?.id,
+        // El id lo resuelve el componente y llega en el payload. Resolverlo aquí
+        // desde `estado.registros` obligaba a sacar `registrosPedido` de las
+        // dependencias de `aplicarPedidoRps`, y eso abría una carrera: si RPS
+        // contestaba antes que el listado del pedido, el id quedaba sin resolver
+        // y al guardar se creaba un registro duplicado de la misma versión.
+        id: accion.id,
         baseGuardada: null,
         validacionIntentada: false,
         aviso: accion.aviso,
