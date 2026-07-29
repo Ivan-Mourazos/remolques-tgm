@@ -3,7 +3,7 @@ import { createContext, useContext } from "react";
 import type { OpcionesConfirmacion, Severidad } from "@/lib/feedback/tipos";
 
 export interface Feedback {
-  mostrar: (severidad: Severidad, texto: string) => void;
+  mostrar: (severidad: Severidad, texto: string) => string;
   descartar: (id: string) => void;
   confirmar: (opciones: OpcionesConfirmacion) => Promise<string>;
 }
