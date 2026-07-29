@@ -24,6 +24,15 @@ import {
   siguienteVersionPedido,
 } from "@/lib/pedidos/agrupar-pedido";
 import { erroresPlanteamiento, planteamientoGenerable } from "@/lib/pedidos/validar-planteamiento";
+import {
+  erroresVisibles as calcularErroresVisibles,
+  estadoRpsVisible as calcularEstadoRpsVisible,
+  hayCambiosSinGuardar as calcularHayCambiosSinGuardar,
+  inputActivo,
+  medidasSuficientes as calcularMedidasSuficientes,
+  origenRpsActivo as calcularOrigenRpsActivo,
+  pedidoRpsVisible as calcularPedidoRpsVisible,
+} from "@/lib/workspace/selectores";
 
 export interface WorkspaceInicial {
   id?: string;
@@ -81,19 +90,11 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
 
   const resLona = useMemo(() => calcLona(lona, params), [lona, params]);
   const resBaq = useMemo(() => calcBaqueton(baq, params), [baq, params]);
-  const input = tipo === "lona" ? lona : baq;
-  const hayCambiosSinGuardar = editorActivo && JSON.stringify(input) !== baseGuardada;
+  const input = inputActivo(tipo, lona, baq);
+  const hayCambiosSinGuardar = calcularHayCambiosSinGuardar(editorActivo, input, baseGuardada);
   const erroresActuales = useMemo(() => erroresPlanteamiento(input), [input]);
-  const erroresFormulario = useMemo(() => Object.fromEntries(
-    erroresActuales.map((error) => [error.campo, error.mensaje]),
-  ), [erroresActuales]);
-  const erroresVisibles = validacionIntentada ? erroresFormulario : {};
-  const medidasSuficientes = tipo === "lona"
-    ? lona.largo > 0 && lona.ancho > 0 && lona.altoDelante > 0
-      && (!["TIPO 02", "TIPO 03"].includes(lona.tipoPerfil) || (lona.aguas ?? 0) > 0)
-      && (lona.tipoPerfil !== "TIPO 04" || (lona.chaflan ?? 0) > 0)
-      && (lona.tipoPerfil !== "TIPO 05" || (lona.radioEsquina ?? 0) > 0)
-    : baq.largo > 0 && baq.ancho > 0 && baq.baqueton > 0;
+  const erroresVisibles = calcularErroresVisibles(erroresActuales, validacionIntentada);
+  const medidasSuficientes = calcularMedidasSuficientes(input);
 
   useEffect(() => {
     if (!hayCambiosSinGuardar) return;
@@ -162,19 +163,9 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
     setAviso(`Línea ${linea.numeroLinea} de RPS aplicada. Todos los campos siguen siendo editables.`);
   }, [baq, lona, params, registrosPedido, tipo]);
 
-  const numeroPedidoNormalizado = normalizarNumeroPedidoRps(numeroPedido);
-  const pedidoRpsVisible = pedidoRps
-    && normalizarNumeroPedidoRps(pedidoRps.numero) === numeroPedidoNormalizado
-    ? pedidoRps
-    : null;
-  const origenRpsActivo = origenRps
-    && normalizarNumeroPedidoRps(origenRps.numeroPedido) === numeroPedidoNormalizado
-    ? origenRps
-    : null;
-  const estadoRpsVisible = /^[A-Z]{2}\d{5,}$/.test(numeroPedidoNormalizado)
-    && numeroEstadoRps === numeroPedidoNormalizado
-    ? estadoRps
-    : "idle";
+  const pedidoRpsVisible = calcularPedidoRpsVisible(numeroPedido, pedidoRps);
+  const origenRpsActivo = calcularOrigenRpsActivo(numeroPedido, origenRps);
+  const estadoRpsVisible = calcularEstadoRpsVisible(numeroPedido, numeroEstadoRps, estadoRps);
 
   useEffect(() => {
     const numero = normalizarNumeroPedidoRps(numeroPedido);
