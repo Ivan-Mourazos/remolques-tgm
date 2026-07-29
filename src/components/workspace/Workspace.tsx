@@ -6,7 +6,7 @@ import { DEFAULT_PARAMS, type CalcParams } from "@/lib/calc/params";
 import type { Material } from "@/lib/calc/materiales-seed";
 import type { PlanteamientoRecord, TipoPlanteamiento } from "@/lib/store/types";
 import { rasterizarSvg } from "@/lib/svg/rasterizar";
-import { nombrePdf } from "@/lib/pdf/ruta-pdf";
+import { orquestarPdf } from "@/lib/pdf/orquestar-pdf";
 import { emptyLona, emptyBaqueton } from "@/components/workspace/entradas-vacias";
 import { FormularioLona } from "@/components/workspace/FormularioLona";
 import { FormularioBaqueton } from "@/components/workspace/FormularioBaqueton";
@@ -23,7 +23,7 @@ import {
   remolquesUnicos,
   siguienteVersionPedido,
 } from "@/lib/pedidos/agrupar-pedido";
-import { erroresPlanteamiento, planteamientoGenerable } from "@/lib/pedidos/validar-planteamiento";
+import { erroresPlanteamiento } from "@/lib/pedidos/validar-planteamiento";
 import {
   erroresVisibles as calcularErroresVisibles,
   estadoRpsVisible as calcularEstadoRpsVisible,
@@ -404,62 +404,33 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
     if (editorActivo) {
       if (validarYEnfocar()) return null;
     }
-    const pedido = numeroPedido.trim();
-    const nombre = nombrePdf(pedido);
     const savedId = archivar && editorActivo ? await doGuardar() : null;
     if (archivar && editorActivo && !savedId) return null;
 
-    // Un PDF por pedido: una página por cada remolque guardado, en orden de creación.
-    let registros: PlanteamientoRecord[] = [];
-    if (pedido) {
-      registros = await fetch(`/api/planteamientos?pedido=${encodeURIComponent(pedido)}`)
-        .then((r) => (r.ok ? r.json() : []))
-        .catch(() => []);
-    }
-    const idBorrador = id ?? "__vista-previa__";
-    const agrupados = remolquesUnicos(registros);
-    const generables = agrupados.filter((registro) => planteamientoGenerable(registro.input));
-    const omitidos = agrupados.length - generables.length;
-    const paginas = generables
-      .filter((registro) => archivar || !editorActivo || registro.version !== input.cabecera.version)
-      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-    const ids = paginas.map((r) => r.id);
-    if (ids.length === 0 && !editorActivo) {
-      setAviso("El pedido todavía no contiene ningún elemento válido para generar el PDF.");
-      return null;
-    }
-    const snapshots: Record<string, string | null> = {};
-    for (const r of paginas) {
-      snapshots[r.id] = r.snapshotSvg ? await rasterizarSvg(r.snapshotSvg, { monocromo: true }) : null;
-    }
-    if (editorActivo) {
-      const idPaginaActual = savedId ?? idBorrador;
-      if (!(idPaginaActual in snapshots)) {
-        snapshots[idPaginaActual] = await rasterizarSvg(
-          snapshotRef.current?.() ?? "",
-          { monocromo: true },
-        );
-      }
-    }
-    const respuesta = await fetch("/api/pdf", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ids,
-        snapshots,
-        archivar,
-        borrador: archivar || !editorActivo ? null : { id: idBorrador, tipo, input },
-      }),
+    const resultado = await orquestarPdf({
+      numeroPedido,
+      archivar,
+      editorActivo,
+      idGuardado: savedId,
+      idBorrador: id ?? "__vista-previa__",
+      tipo,
+      input,
+      svgActual: snapshotRef.current?.() ?? null,
+    }, {
+      fetch: (entrada, init) => fetch(entrada, init),
+      rasterizar: (svg) => rasterizarSvg(svg, { monocromo: true }),
     });
-    if (!respuesta.ok) {
-      const detalle = await respuesta.json().catch(() => null) as { error?: string } | null;
-      setAviso(`Error al generar PDF: ${detalle?.error ?? respuesta.status}`);
+
+    if (!resultado.ok) {
+      setAviso(resultado.motivo === "sin-elementos"
+        ? resultado.mensaje
+        : `Error al generar PDF: ${resultado.mensaje}`);
       return null;
     }
     return {
-      respuesta,
-      nombre,
-      omitidos: Math.max(omitidos, Number(respuesta.headers.get("X-Pdf-Omitidos") ?? 0)),
+      respuesta: resultado.respuesta,
+      nombre: resultado.nombre,
+      omitidos: resultado.omitidos,
     };
   }
 
