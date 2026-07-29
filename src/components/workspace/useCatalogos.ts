@@ -3,7 +3,11 @@ import { useEffect, useRef, useState } from "react";
 import type { Material } from "@/lib/calc/materiales-seed";
 import { DEFAULT_PARAMS, type CalcParams } from "@/lib/calc/params";
 
-/** Catálogos que se cargan una vez y no participan en ninguna transición. */
+/**
+ * Catálogos que se cargan una vez. No disparan transiciones del reducer por
+ * sí mismos, pero `params` es dependencia de `aplicarPedidoRps`, así que sí
+ * participa en la reprogramación del debounce de la consulta RPS.
+ */
 export function useCatalogos() {
   const [materiales, setMateriales] = useState<Material[]>([]);
   const [params, setParams] = useState<CalcParams>(DEFAULT_PARAMS);
