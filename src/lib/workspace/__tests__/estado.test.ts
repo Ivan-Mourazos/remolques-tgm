@@ -26,6 +26,39 @@ const conPedidoAbierto = (): EstadoWorkspace => {
   });
 };
 
+/**
+ * Un pedido abierto pero con todo lo que las transiciones de cascada deben
+ * limpiar ya "sucio": validación intentada, aviso mostrado, id, origen de RPS,
+ * base guardada y selector cerrado. Sirve para que los tests de cada rama
+ * comprueben que de verdad limpia esos campos, no solo que no añade otros:
+ * partiendo de `conPedidoAbierto()` (todo ya limpio) un `toEqual` no detecta
+ * que una rama haya dejado de resetear alguno de ellos.
+ */
+const conBorradorSucio = (): EstadoWorkspace => {
+  const abierto = conPedidoAbierto();
+  const origenSucio: OrigenRps = {
+    numeroPedido: "AR2603583", numeroLinea: 9, idLinea: "L9",
+    ordenFabricacion: null, importadoEn: "2026-07-29T09:00:00Z",
+  };
+  const conRps = reducirWorkspace(abierto, {
+    tipo: "RPS_APLICADO",
+    tipoElemento: "lona",
+    input: { ...emptyLona(), cabecera: { ...emptyLona().cabecera, numeroPedido: "AR2603583", version: "9" } },
+    origen: origenSucio,
+    id: "sucio",
+    aviso: "Aviso de RPS sucio.",
+  });
+  // GUARDADO_OK no toca `rps`, así que fija una `baseGuardada` no nula sin
+  // deshacer el origen ni el selector cerrado que dejó RPS_APLICADO.
+  const conBase = reducirWorkspace(conRps, {
+    tipo: "GUARDADO_OK", registro: registro("sucio", "9"), aviso: "Aviso de guardado sucio.",
+  });
+  const conValidacion = reducirWorkspace(conBase, {
+    tipo: "VALIDACION_INTENTADA", aviso: "Aviso de validación sucio.",
+  });
+  return reducirWorkspace(conValidacion, { tipo: "AVISO_MOSTRADO", texto: "Aviso mostrado sucio." });
+};
+
 describe("estadoInicial", () => {
   it("arranca vacío y con el selector de RPS abierto", () => {
     const estado = estadoInicial(undefined, vacios());
@@ -57,20 +90,18 @@ describe("PEDIDO_CAMBIADO", () => {
   });
 
   it("cambiar a otro pedido limpia editor, cliente, registros, id, origen y avisos", () => {
-    const abierto = reducirWorkspace(conPedidoAbierto(), {
-      tipo: "REGISTRO_SELECCIONADO", registro: registro("a", "10"),
-    });
-    const nuevo = reducirWorkspace(abierto, { tipo: "PEDIDO_CAMBIADO", valor: "AR2604000" });
+    const sucio = conBorradorSucio();
+    const nuevo = reducirWorkspace(sucio, { tipo: "PEDIDO_CAMBIADO", valor: "AR2604000" });
     expect(nuevo).toEqual({
-      ...abierto,
+      ...sucio,
       numeroPedido: "AR2604000",
       lona: {
-        ...abierto.lona,
-        cabecera: { ...abierto.lona.cabecera, numeroPedido: "AR2604000", cliente: "" },
+        ...sucio.lona,
+        cabecera: { ...sucio.lona.cabecera, numeroPedido: "AR2604000", cliente: "" },
       },
       baqueton: {
-        ...abierto.baqueton,
-        cabecera: { ...abierto.baqueton.cabecera, numeroPedido: "AR2604000", cliente: "" },
+        ...sucio.baqueton,
+        cabecera: { ...sucio.baqueton.cabecera, numeroPedido: "AR2604000", cliente: "" },
       },
       cliente: "",
       registros: [],
@@ -80,7 +111,7 @@ describe("PEDIDO_CAMBIADO", () => {
       baseGuardada: null,
       validacionIntentada: false,
       aviso: null,
-      rps: { ...abierto.rps, origen: null, selectorAbierto: true },
+      rps: { ...sucio.rps, origen: null, selectorAbierto: true },
     });
   });
 
@@ -128,7 +159,7 @@ describe("REGISTROS_CARGADOS", () => {
 
 describe("REGISTRO_SELECCIONADO", () => {
   it("abre el elegido, fija la base guardada y cierra el selector de RPS", () => {
-    const previo = conPedidoAbierto();
+    const previo = conBorradorSucio();
     const seleccionado = registro("a", "10");
     const estado = reducirWorkspace(previo, {
       tipo: "REGISTRO_SELECCIONADO", registro: seleccionado,
@@ -151,7 +182,7 @@ describe("REGISTRO_SELECCIONADO", () => {
 
 describe("ELEMENTO_ANADIDO", () => {
   it("abre un borrador sin id, sin base guardada y con el selector de RPS abierto", () => {
-    const previo = conPedidoAbierto();
+    const previo = conBorradorSucio();
     const base = { ...emptyBaqueton(), cabecera: { ...emptyBaqueton().cabecera, numeroPedido: "AR2603583", version: "11" } };
     const estado = reducirWorkspace(previo, {
       tipo: "ELEMENTO_ANADIDO", tipoElemento: "baqueton", base, aviso: "Baquetón 2 añadido al pedido.",
@@ -174,7 +205,7 @@ describe("ELEMENTO_ANADIDO", () => {
 
 describe("RPS_APLICADO", () => {
   it("aplica el id resuelto por el llamador cuando la versión coincide con un registro guardado", () => {
-    const previo = conPedidoAbierto();
+    const previo = conBorradorSucio();
     const origen: OrigenRps = {
       numeroPedido: "AR2603583", numeroLinea: 1, idLinea: "L1",
       ordenFabricacion: null, importadoEn: "2026-07-29T10:00:00Z",
@@ -207,7 +238,9 @@ describe("RPS_APLICADO", () => {
     };
     const estado = reducirWorkspace(previo, {
       tipo: "RPS_APLICADO", tipoElemento: "lona", input, origen,
-      // Sin `id`: así llega desde Workspace.tsx cuando ninguna versión guardada coincide.
+      // `id: undefined` explícito: así llega desde Workspace.tsx cuando ninguna
+      // versión guardada coincide.
+      id: undefined,
       aviso: "Línea 3 de RPS aplicada. Todos los campos siguen siendo editables.",
     });
     expect(estado.id).toBeUndefined();
