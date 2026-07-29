@@ -7,10 +7,11 @@ import { normalizarNumeroPedidoRps } from "@/lib/rps/numero-pedido";
 const FORMA_PEDIDO_RPS = /^[A-Z]{2}\d{5,}$/;
 
 /**
- * Consulta RPS con debounce de 450 ms: evita reconsultar un registro
- * reutilizado que no cambió de número, evita repetir la misma consulta
- * (número + reintento) y aborta la petición en curso si el efecto se
- * vuelve a ejecutar antes de que termine.
+ * Consulta RPS con debounce de 450 ms. Tres guardas la frenan: un número
+ * sin forma de pedido no se consulta, un registro reutilizado no se
+ * sobrescribe mientras no cambie de número, y la misma consulta (número +
+ * reintento) no se repite. Además aborta la petición en curso si el efecto
+ * se vuelve a ejecutar antes de que termine.
  */
 export function useConsultaRps({
   numeroPedido, reintento, hayInicial, despachar, onPedidoUnicaLinea,
