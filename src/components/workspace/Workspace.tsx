@@ -141,8 +141,9 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
         importadoEn: new Date().toISOString(),
       },
       aviso: `Línea ${linea.numeroLinea} de RPS aplicada. Todos los campos siguen siendo editables.`,
+      id: registrosPedido.find((registro) => registro.version === creado.input.cabecera.version)?.id,
     });
-  }, [baq, lona, params, tipo]);
+  }, [baq, lona, params, registrosPedido, tipo]);
 
   const pedidoRpsVisible = calcularPedidoRpsVisible(numeroPedido, rps.pedido);
   const origenRpsActivo = calcularOrigenRpsActivo(numeroPedido, rps.origen);
