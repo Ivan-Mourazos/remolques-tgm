@@ -33,6 +33,25 @@ import { useConsultaRps } from "@/components/workspace/useConsultaRps";
 import { useAvisoSalida } from "@/components/workspace/useAvisoSalida";
 
 /**
+ * Añade a `registros` el registro recién guardado (`reciente`) cuando
+ * pertenece al mismo pedido (`numeroPedidoActivo`). Sirve para no repetir su
+ * versión ni perder su `id` mientras `registrosPedido` todavía no refleja el
+ * `GUARDADO_OK` que se acaba de despachar (ver `recienGuardadoRef`). Vive
+ * fuera del componente para no obligar a los `useCallback` que la llaman a
+ * declararla como dependencia.
+ */
+function conRecienGuardado(
+  registros: PlanteamientoRecord[],
+  reciente: PlanteamientoRecord | null,
+  numeroPedidoActivo: string,
+): PlanteamientoRecord[] {
+  return reciente
+    && normalizarNumeroPedidoRps(reciente.numeroPedido) === normalizarNumeroPedidoRps(numeroPedidoActivo)
+    ? [...registros, reciente]
+    : registros;
+}
+
+/**
  * Toda la lógica del workspace: estado, efectos, derivados y manejadores.
  * `Workspace.tsx` se limita a pintar lo que este hook devuelve.
  */
@@ -53,6 +72,10 @@ export function useWorkspace(inicial?: EntradaInicial) {
   const busy = accion !== null;
   const snapshotRef = useRef<(() => string | null) | null>(null);
   const reiniciarGuardaRps = useRef<(() => void) | null>(null);
+  // GUARDADO_OK aún no se ve desde este render: si el usuario elige «Guardar y
+  // continuar», el registro recién guardado todavía no está en `registrosPedido`
+  // cuando la promesa resuelve. Lo apuntamos aparte para no repetir su versión.
+  const recienGuardadoRef = useRef<PlanteamientoRecord | null>(null);
 
   const resLona = useMemo(() => calcLona(lona, params), [lona, params]);
   const resBaq = useMemo(() => calcBaqueton(baq, params), [baq, params]);
@@ -102,6 +125,7 @@ export function useWorkspace(inicial?: EntradaInicial) {
         return null;
       }
       const saved = await res.json() as PlanteamientoRecord;
+      recienGuardadoRef.current = saved;
       despachar({ tipo: "GUARDADO_OK", registro: saved });
       avisar("exito", `${nombreElementoPedido(saved.version, saved.tipo)} guardado dentro del pedido.`);
       return saved.id as string;
@@ -155,6 +179,7 @@ export function useWorkspace(inicial?: EntradaInicial) {
     const creado = crearInputDesdeRps(
       pedido, linea, Math.max(indice, 0), catalogoMateriales, params, realizadoPor,
     );
+    const conocidos = conRecienGuardado(registrosPedido, recienGuardadoRef.current, pedido.numero);
     despachar({
       tipo: "RPS_APLICADO",
       tipoElemento: creado.tipo,
@@ -166,7 +191,7 @@ export function useWorkspace(inicial?: EntradaInicial) {
         ordenFabricacion: linea.ordenFabricacion,
         importadoEn: new Date().toISOString(),
       },
-      id: registrosPedido.find((registro) => registro.version === creado.input.cabecera.version)?.id,
+      id: conocidos.find((registro) => registro.version === creado.input.cabecera.version)?.id,
     });
     avisar("info", `Línea ${linea.numeroLinea} de RPS aplicada. Todos los campos siguen siendo editables.`);
   }, [
@@ -230,7 +255,8 @@ export function useWorkspace(inicial?: EntradaInicial) {
     }
     if (!(await puedeCambiarElemento())) return;
     const plantilla = nuevoTipo === "lona" ? emptyLona() : emptyBaqueton();
-    const version = siguienteVersionPedido(registrosPedido);
+    const conocidos = conRecienGuardado(registrosPedido, recienGuardadoRef.current, numeroPedido);
+    const version = siguienteVersionPedido(conocidos);
     const base = {
       ...plantilla,
       cabecera: {
