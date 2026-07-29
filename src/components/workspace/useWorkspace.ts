@@ -26,6 +26,7 @@ import {
   origenRpsActivo as calcularOrigenRpsActivo,
   pedidoRpsVisible as calcularPedidoRpsVisible,
 } from "@/lib/workspace/selectores";
+import { useAvisos, useConfirmar } from "@/components/feedback/useFeedback";
 import { useCatalogos } from "@/components/workspace/useCatalogos";
 import { useRegistrosPedido } from "@/components/workspace/useRegistrosPedido";
 import { useConsultaRps } from "@/components/workspace/useConsultaRps";
@@ -47,6 +48,8 @@ export function useWorkspace(inicial?: EntradaInicial) {
     rps, accion,
   } = estado;
   const { materiales, params, materialesRef, setMateriales } = useCatalogos();
+  const avisar = useAvisos();
+  const confirmar = useConfirmar();
   const busy = accion !== null;
   const snapshotRef = useRef<(() => string | null) | null>(null);
   const reiniciarGuardaRps = useRef<(() => void) | null>(null);
@@ -59,22 +62,88 @@ export function useWorkspace(inicial?: EntradaInicial) {
   const erroresVisibles = calcularErroresVisibles(erroresActuales, validacionIntentada);
   const medidasSuficientes = calcularMedidasSuficientes(input);
 
-  useAvisoSalida(hayCambiosSinGuardar);
-
-  const validarYEnfocar = () => {
+  const validarYEnfocar = useCallback(() => {
     const primero = erroresActuales[0];
-    despachar({
-      tipo: "VALIDACION_INTENTADA",
-      aviso: primero ? `Revisa los campos marcados. ${primero.mensaje}` : null,
-    });
+    despachar({ tipo: "VALIDACION_INTENTADA" });
     if (!primero) return null;
+    avisar("info", `Revisa los campos marcados. ${primero.mensaje}`);
     window.setTimeout(() => {
       const campo = document.querySelector<HTMLElement>(`[data-campo="${primero.campo}"]`);
       campo?.focus();
       campo?.scrollIntoView({ behavior: "smooth", block: "center" });
     }, 0);
     return primero;
-  };
+  }, [avisar, erroresActuales]);
+
+  /**
+   * Guarda sin envolver la acción en curso. `guardar` es la versión pública,
+   * que además marca el workspace como ocupado.
+   */
+  const doGuardar = useCallback(async (): Promise<string | null> => {
+    if (!editorActivo) {
+      avisar("info", "Selecciona o añade un elemento antes de guardar.");
+      return null;
+    }
+    if (validarYEnfocar()) return null;
+    try {
+      const res = await fetch("/api/planteamientos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, tipo, input, snapshotSvg: snapshotRef.current?.() ?? null }),
+      });
+      if (!res.ok) {
+        let detalle = String(res.status);
+        try {
+          detalle = (await res.json()).error ?? detalle;
+        } catch {
+          // cuerpo no JSON: dejamos el código de estado
+        }
+        avisar("error", `Error al guardar: ${detalle}`);
+        return null;
+      }
+      const saved = await res.json() as PlanteamientoRecord;
+      despachar({ tipo: "GUARDADO_OK", registro: saved });
+      avisar("exito", `${nombreElementoPedido(saved.version, saved.tipo)} guardado dentro del pedido.`);
+      return saved.id as string;
+    } catch {
+      avisar("error", "Error de red al guardar");
+      return null;
+    }
+  }, [avisar, editorActivo, id, input, tipo, validarYEnfocar]);
+
+  /** Devuelve true si se puede continuar descartando o guardando el borrador. */
+  const confirmarDescarte = useCallback(async (mensaje: string): Promise<boolean> => {
+    const primerError = erroresActuales[0]?.mensaje;
+    const clave = await confirmar({
+      titulo: "Cambios sin guardar",
+      mensaje,
+      acciones: [
+        {
+          clave: "guardar",
+          etiqueta: "Guardar y continuar",
+          tono: "primario",
+          deshabilitada: primerError
+            ? `No se puede guardar todavía: ${primerError}`
+            : undefined,
+        },
+        { clave: "descartar", etiqueta: "Descartar cambios", tono: "peligro" },
+        { clave: "cancelar", etiqueta: "Cancelar", tono: "neutro" },
+      ],
+    });
+    if (clave === "guardar") return Boolean(await doGuardar());
+    return clave === "descartar";
+  }, [confirmar, doGuardar, erroresActuales]);
+
+  const puedeCambiarElemento = useCallback(async (): Promise<boolean> => (
+    !hayCambiosSinGuardar
+    || confirmarDescarte("El elemento actual todavía no está guardado. Puedes guardarlo antes de continuar.")
+  ), [confirmarDescarte, hayCambiosSinGuardar]);
+
+  const confirmarSalida = useCallback(
+    () => confirmarDescarte("Vas a salir de esta página y el elemento tiene cambios sin guardar."),
+    [confirmarDescarte],
+  );
+  useAvisoSalida({ activo: hayCambiosSinGuardar, confirmarSalida });
 
   const aplicarPedidoRps = useCallback((
     pedido: PedidoRps,
@@ -97,11 +166,11 @@ export function useWorkspace(inicial?: EntradaInicial) {
         ordenFabricacion: linea.ordenFabricacion,
         importadoEn: new Date().toISOString(),
       },
-      aviso: `Línea ${linea.numeroLinea} de RPS aplicada. Todos los campos siguen siendo editables.`,
       id: registrosPedido.find((registro) => registro.version === creado.input.cabecera.version)?.id,
     });
+    avisar("info", `Línea ${linea.numeroLinea} de RPS aplicada. Todos los campos siguen siendo editables.`);
   }, [
-    baq, lona, materialesRef, params, tipo,
+    avisar, baq, lona, materialesRef, params, tipo,
     // Carga, no adorno: al cambiar la identidad de `registrosPedido` (cuando
     // llegan los registros guardados del pedido) este callback se recrea, y
     // eso cancela y reprograma el debounce de la consulta RPS. Si se quita,
@@ -137,11 +206,11 @@ export function useWorkspace(inicial?: EntradaInicial) {
     reiniciarGuarda: reiniciarGuardaRps,
   });
 
-  function cambiarNumeroPedido(valor: string) {
+  async function cambiarNumeroPedido(valor: string) {
     const cambiaPedido = normalizarNumeroPedidoRps(valor) !== normalizarNumeroPedidoRps(numeroPedido);
-    if (cambiaPedido && hayCambiosSinGuardar && !window.confirm(
-      "Hay cambios sin guardar. ¿Quieres cambiar de pedido y descartarlos?",
-    )) return;
+    if (cambiaPedido && hayCambiosSinGuardar && !(await confirmarDescarte(
+      "Vas a cambiar de pedido y este elemento tiene cambios sin guardar.",
+    ))) return;
     despachar({ tipo: "PEDIDO_CAMBIADO", valor });
   }
 
@@ -149,23 +218,17 @@ export function useWorkspace(inicial?: EntradaInicial) {
     despachar({ tipo: "CLIENTE_CAMBIADO", valor });
   }
 
-  function puedeCambiarElemento(): boolean {
-    return !hayCambiosSinGuardar || window.confirm(
-      "El elemento actual todavía no está guardado. ¿Quieres descartarlo y continuar?",
-    );
-  }
-
-  function seleccionarRegistro(registro: PlanteamientoRecord) {
-    if (registro.id === id || !puedeCambiarElemento()) return;
+  async function seleccionarRegistro(registro: PlanteamientoRecord) {
+    if (registro.id === id || !(await puedeCambiarElemento())) return;
     despachar({ tipo: "REGISTRO_SELECCIONADO", registro });
   }
 
-  function nuevoElemento(nuevoTipo: TipoPlanteamiento) {
+  async function nuevoElemento(nuevoTipo: TipoPlanteamiento) {
     if (!numeroPedido.trim()) {
-      despachar({ tipo: "AVISO_MOSTRADO", texto: "Introduce primero el número de pedido." });
+      avisar("info", "Introduce primero el número de pedido.");
       return;
     }
-    if (!puedeCambiarElemento()) return;
+    if (!(await puedeCambiarElemento())) return;
     const plantilla = nuevoTipo === "lona" ? emptyLona() : emptyBaqueton();
     const version = siguienteVersionPedido(registrosPedido);
     const base = {
@@ -179,48 +242,8 @@ export function useWorkspace(inicial?: EntradaInicial) {
         revision: input.cabecera.revision,
       },
     };
-    despachar({
-      tipo: "ELEMENTO_ANADIDO",
-      tipoElemento: nuevoTipo,
-      base,
-      aviso: `${nombreElementoPedido(version, nuevoTipo)} añadido al pedido. Completa sus datos y guárdalo.`,
-    });
-  }
-
-  async function doGuardar(): Promise<string | null> {
-    if (!editorActivo) {
-      despachar({ tipo: "AVISO_MOSTRADO", texto: "Selecciona o añade un elemento antes de guardar." });
-      return null;
-    }
-    if (validarYEnfocar()) return null;
-    try {
-      despachar({ tipo: "AVISO_MOSTRADO", texto: null });
-      const res = await fetch("/api/planteamientos", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, tipo, input, snapshotSvg: snapshotRef.current?.() ?? null }),
-      });
-      if (!res.ok) {
-        let detalle = String(res.status);
-        try {
-          detalle = (await res.json()).error ?? detalle;
-        } catch {
-          // cuerpo no JSON: dejamos el código de estado
-        }
-        despachar({ tipo: "AVISO_MOSTRADO", texto: `Error al guardar: ${detalle}` });
-        return null;
-      }
-      const saved = await res.json() as PlanteamientoRecord;
-      despachar({
-        tipo: "GUARDADO_OK",
-        registro: saved,
-        aviso: `${nombreElementoPedido(saved.version, saved.tipo)} guardado dentro del pedido.`,
-      });
-      return saved.id as string;
-    } catch {
-      despachar({ tipo: "AVISO_MOSTRADO", texto: "Error de red al guardar" });
-      return null;
-    }
+    despachar({ tipo: "ELEMENTO_ANADIDO", tipoElemento: nuevoTipo, base });
+    avisar("info", `${nombreElementoPedido(version, nuevoTipo)} añadido al pedido. Completa sus datos y guárdalo.`);
   }
 
   async function guardar(): Promise<string | null> {
@@ -266,12 +289,8 @@ export function useWorkspace(inicial?: EntradaInicial) {
     });
 
     if (!resultado.ok) {
-      despachar({
-        tipo: "AVISO_MOSTRADO",
-        texto: resultado.motivo === "sin-elementos"
-          ? resultado.mensaje
-          : `Error al generar PDF: ${resultado.mensaje}`,
-      });
+      if (resultado.motivo === "sin-elementos") avisar("info", resultado.mensaje);
+      else avisar("error", `Error al generar PDF: ${resultado.mensaje}`);
       return null;
     }
     return {
@@ -285,10 +304,7 @@ export function useWorkspace(inicial?: EntradaInicial) {
     if (busy) return;
     const ventana = window.open("", "_blank");
     if (!ventana) {
-      despachar({
-        tipo: "AVISO_MOSTRADO",
-        texto: "El navegador ha bloqueado la vista previa. Permite ventanas emergentes para esta aplicación.",
-      });
+      avisar("error", "El navegador ha bloqueado la vista previa. Permite ventanas emergentes para esta aplicación.");
       return;
     }
     ventana.opener = null;
@@ -304,14 +320,14 @@ export function useWorkspace(inicial?: EntradaInicial) {
       }
       const url = URL.createObjectURL(await generado.respuesta.blob());
       ventana.location.replace(url);
-      despachar({
-        tipo: "AVISO_MOSTRADO",
-        texto: `Vista previa abierta: ${generado.nombre}. No se ha archivado todavía.`
+      avisar(
+        "info",
+        `Vista previa abierta: ${generado.nombre}. No se ha archivado todavía.`
           + (generado.omitidos ? ` Se han omitido ${generado.omitidos} registros duplicados o incompletos.` : ""),
-      });
+      );
     } catch {
       ventana.close();
-      despachar({ tipo: "AVISO_MOSTRADO", texto: "Error de red al generar la vista previa del PDF." });
+      avisar("error", "Error de red al generar la vista previa del PDF.");
     } finally {
       despachar({ tipo: "ACCION_TERMINADA" });
     }
@@ -326,20 +342,20 @@ export function useWorkspace(inicial?: EntradaInicial) {
       const destinos = Number(generado.respuesta.headers.get("X-Pdf-Destinos") ?? 0);
       const anio = generado.respuesta.headers.get("X-Pdf-Anio") ?? "el año correspondiente";
       if (destinos === 2) {
-        despachar({
-          tipo: "AVISO_MOSTRADO",
-          texto: `PDF archivado en ESCÁNER/PLANTEAMIENTOS y OFICINA TÉCNICA/${anio}.`
+        avisar(
+          "exito",
+          `PDF archivado en ESCÁNER/PLANTEAMIENTOS y OFICINA TÉCNICA/${anio}.`
             + (generado.omitidos ? ` Se han omitido ${generado.omitidos} registros duplicados o incompletos.` : ""),
-        });
+        );
       } else {
         descargar(await generado.respuesta.blob(), generado.nombre);
-        despachar({
-          tipo: "AVISO_MOSTRADO",
-          texto: `PDF descargado (${generado.nombre}). Configura las rutas del servidor para archivarlo automáticamente.`,
-        });
+        avisar(
+          "exito",
+          `PDF descargado (${generado.nombre}). Configura las rutas del servidor para archivarlo automáticamente.`,
+        );
       }
     } catch {
-      despachar({ tipo: "AVISO_MOSTRADO", texto: "Error de red al generar PDF" });
+      avisar("error", "Error de red al generar PDF");
     } finally {
       despachar({ tipo: "ACCION_TERMINADA" });
     }

@@ -28,11 +28,11 @@ const conPedidoAbierto = (): EstadoWorkspace => {
 
 /**
  * Un pedido abierto pero con todo lo que las transiciones de cascada deben
- * limpiar ya "sucio": validación intentada, aviso mostrado, id, origen de RPS,
- * base guardada y selector cerrado. Sirve para que los tests de cada rama
- * comprueben que de verdad limpia esos campos, no solo que no añade otros:
- * partiendo de `conPedidoAbierto()` (todo ya limpio) un `toEqual` no detecta
- * que una rama haya dejado de resetear alguno de ellos.
+ * limpiar ya "sucio": validación intentada, id, origen de RPS, base guardada
+ * y selector cerrado. Sirve para que los tests de cada rama comprueben que de
+ * verdad limpia esos campos, no solo que no añade otros: partiendo de
+ * `conPedidoAbierto()` (todo ya limpio) un `toEqual` no detecta que una rama
+ * haya dejado de resetear alguno de ellos.
  */
 const conBorradorSucio = (): EstadoWorkspace => {
   const abierto = conPedidoAbierto();
@@ -46,17 +46,13 @@ const conBorradorSucio = (): EstadoWorkspace => {
     input: { ...emptyLona(), cabecera: { ...emptyLona().cabecera, numeroPedido: "AR2603583", version: "9" } },
     origen: origenSucio,
     id: "sucio",
-    aviso: "Aviso de RPS sucio.",
   });
   // GUARDADO_OK no toca `rps`, así que fija una `baseGuardada` no nula sin
   // deshacer el origen ni el selector cerrado que dejó RPS_APLICADO.
   const conBase = reducirWorkspace(conRps, {
-    tipo: "GUARDADO_OK", registro: registro("sucio", "9"), aviso: "Aviso de guardado sucio.",
+    tipo: "GUARDADO_OK", registro: registro("sucio", "9"),
   });
-  const conValidacion = reducirWorkspace(conBase, {
-    tipo: "VALIDACION_INTENTADA", aviso: "Aviso de validación sucio.",
-  });
-  return reducirWorkspace(conValidacion, { tipo: "AVISO_MOSTRADO", texto: "Aviso mostrado sucio." });
+  return reducirWorkspace(conBase, { tipo: "VALIDACION_INTENTADA" });
 };
 
 describe("estadoInicial", () => {
@@ -89,7 +85,7 @@ describe("PEDIDO_CAMBIADO", () => {
     expect(estado.baqueton.cabecera.numeroPedido).toBe("AR2603583");
   });
 
-  it("cambiar a otro pedido limpia editor, cliente, registros, id, origen y avisos", () => {
+  it("cambiar a otro pedido limpia editor, cliente, registros, id y origen", () => {
     const sucio = conBorradorSucio();
     const nuevo = reducirWorkspace(sucio, { tipo: "PEDIDO_CAMBIADO", valor: "AR2604000" });
     expect(nuevo).toEqual({
@@ -110,7 +106,6 @@ describe("PEDIDO_CAMBIADO", () => {
       id: undefined,
       baseGuardada: null,
       validacionIntentada: false,
-      aviso: null,
       rps: { ...sucio.rps, origen: null, selectorAbierto: true },
     });
   });
@@ -174,7 +169,6 @@ describe("REGISTRO_SELECCIONADO", () => {
       editorActivo: true,
       baseGuardada: JSON.stringify(seleccionado.input),
       validacionIntentada: false,
-      aviso: null,
       rps: { ...previo.rps, origen: null, selectorAbierto: false },
     });
   });
@@ -185,7 +179,7 @@ describe("ELEMENTO_ANADIDO", () => {
     const previo = conBorradorSucio();
     const base = { ...emptyBaqueton(), cabecera: { ...emptyBaqueton().cabecera, numeroPedido: "AR2603583", version: "11" } };
     const estado = reducirWorkspace(previo, {
-      tipo: "ELEMENTO_ANADIDO", tipoElemento: "baqueton", base, aviso: "Baquetón 2 añadido al pedido.",
+      tipo: "ELEMENTO_ANADIDO", tipoElemento: "baqueton", base,
     });
     expect(estado).toEqual({
       ...previo,
@@ -195,7 +189,6 @@ describe("ELEMENTO_ANADIDO", () => {
       editorActivo: true,
       baseGuardada: null,
       validacionIntentada: false,
-      aviso: "Baquetón 2 añadido al pedido.",
       rps: { ...previo.rps, origen: null, selectorAbierto: true },
     });
     // La lona anterior se conserva intacta (misma referencia) al cambiar de tipo.
@@ -213,7 +206,6 @@ describe("RPS_APLICADO", () => {
     const input = registro("a", "10").input as LonaInput;
     const estado = reducirWorkspace(previo, {
       tipo: "RPS_APLICADO", tipoElemento: "lona", input, origen, id: "a",
-      aviso: "Línea 1 de RPS aplicada. Todos los campos siguen siendo editables.",
     });
     expect(estado).toEqual({
       ...previo,
@@ -225,7 +217,6 @@ describe("RPS_APLICADO", () => {
       id: "a",
       baseGuardada: null,
       validacionIntentada: false,
-      aviso: "Línea 1 de RPS aplicada. Todos los campos siguen siendo editables.",
       rps: { ...previo.rps, origen, selectorAbierto: false },
     });
   });
@@ -241,7 +232,6 @@ describe("RPS_APLICADO", () => {
       // `id: undefined` explícito: así llega desde Workspace.tsx cuando ninguna
       // versión guardada coincide.
       id: undefined,
-      aviso: "Línea 3 de RPS aplicada. Todos los campos siguen siendo editables.",
     });
     expect(estado.id).toBeUndefined();
   });
@@ -252,7 +242,7 @@ describe("GUARDADO_OK", () => {
     const previo = conPedidoAbierto();
     const guardado = { ...registro("a-nuevo", "10"), updatedAt: "2026-07-29T12:00:00Z" };
     const estado = reducirWorkspace(previo, {
-      tipo: "GUARDADO_OK", registro: guardado, aviso: "Remolque 1 guardado dentro del pedido.",
+      tipo: "GUARDADO_OK", registro: guardado,
     });
     expect(estado).toEqual({
       ...previo,
@@ -260,7 +250,6 @@ describe("GUARDADO_OK", () => {
       baseGuardada: JSON.stringify(guardado.input),
       validacionIntentada: false,
       registros: [guardado],
-      aviso: "Remolque 1 guardado dentro del pedido.",
     });
   });
 });
@@ -329,16 +318,10 @@ describe("acciones de RPS y de proceso", () => {
     expect(estado).toEqual({ ...previo, registros: [], cargandoPedido: false });
   });
 
-  it("marca la validación intentada y respeta el aviso previo si no hay mensaje", () => {
-    const conAviso = reducirWorkspace(conPedidoAbierto(), { tipo: "AVISO_MOSTRADO", texto: "Anterior" });
-    const sinMensaje = reducirWorkspace(conAviso, { tipo: "VALIDACION_INTENTADA", aviso: null });
-    expect(sinMensaje.validacionIntentada).toBe(true);
-    expect(sinMensaje.aviso).toBe("Anterior");
-
-    const conMensaje = reducirWorkspace(conAviso, {
-      tipo: "VALIDACION_INTENTADA", aviso: "Revisa los campos marcados. Introduce el largo del remolque.",
-    });
-    expect(conMensaje.aviso).toBe("Revisa los campos marcados. Introduce el largo del remolque.");
+  it("VALIDACION_INTENTADA solo marca la validación como intentada", () => {
+    const previo = conPedidoAbierto();
+    const estado = reducirWorkspace(previo, { tipo: "VALIDACION_INTENTADA" });
+    expect(estado).toEqual({ ...previo, validacionIntentada: true });
   });
 
   it("abre y cierra la acción en curso", () => {

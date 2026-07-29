@@ -1,8 +1,24 @@
 "use client";
 import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
-/** Avisa antes de recargar o de navegar con cambios sin guardar. */
-export function useAvisoSalida(activo: boolean) {
+/**
+ * Avisa antes de abandonar la página con cambios sin guardar.
+ *
+ * El de recargar o cerrar la pestaña sigue siendo el cuadro nativo: los
+ * navegadores no permiten otra cosa. El de los enlaces internos sí es propio,
+ * y por eso cancela siempre la navegación y navega por código después de que
+ * el usuario responda.
+ */
+export function useAvisoSalida({
+  activo, confirmarSalida,
+}: {
+  activo: boolean;
+  /** Resuelve true si se puede abandonar la página. */
+  confirmarSalida: () => Promise<boolean>;
+}) {
+  const router = useRouter();
+
   useEffect(() => {
     if (!activo) return;
     const antesDeSalir = (event: BeforeUnloadEvent) => {
@@ -14,10 +30,14 @@ export function useAvisoSalida(activo: boolean) {
       if (!enlace || enlace.target === "_blank" || event.defaultPrevented) return;
       const destino = new URL(enlace.href, window.location.href);
       if (destino.origin !== window.location.origin || destino.pathname === window.location.pathname) return;
-      if (!window.confirm("Hay cambios sin guardar. ¿Quieres salir y descartarlos?")) {
-        event.preventDefault();
-        event.stopPropagation();
-      }
+      event.preventDefault();
+      event.stopPropagation();
+      // Solo la parte interna de la URL. Nunca el href crudo: la documentación
+      // de Next avisa de que router.push ejecuta las URL «javascript:».
+      const ruta = `${destino.pathname}${destino.search}${destino.hash}`;
+      void confirmarSalida().then((puedeSalir) => {
+        if (puedeSalir) router.push(ruta);
+      });
     };
     window.addEventListener("beforeunload", antesDeSalir);
     document.addEventListener("click", interceptarEnlace, true);
@@ -25,5 +45,5 @@ export function useAvisoSalida(activo: boolean) {
       window.removeEventListener("beforeunload", antesDeSalir);
       document.removeEventListener("click", interceptarEnlace, true);
     };
-  }, [activo]);
+  }, [activo, confirmarSalida, router]);
 }
