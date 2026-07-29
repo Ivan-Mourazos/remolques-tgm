@@ -100,7 +100,15 @@ export function useWorkspace(inicial?: EntradaInicial) {
       aviso: `Línea ${linea.numeroLinea} de RPS aplicada. Todos los campos siguen siendo editables.`,
       id: registrosPedido.find((registro) => registro.version === creado.input.cabecera.version)?.id,
     });
-  }, [baq, lona, materialesRef, params, registrosPedido, tipo]);
+  }, [
+    baq, lona, materialesRef, params, tipo,
+    // Carga, no adorno: al cambiar la identidad de `registrosPedido` (cuando
+    // llegan los registros guardados del pedido) este callback se recrea, y
+    // eso cancela y reprograma el debounce de la consulta RPS. Si se quita,
+    // RPS puede resolver antes que el listado del pedido, `RPS_APLICADO`
+    // viaja sin id y se crea un registro duplicado de la misma versión al guardar.
+    registrosPedido,
+  ]);
 
   const aplicarPrimeraLineaRps = useCallback(async (pedido: PedidoRps) => {
     let catalogo = materialesRef.current;
