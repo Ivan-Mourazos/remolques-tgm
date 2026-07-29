@@ -6,6 +6,12 @@ import { normalizarNumeroPedidoRps } from "@/lib/rps/numero-pedido";
 
 const FORMA_PEDIDO_RPS = /^[A-Z]{2}\d{5,}$/;
 
+/**
+ * Consulta RPS con debounce de 450 ms: evita reconsultar un registro
+ * reutilizado que no cambió de número, evita repetir la misma consulta
+ * (número + reintento) y aborta la petición en curso si el efecto se
+ * vuelve a ejecutar antes de que termine.
+ */
 export function useConsultaRps({
   numeroPedido, reintento, hayInicial, despachar, onPedidoUnicaLinea,
   reiniciarGuarda: reiniciarGuardaRef,
@@ -14,7 +20,7 @@ export function useConsultaRps({
   reintento: number;
   hayInicial: boolean;
   despachar: Dispatch<AccionWorkspace>;
-  onPedidoUnicaLinea: (pedido: PedidoRps) => void;
+  onPedidoUnicaLinea: (pedido: PedidoRps) => void | Promise<void>;
   reiniciarGuarda: RefObject<(() => void) | null>;
 }) {
   const numeroAnterior = useRef(normalizarNumeroPedidoRps(numeroPedido));
@@ -54,7 +60,7 @@ export function useConsultaRps({
           return;
         }
         despachar({ tipo: "RPS_ENCONTRADO", pedido: payload.pedido });
-        if (payload.pedido.lineas.length === 1) onPedidoUnicaLinea(payload.pedido);
+        if (payload.pedido.lineas.length === 1) await onPedidoUnicaLinea(payload.pedido);
       }).catch((error: unknown) => {
         if (controller.signal.aborted) return;
         despachar({
