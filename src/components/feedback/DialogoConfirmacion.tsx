@@ -32,11 +32,13 @@ export function DialogoConfirmacion({
   useEffect(() => {
     const dialogo = referencia.current;
     if (!dialogo) return;
-    if (opciones && !dialogo.open) {
-      dialogo.showModal();
+    if (opciones && !dialogo.open) dialogo.showModal();
+    if (opciones) {
       // showModal() enfoca el primer descendiente enfocable, que puede ser
       // la acción destructiva si «Guardar y continuar» está deshabilitada.
-      // Se corrige a mano justo después.
+      // Se corrige a mano justo después. Esto también cubre la transición
+      // en la que una segunda confirmación sustituye a la primera mientras
+      // el <dialog> ya estaba abierto, para que el foco se mueva igualmente.
       dialogo.querySelector<HTMLButtonElement>("[data-autofoco]")?.focus();
     }
     if (!opciones && dialogo.open) dialogo.close();
@@ -47,7 +49,7 @@ export function DialogoConfirmacion({
   return (
     <dialog
       ref={referencia}
-      aria-labelledby={idTitulo}
+      aria-labelledby={opciones ? idTitulo : undefined}
       // Escape y clic en el fondo resuelven «cancelar»: la salida segura es
       // siempre la que no destruye trabajo.
       onCancel={(evento) => { evento.preventDefault(); onResponder("cancelar"); }}
