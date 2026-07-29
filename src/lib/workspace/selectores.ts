@@ -3,13 +3,10 @@ import type { BaquetonInput } from "@/lib/calc/baqueton";
 import type { TipoPlanteamiento } from "@/lib/store/types";
 import type { OrigenRps, PedidoRps } from "@/lib/rps/types";
 import type { ErrorPlanteamiento } from "@/lib/pedidos/validar-planteamiento";
-import { normalizarNumeroPedidoRps } from "@/lib/rps/numero-pedido";
+import { FORMA_PEDIDO_RPS, normalizarNumeroPedidoRps } from "@/lib/rps/numero-pedido";
 
 export type EstadoConsultaRps =
   | "idle" | "buscando" | "encontrado" | "no-encontrado" | "error";
-
-/** Un número con forma de pedido de RPS: dos letras y al menos cinco dígitos. */
-const FORMA_PEDIDO_RPS = /^[A-Z]{2}\d{5,}$/;
 
 export function inputActivo(
   tipo: TipoPlanteamiento,

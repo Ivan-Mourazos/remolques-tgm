@@ -2,9 +2,7 @@
 import { useEffect, useRef, type Dispatch, type RefObject } from "react";
 import type { PedidoRps } from "@/lib/rps/types";
 import type { AccionWorkspace } from "@/lib/workspace/estado";
-import { normalizarNumeroPedidoRps } from "@/lib/rps/numero-pedido";
-
-const FORMA_PEDIDO_RPS = /^[A-Z]{2}\d{5,}$/;
+import { FORMA_PEDIDO_RPS, normalizarNumeroPedidoRps } from "@/lib/rps/numero-pedido";
 
 /**
  * Consulta RPS con debounce de 450 ms. Tres guardas la frenan: un número
