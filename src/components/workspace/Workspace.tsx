@@ -1,8 +1,7 @@
 "use client";
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useCallback, useMemo, useReducer, useRef } from "react";
 import { calcLona, type LonaInput } from "@/lib/calc/lona";
 import { calcBaqueton, type BaquetonInput } from "@/lib/calc/baqueton";
-import { DEFAULT_PARAMS, type CalcParams } from "@/lib/calc/params";
 import type { Material } from "@/lib/calc/materiales-seed";
 import type { PlanteamientoRecord, TipoPlanteamiento } from "@/lib/store/types";
 import { rasterizarSvg } from "@/lib/svg/rasterizar";
@@ -33,6 +32,10 @@ import {
   origenRpsActivo as calcularOrigenRpsActivo,
   pedidoRpsVisible as calcularPedidoRpsVisible,
 } from "@/lib/workspace/selectores";
+import { useCatalogos } from "@/components/workspace/useCatalogos";
+import { useRegistrosPedido } from "@/components/workspace/useRegistrosPedido";
+import { useConsultaRps } from "@/components/workspace/useConsultaRps";
+import { useAvisoSalida } from "@/components/workspace/useAvisoSalida";
 
 export interface WorkspaceInicial {
   id?: string;
@@ -51,26 +54,10 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
     numeroPedido, cliente: clientePedido, registros: registrosPedido, cargandoPedido,
     rps, aviso, accion,
   } = estado;
-  const [materiales, setMateriales] = useState<Material[]>([]);
-  const [params, setParams] = useState<CalcParams>(DEFAULT_PARAMS);
+  const { materiales, params, materialesRef, setMateriales } = useCatalogos();
   const busy = accion !== null;
   const snapshotRef = useRef<(() => string | null) | null>(null);
-  const materialesRef = useRef<Material[]>([]);
-  const numeroAnteriorRps = useRef(normalizarNumeroPedidoRps(
-    inicial?.input.cabecera.numeroPedido ?? "",
-  ));
-  const ultimaConsultaRps = useRef("");
-
-  useEffect(() => {
-    fetch("/api/materiales").then((r) => r.json()).then((data: Material[]) => {
-      materialesRef.current = data;
-      setMateriales(data);
-    }).catch(() => setMateriales([]));
-  }, []);
-
-  useEffect(() => {
-    fetch("/api/parametros").then((r) => r.json()).then(setParams).catch(() => {});
-  }, []);
+  const reiniciarGuardaRps = useRef<(() => void) | null>(null);
 
   const resLona = useMemo(() => calcLona(lona, params), [lona, params]);
   const resBaq = useMemo(() => calcBaqueton(baq, params), [baq, params]);
@@ -80,29 +67,7 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
   const erroresVisibles = calcularErroresVisibles(erroresActuales, validacionIntentada);
   const medidasSuficientes = calcularMedidasSuficientes(input);
 
-  useEffect(() => {
-    if (!hayCambiosSinGuardar) return;
-    const antesDeSalir = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      event.returnValue = "";
-    };
-    const interceptarEnlace = (event: MouseEvent) => {
-      const enlace = (event.target as Element | null)?.closest("a[href]") as HTMLAnchorElement | null;
-      if (!enlace || enlace.target === "_blank" || event.defaultPrevented) return;
-      const destino = new URL(enlace.href, window.location.href);
-      if (destino.origin !== window.location.origin || destino.pathname === window.location.pathname) return;
-      if (!window.confirm("Hay cambios sin guardar. ¿Quieres salir y descartarlos?")) {
-        event.preventDefault();
-        event.stopPropagation();
-      }
-    };
-    window.addEventListener("beforeunload", antesDeSalir);
-    document.addEventListener("click", interceptarEnlace, true);
-    return () => {
-      window.removeEventListener("beforeunload", antesDeSalir);
-      document.removeEventListener("click", interceptarEnlace, true);
-    };
-  }, [hayCambiosSinGuardar]);
+  useAvisoSalida(hayCambiosSinGuardar);
 
   const validarYEnfocar = () => {
     const primero = erroresActuales[0];
@@ -143,91 +108,34 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
       aviso: `Línea ${linea.numeroLinea} de RPS aplicada. Todos los campos siguen siendo editables.`,
       id: registrosPedido.find((registro) => registro.version === creado.input.cabecera.version)?.id,
     });
-  }, [baq, lona, params, registrosPedido, tipo]);
+  }, [baq, lona, materialesRef, params, registrosPedido, tipo]);
+
+  const aplicarPrimeraLineaRps = useCallback(async (pedido: PedidoRps) => {
+    let catalogo = materialesRef.current;
+    if (catalogo.length === 0) {
+      catalogo = await fetch("/api/materiales", { cache: "no-store" })
+        .then((respuesta) => respuesta.ok ? respuesta.json() as Promise<Material[]> : []);
+      if (catalogo.length > 0) {
+        materialesRef.current = catalogo;
+        setMateriales(catalogo);
+      }
+    }
+    aplicarPedidoRps(pedido, pedido.lineas[0], catalogo);
+  }, [aplicarPedidoRps, materialesRef, setMateriales]);
 
   const pedidoRpsVisible = calcularPedidoRpsVisible(numeroPedido, rps.pedido);
   const origenRpsActivo = calcularOrigenRpsActivo(numeroPedido, rps.origen);
   const estadoRpsVisible = calcularEstadoRpsVisible(numeroPedido, rps.numeroConsultado, rps.estado);
 
-  useEffect(() => {
-    const numero = normalizarNumeroPedidoRps(numeroPedido);
-    if (!numero) return;
-    const controller = new AbortController();
-    const timeout = window.setTimeout(() => {
-      void fetch(`/api/planteamientos?pedido=${encodeURIComponent(numeroPedido)}`, {
-        signal: controller.signal,
-        cache: "no-store",
-      }).then(async (respuesta) => {
-        if (!respuesta.ok) throw new Error(String(respuesta.status));
-        despachar({
-          tipo: "REGISTROS_CARGADOS",
-          registros: await respuesta.json() as PlanteamientoRecord[],
-        });
-      }).catch((error: unknown) => {
-        if ((error as Error).name !== "AbortError") despachar({ tipo: "REGISTROS_FALLARON" });
-      });
-    }, 250);
-    return () => {
-      window.clearTimeout(timeout);
-      controller.abort();
-    };
-  }, [numeroPedido]);
-
-  useEffect(() => {
-    const numero = normalizarNumeroPedidoRps(numeroPedido);
-    const cambioPedido = numero !== numeroAnteriorRps.current;
-    numeroAnteriorRps.current = numero;
-
-    if (!/^[A-Z]{2}\d{5,}$/.test(numero)) {
-      ultimaConsultaRps.current = "";
-      return;
-    }
-    // Un registro reutilizado no se sobrescribe al abrirse. La consulta se
-    // activa en cuanto el usuario cambie el número o pulse Reintentar.
-    if (inicial && !cambioPedido && rps.reintento === 0) return;
-    const clave = `${numero}:${rps.reintento}`;
-    if (ultimaConsultaRps.current === clave) return;
-
-    const controller = new AbortController();
-    const timeout = window.setTimeout(() => {
-      ultimaConsultaRps.current = clave;
-      despachar({ tipo: "RPS_CONSULTA_INICIADA", numero });
-      void fetch(`/api/rps/pedido?numero=${encodeURIComponent(numero)}`, {
-        signal: controller.signal,
-        cache: "no-store",
-      }).then(async (response) => {
-        const payload = await response.json() as { pedido?: PedidoRps | null; error?: string };
-        if (!response.ok) throw new Error(payload.error ?? "No se pudo consultar RPS.");
-        if (!payload.pedido) {
-          despachar({ tipo: "RPS_NO_ENCONTRADO" });
-          return;
-        }
-        despachar({ tipo: "RPS_ENCONTRADO", pedido: payload.pedido });
-        if (payload.pedido.lineas.length === 1) {
-          let catalogo = materialesRef.current;
-          if (catalogo.length === 0) {
-            catalogo = await fetch("/api/materiales", { cache: "no-store" })
-              .then((respuesta) => respuesta.ok ? respuesta.json() as Promise<Material[]> : []);
-            if (catalogo.length > 0) {
-              materialesRef.current = catalogo;
-              setMateriales(catalogo);
-            }
-          }
-          aplicarPedidoRps(payload.pedido, payload.pedido.lineas[0], catalogo);
-        }
-      }).catch((error: unknown) => {
-        if (controller.signal.aborted) return;
-        despachar({
-          tipo: "RPS_ERROR",
-          mensaje: error instanceof Error ? error.message : "No se pudo consultar RPS.",
-        });
-      });
-    }, 450);
-    return () => {
-      window.clearTimeout(timeout);
-      controller.abort();
-    };
-  }, [aplicarPedidoRps, inicial, numeroPedido, rps.reintento]);
+  useRegistrosPedido(numeroPedido, despachar);
+  useConsultaRps({
+    numeroPedido,
+    reintento: rps.reintento,
+    hayInicial: Boolean(inicial),
+    despachar,
+    onPedidoUnicaLinea: aplicarPrimeraLineaRps,
+    reiniciarGuarda: reiniciarGuardaRps,
+  });
 
   function cambiarNumeroPedido(valor: string) {
     const cambiaPedido = normalizarNumeroPedidoRps(valor) !== normalizarNumeroPedidoRps(numeroPedido);
@@ -455,7 +363,7 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
         )) aplicarPedidoRps(pedidoRpsVisible, linea);
       }}
       onReintentar={() => {
-        ultimaConsultaRps.current = "";
+        reiniciarGuardaRps.current?.();
         despachar({ tipo: "RPS_REINTENTADO" });
       }}
     />
