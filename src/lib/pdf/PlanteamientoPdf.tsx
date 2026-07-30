@@ -32,17 +32,21 @@ const s = StyleSheet.create({
   },
   bandaTexto: { fontSize: 10, fontFamily: "Helvetica-Bold" },
   cuerpo: { minHeight: 300, flexDirection: "row", padding: 8 },
-  datos: { width: 250, paddingRight: 8, justifyContent: "flex-start" },
+  // La columna cede ancho al dibujo, que es lo que piden los operarios.
+  datos: { width: 200, paddingRight: 8, justifyContent: "flex-start" },
+  // Sin fondo, borde ni esquinas redondeadas: una hoja de taller no lleva
+  // tarjetas, y ese gris de fondo se comía contraste al imprimir.
   dibujo: {
     flex: 1, minHeight: 215, alignItems: "center", justifyContent: "center", padding: 2,
-    backgroundColor: "#f5f8f7", border: "0.6 solid #d4dfdb", borderRadius: 5,
   },
-  foto: { width: "100%", height: 240, objectFit: "contain" },
+  // Altura acotada: con flex la imagen crecía sin límite y empujaba la tabla
+  // de ollaos fuera de la página. El dibujo (1560×440) está limitado por
+  // ancho, así que su tamaño real lo decide el ancho que cede la columna.
+  foto: { width: "100%", height: 300, objectFit: "contain" },
   sinPlano: { color: "#a3a3a3" },
   filaDato: { flexDirection: "row", marginBottom: 4 },
-  etiqueta: {
-    width: 96, fontSize: 8, fontFamily: "Helvetica-Bold", textDecoration: "underline",
-  },
+  // Sin subrayado: la jerarquía la da el peso, no la máquina de escribir.
+  etiqueta: { width: 80, fontSize: 8, fontFamily: "Helvetica-Bold" },
   valor: { flex: 1, fontSize: 8.8, fontFamily: "Helvetica-Bold", lineHeight: 1.2 },
   bloque: { flexDirection: "row", marginBottom: 5 },
   bloqueValores: { flex: 1 },
@@ -149,6 +153,8 @@ function DatosLona({ rec }: { rec: PlanteamientoRecord }) {
         ? `ALTO DELANTE ${fmt(i.altoDelante)} / DETRÁS ${fmt(altoAtras)}`
         : `ALTO ${fmt(i.altoDelante)}`} />
       <Dato etiqueta="CONTORNO DE CORTE" valor={r.contornoAjustado ? fmt(r.contornoAjustado) : "PENDIENTE"} />
+      {/* Fin del primer grupo (qué cortar); empieza cómo es el remolque. */}
+      <View style={s.separacion} />
       <Dato etiqueta="PERFIL" valor={nombrePerfil(i.tipoPerfil)} />
       <View style={s.bloque}>
         <Text style={s.etiqueta}>GEOMETRÍA:</Text>
@@ -163,10 +169,10 @@ function DatosLona({ rec }: { rec: PlanteamientoRecord }) {
           ? `SÍ · ${fmt(i.ventanaAncho!)} X ${fmt(i.ventanaAlto!)} CM`
           : "SÍ · MEDIDAS PENDIENTES"
         : "NO"} />
-      <View style={s.separacion} />
       <Dato etiqueta="ROTULACIÓN:" valor={i.rotulacion ? "SÍ" : "NO"} />
-      <View style={s.separacion} />
       <Dato etiqueta="OLLAOS:" valor={i.modoOllaos} />
+      {/* Fin del segundo grupo (cómo es); empieza con qué se hace. */}
+      <View style={s.separacion} />
       <Dato etiqueta="MATERIAL" valor={i.material} />
       {i.observaciones ? <Dato etiqueta="OBSERVACIONES" valor={i.observaciones} /> : null}
     </>
@@ -187,8 +193,8 @@ function DatosBaqueton({ rec }: { rec: PlanteamientoRecord }) {
       <Dato etiqueta="CLIENTE ESPECÍFICO" valor={i.clienteEspecifico} />
       <View style={s.separacion} />
       <Dato etiqueta="ROTULACIÓN:" valor={i.rotulacion ? "SÍ" : "NO"} />
-      <View style={s.separacion} />
       <Dato etiqueta="OLLAOS:" valor={i.modoOllaos} />
+      <View style={s.separacion} />
       <Dato etiqueta="MATERIAL" valor={i.material} />
       {i.observaciones ? <Dato etiqueta="OBSERVACIONES" valor={i.observaciones} /> : null}
     </>
