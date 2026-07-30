@@ -14,10 +14,11 @@ const PERFILES_VISIBLES = PERFILES.map((perfil) => ({
 }));
 
 export function FormularioLona({
-  input, materiales, params, errores = {}, onChange,
+  input, materiales, params, errores = {}, onChange, onCampoTocado,
 }: {
   input: LonaInput; materiales: Material[]; params?: CalcParams; errores?: Record<string, string>;
   onChange: (i: LonaInput) => void;
+  onCampoTocado?: (campo: string) => void;
 }) {
   const RECOGIDAS = opcionesConEtiqueta((params ?? DEFAULT_PARAMS).recogidas.map((r) => r.nombre));
   const ajuste = ajusteContorno(params ?? DEFAULT_PARAMS, input.tipoPerfil);
@@ -45,7 +46,15 @@ export function FormularioLona({
     onChange({ ...input, cabecera: { ...input.cabecera, [k]: v } });
 
   return (
-    <div className="flex flex-col gap-2.5">
+    // El onBlur de React es focusout, que sí burbujea: un solo manejador
+    // cubre todos los campos leyendo el data-campo que ya llevan.
+    <div
+      className="flex flex-col gap-2.5"
+      onBlur={(evento) => {
+        const campo = (evento.target as HTMLElement).dataset.campo;
+        if (campo) onCampoTocado?.(campo);
+      }}
+    >
       <Grupo titulo="Datos del remolque" columnas={3} compacto>
         <CampoTexto name="ordenFabricacion" label="O.F." value={input.cabecera.ordenFabricacion ?? ""} onChange={(v) => setCab("ordenFabricacion", v)} />
         <CampoSelect name="realizadoPor" label="Realizado por" value={input.cabecera.realizadoPor} opciones={TECNICOS} onChange={(v) => setCab("realizadoPor", v)} />

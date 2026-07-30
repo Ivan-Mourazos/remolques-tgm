@@ -63,6 +63,7 @@ export function useWorkspace(inicial?: EntradaInicial) {
   );
   const {
     tipo, lona, baqueton: baq, id, editorActivo, baseGuardada, validacionIntentada,
+    camposTocados,
     numeroPedido, cliente: clientePedido, registros: registrosPedido,
     rps, accion,
   } = estado;
@@ -82,8 +83,14 @@ export function useWorkspace(inicial?: EntradaInicial) {
   const input = inputActivo(tipo, lona, baq);
   const hayCambiosSinGuardar = calcularHayCambiosSinGuardar(editorActivo, input, baseGuardada);
   const erroresActuales = useMemo(() => erroresPlanteamiento(input), [input]);
-  const erroresVisibles = calcularErroresVisibles(erroresActuales, validacionIntentada);
+  const erroresVisibles = calcularErroresVisibles(erroresActuales, validacionIntentada, camposTocados);
   const medidasSuficientes = calcularMedidasSuficientes(input);
+
+  /** Un campo abandonado ya puede enseñar su error, sin esperar a Guardar. */
+  const marcarCampoTocado = useCallback(
+    (campo: string) => despachar({ tipo: "CAMPO_TOCADO", campo }),
+    [],
+  );
 
   const validarYEnfocar = useCallback(() => {
     const primero = erroresActuales[0];
@@ -431,6 +438,7 @@ export function useWorkspace(inicial?: EntradaInicial) {
     resBaq,
     hayCambiosSinGuardar,
     erroresVisibles,
+    marcarCampoTocado,
     medidasSuficientes,
     pedidoRpsVisible,
     origenRpsActivo,

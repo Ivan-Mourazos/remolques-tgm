@@ -27,6 +27,8 @@ export interface EstadoWorkspace {
   /** JSON del input tal como quedó guardado; null si nunca se guardó. */
   baseGuardada: string | null;
   validacionIntentada: boolean;
+  /** Campos que el usuario ya visitó y abandonó: enseñan su error. */
+  camposTocados: string[];
 
   // Pedido abierto
   numeroPedido: string;
@@ -65,7 +67,8 @@ export type AccionWorkspace =
   | { tipo: "GUARDADO_OK"; registro: PlanteamientoRecord }
   | { tipo: "ACCION_INICIADA"; accion: "guardar" | "preview" | "pdf" }
   | { tipo: "ACCION_TERMINADA" }
-  | { tipo: "VALIDACION_INTENTADA" };
+  | { tipo: "VALIDACION_INTENTADA" }
+  | { tipo: "CAMPO_TOCADO"; campo: string };
 
 type Cabecera = LonaInput["cabecera"];
 
@@ -90,6 +93,7 @@ export function estadoInicial(
     editorActivo: Boolean(inicial),
     baseGuardada: inicial ? JSON.stringify(inicial.input) : null,
     validacionIntentada: false,
+    camposTocados: [],
     numeroPedido: inicial?.input.cabecera.numeroPedido ?? "",
     cliente: inicial?.input.cabecera.cliente ?? "",
     registros: [],
@@ -128,6 +132,7 @@ export function reducirWorkspace(
         id: undefined,
         baseGuardada: null,
         validacionIntentada: false,
+        camposTocados: [],
         rps: { ...estado.rps, origen: null, selectorAbierto: true },
       };
     }
@@ -155,6 +160,7 @@ export function reducirWorkspace(
         editorActivo: true,
         baseGuardada: null,
         validacionIntentada: false,
+        camposTocados: [],
         rps: { ...estado.rps, origen: null, selectorAbierto: true },
       };
 
@@ -171,6 +177,7 @@ export function reducirWorkspace(
         editorActivo: true,
         baseGuardada: JSON.stringify(registro.input),
         validacionIntentada: false,
+        camposTocados: [],
         rps: { ...estado.rps, origen: null, selectorAbierto: false },
       };
     }
@@ -193,6 +200,7 @@ export function reducirWorkspace(
         id: accion.id,
         baseGuardada: null,
         validacionIntentada: false,
+        camposTocados: [],
         rps: { ...estado.rps, origen: accion.origen, selectorAbierto: false },
       };
     }
@@ -245,6 +253,7 @@ export function reducirWorkspace(
         id: accion.registro.id,
         baseGuardada: JSON.stringify(accion.registro.input),
         validacionIntentada: false,
+        camposTocados: [],
         registros: remolquesUnicos([...estado.registros, accion.registro]),
       };
 
@@ -256,5 +265,12 @@ export function reducirWorkspace(
 
     case "VALIDACION_INTENTADA":
       return { ...estado, validacionIntentada: true };
+
+    case "CAMPO_TOCADO":
+      // Devolver el mismo estado cuando el campo ya estaba evita un render por
+      // cada salida de un campo que el usuario recorre varias veces.
+      return estado.camposTocados.includes(accion.campo)
+        ? estado
+        : { ...estado, camposTocados: [...estado.camposTocados, accion.campo] };
   }
 }

@@ -78,10 +78,10 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
             </div>
             {tipo === "lona" ? (
               <FormularioLona input={lona} materiales={materiales} params={params} errores={erroresVisibles}
-                onChange={ws.cambiarInput} />
+                onChange={ws.cambiarInput} onCampoTocado={ws.marcarCampoTocado} />
             ) : (
               <FormularioBaqueton input={baq} materiales={materiales} params={params} errores={erroresVisibles}
-                onChange={ws.cambiarInput} />
+                onChange={ws.cambiarInput} onCampoTocado={ws.marcarCampoTocado} />
             )}
             <button
               onClick={ws.guardar}

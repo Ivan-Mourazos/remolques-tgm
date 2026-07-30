@@ -330,3 +330,30 @@ describe("acciones de RPS y de proceso", () => {
     expect(reducirWorkspace(guardando, { tipo: "ACCION_TERMINADA" }).accion).toBeNull();
   });
 });
+
+describe("CAMPO_TOCADO", () => {
+  it("acumula campos sin repetirlos", () => {
+    const uno = reducirWorkspace(conPedidoAbierto(), { tipo: "CAMPO_TOCADO", campo: "largo" });
+    const dos = reducirWorkspace(uno, { tipo: "CAMPO_TOCADO", campo: "ancho" });
+    const repetido = reducirWorkspace(dos, { tipo: "CAMPO_TOCADO", campo: "largo" });
+    expect(repetido.camposTocados).toEqual(["largo", "ancho"]);
+  });
+
+  it("devuelve el mismo estado si el campo ya estaba", () => {
+    const uno = reducirWorkspace(conPedidoAbierto(), { tipo: "CAMPO_TOCADO", campo: "largo" });
+    expect(reducirWorkspace(uno, { tipo: "CAMPO_TOCADO", campo: "largo" })).toBe(uno);
+  });
+
+  it("se limpia al cambiar de pedido, al seleccionar otro registro y al guardar", () => {
+    const tocado = reducirWorkspace(conPedidoAbierto(), { tipo: "CAMPO_TOCADO", campo: "largo" });
+    expect(reducirWorkspace(tocado, {
+      tipo: "PEDIDO_CAMBIADO", valor: "AR2604000",
+    }).camposTocados).toEqual([]);
+    expect(reducirWorkspace(tocado, {
+      tipo: "REGISTRO_SELECCIONADO", registro: registro("a", "10"),
+    }).camposTocados).toEqual([]);
+    expect(reducirWorkspace(tocado, {
+      tipo: "GUARDADO_OK", registro: registro("a", "10"),
+    }).camposTocados).toEqual([]);
+  });
+});
