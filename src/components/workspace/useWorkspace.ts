@@ -154,7 +154,19 @@ export function useWorkspace(inicial?: EntradaInicial) {
         { clave: "cancelar", etiqueta: "Cancelar", tono: "neutro" },
       ],
     });
-    if (clave === "guardar") return Boolean(await doGuardar());
+    if (clave === "guardar") {
+      // Mismo sobre que `guardar()`: `busy` debe reflejar esta llamada a
+      // `doGuardar` para que el botón «Guardar» del toolbar quede
+      // deshabilitado mientras dura, y así no se dispare un segundo POST con
+      // el mismo `id` (que crearía un registro duplicado). `ACCION_TERMINADA`
+      // va en el `finally` para liberar `busy` también si `doGuardar` lanza.
+      despachar({ tipo: "ACCION_INICIADA", accion: "guardar" });
+      try {
+        return Boolean(await doGuardar());
+      } finally {
+        despachar({ tipo: "ACCION_TERMINADA" });
+      }
+    }
     return clave === "descartar";
   }, [confirmar, doGuardar, erroresActuales]);
 
@@ -236,6 +248,11 @@ export function useWorkspace(inicial?: EntradaInicial) {
     if (cambiaPedido && hayCambiosSinGuardar && !(await confirmarDescarte(
       "Vas a cambiar de pedido y este elemento tiene cambios sin guardar.",
     ))) return;
+    // El puente al registro recién guardado es de un solo uso: sirve para
+    // cruzar un `await` dentro del mismo pedido. Al cambiar de pedido deja de
+    // valer, y conservarlo haría que durante la recarga fuese la única entrada
+    // de la lista conocida.
+    if (cambiaPedido) recienGuardadoRef.current = null;
     despachar({ tipo: "PEDIDO_CAMBIADO", valor });
   }
 

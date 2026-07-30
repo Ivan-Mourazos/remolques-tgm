@@ -26,6 +26,11 @@ export function useAvisoSalida({
       event.returnValue = "";
     };
     const interceptarEnlace = (event: MouseEvent) => {
+      // Abrir en otra pestaña o ventana no pone en riesgo el trabajo sin
+      // guardar: esta página se queda como está. No hay nada que confirmar, y
+      // además interceptarlo obligaría a navegar en la pestaña actual.
+      if (event.button !== 0 || event.metaKey || event.ctrlKey
+        || event.shiftKey || event.altKey) return;
       const enlace = (event.target as Element | null)?.closest("a[href]") as HTMLAnchorElement | null;
       if (!enlace || enlace.target === "_blank" || event.defaultPrevented) return;
       const destino = new URL(enlace.href, window.location.href);
