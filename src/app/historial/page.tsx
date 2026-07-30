@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { PlanteamientoRecord } from "@/lib/store/types";
 import { agruparPorPedido, nombreRemolque } from "@/lib/pedidos/agrupar-pedido";
 import { planteamientoGenerable } from "@/lib/pedidos/validar-planteamiento";
+import { Aviso } from "@/components/feedback/Aviso";
 
 export default function HistorialPage() {
   const [texto, setTexto] = useState("");
@@ -55,9 +56,9 @@ export default function HistorialPage() {
           {pedidos.length === 0 && (
             <tr>
               <td colSpan={5} className="p-6 text-center text-muted-2">
-                {estado === "cargando" ? "Cargando…"
-                  : estado === "error" ? "No se pudo cargar el historial"
-                    : "Sin resultados"}
+                {estado === "error"
+                  ? <Aviso severidad="error" texto="No se pudo cargar el historial." />
+                  : estado === "cargando" ? "Cargando…" : "Sin resultados"}
               </td>
             </tr>
           )}
