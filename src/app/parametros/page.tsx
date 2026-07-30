@@ -2,21 +2,26 @@
 import { useEffect, useState } from "react";
 import type { CalcParams } from "@/lib/calc/params";
 import { CampoNum } from "@/components/workspace/campos";
+import { Aviso } from "@/components/feedback/Aviso";
+import { useAvisos } from "@/components/feedback/useFeedback";
 
 export default function ParametrosPage() {
   const [p, setP] = useState<CalcParams | null>(null);
-  const [aviso, setAviso] = useState<{ texto: string; error: boolean } | null>(null);
+  const [errorCarga, setErrorCarga] = useState(false);
+  const avisar = useAvisos();
 
   useEffect(() => {
     fetch("/api/parametros")
       .then((r) => r.json())
       .then(setP)
-      .catch(() => setAviso({ texto: "No se pudieron cargar los parámetros.", error: true }));
+      .catch(() => setErrorCarga(true));
   }, []);
   if (!p) {
     return (
       <div className="text-sm text-muted-2">
-        {aviso ? <span className="text-red-700">{aviso.texto}</span> : "Cargando…"}
+        {errorCarga
+          ? <Aviso severidad="error" texto="No se pudieron cargar los parámetros." />
+          : "Cargando…"}
       </div>
     );
   }
@@ -31,13 +36,13 @@ export default function ParametrosPage() {
         method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(p),
       });
       if (res.ok) {
-        setAviso({ texto: "Parámetros guardados.", error: false });
+        avisar("exito", "Parámetros guardados.");
         return;
       }
       const detalle = (await res.json().catch(() => null))?.error ?? String(res.status);
-      setAviso({ texto: `No se guardó: ${detalle}`, error: true });
+      avisar("error", `No se guardó: ${detalle}`);
     } catch {
-      setAviso({ texto: "Error de red al guardar.", error: true });
+      avisar("error", "Error de red al guardar.");
     }
   }
 
@@ -88,11 +93,6 @@ export default function ParametrosPage() {
       <button onClick={guardar} className="rounded-lg bg-deep px-4 py-2 text-sm font-bold text-white shadow-[0_7px_20px_rgb(9_39_44/0.20)] transition hover:bg-deep-2 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-2/25">
         Guardar parámetros
       </button>
-      {aviso && (
-        <p role={aviso.error ? "alert" : "status"} className={`mt-2 text-xs font-semibold ${aviso.error ? "text-red-700" : "text-muted"}`}>
-          {aviso.texto}
-        </p>
-      )}
       </section>
     </div>
   );

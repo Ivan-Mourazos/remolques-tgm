@@ -39,9 +39,12 @@ export function medidasSuficientes(input: LonaInput | BaquetonInput): boolean {
 export function erroresVisibles(
   errores: ErrorPlanteamiento[],
   validacionIntentada: boolean,
+  camposTocados: string[],
 ): Record<string, string> {
-  if (!validacionIntentada) return {};
-  return Object.fromEntries(errores.map((error) => [error.campo, error.mensaje]));
+  const visibles = validacionIntentada
+    ? errores
+    : errores.filter((error) => camposTocados.includes(error.campo));
+  return Object.fromEntries(visibles.map((error) => [error.campo, error.mensaje]));
 }
 
 export function pedidoRpsVisible(

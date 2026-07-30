@@ -244,19 +244,22 @@ El diálogo entra en esta misma tarea y no en una aparte porque el proveedor lo 
   ```ts
   // useFeedback.ts
   export interface Feedback {
-    mostrar: (severidad: Severidad, texto: string) => void;
+    /** Devuelve el id del aviso, para poder descartarlo luego. */
+    mostrar: (severidad: Severidad, texto: string) => string;
     descartar: (id: string) => void;
     confirmar: (opciones: OpcionesConfirmacion) => Promise<string>;
   }
   export function useFeedback(): Feedback;
   /** Función estable: segura como dependencia de useEffect/useCallback. */
-  export function useAvisos(): (severidad: Severidad, texto: string) => void;
+  export function useAvisos(): (severidad: Severidad, texto: string) => string;
   /** Función estable. */
   export function useConfirmar(): (opciones: OpcionesConfirmacion) => Promise<string>;
   // Aviso.tsx
   export function Aviso(props: {
     severidad: Severidad; texto: string;
     onDescartar?: () => void; children?: ReactNode;
+    /** Un ancestro ya declara la región viva; el aviso omite la suya. */
+    enRegionViva?: boolean;
   }): ReactElement;
   // DialogoConfirmacion.tsx
   export function DialogoConfirmacion(props: {

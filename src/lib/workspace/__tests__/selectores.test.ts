@@ -78,15 +78,15 @@ describe("medidasSuficientes", () => {
 });
 
 describe("erroresVisibles", () => {
-  it("no muestra nada hasta que se ha intentado validar", () => {
-    expect(erroresVisibles([{ campo: "largo", mensaje: "Introduce el largo." }], false)).toEqual({});
+  it("no muestra nada hasta que se ha intentado validar ni se ha tocado nada", () => {
+    expect(erroresVisibles([{ campo: "largo", mensaje: "Introduce el largo." }], false, [])).toEqual({});
   });
 
   it("indexa por campo y conserva el último mensaje de un campo repetido", () => {
     const visibles = erroresVisibles([
       { campo: "ventanaAncho", mensaje: "Introduce el ancho de la ventana." },
       { campo: "ventanaAncho", mensaje: "El ancho de la ventana debe ser menor que el ancho del remolque." },
-    ], true);
+    ], true, []);
     expect(visibles.ventanaAncho).toBe("El ancho de la ventana debe ser menor que el ancho del remolque.");
   });
 });
@@ -106,5 +106,30 @@ describe("derivados de RPS", () => {
 
   it("mantiene el estado en reposo mientras el número no tiene forma de pedido", () => {
     expect(estadoRpsVisible("AR26", "AR26", "encontrado")).toBe("idle");
+  });
+});
+
+describe("erroresVisibles con campos tocados", () => {
+  const errores = [
+    { campo: "largo", mensaje: "Introduce el largo del remolque." },
+    { campo: "ancho", mensaje: "Introduce el ancho del remolque." },
+  ];
+
+  it("no muestra nada sin validar y sin campos tocados", () => {
+    expect(erroresVisibles(errores, false, [])).toEqual({});
+  });
+
+  it("muestra solo el error de los campos que se han tocado", () => {
+    expect(erroresVisibles(errores, false, ["largo"])).toEqual({
+      largo: "Introduce el largo del remolque.",
+    });
+  });
+
+  it("no inventa error para un campo tocado que es válido", () => {
+    expect(erroresVisibles(errores, false, ["material"])).toEqual({});
+  });
+
+  it("al intentar validar muestra todos, tocados o no", () => {
+    expect(Object.keys(erroresVisibles(errores, true, []))).toEqual(["largo", "ancho"]);
   });
 });

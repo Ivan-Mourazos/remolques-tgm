@@ -1,6 +1,7 @@
 "use client";
 
 import type { LineaPedidoRps, OrigenRps, PedidoRps } from "@/lib/rps/types";
+import { Aviso } from "@/components/feedback/Aviso";
 
 type Estado = "idle" | "buscando" | "encontrado" | "no-encontrado" | "error";
 
@@ -55,13 +56,24 @@ export function ImportadorRps({
   }
 
   if (estado === "error" || estado === "no-encontrado") {
-    return (
-      <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-gold/30 bg-gold/8 px-3 py-2 text-xs text-ink-2">
-        <span>{estado === "no-encontrado" ? "RPS no encontró este pedido; puedes seguir manualmente." : error}</span>
-        <button type="button" onClick={onReintentar} className="rounded-lg border border-gold/35 bg-surface px-2.5 py-1 font-extrabold text-gold-2 hover:border-gold">
-          Reintentar
-        </button>
-      </div>
+    const reintentar = (
+      <button
+        type="button"
+        onClick={onReintentar}
+        className="shrink-0 rounded-lg border border-current/35 bg-surface px-2.5 py-1 text-[11px] font-extrabold transition hover:border-current focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold/20"
+      >
+        Reintentar
+      </button>
+    );
+    // Que RPS no conozca el pedido no es un fallo: se puede seguir a mano.
+    return estado === "no-encontrado" ? (
+      <Aviso severidad="info" texto="RPS no encontró este pedido; puedes seguir manualmente.">
+        {reintentar}
+      </Aviso>
+    ) : (
+      <Aviso severidad="error" texto={error ?? "No se pudo consultar RPS."}>
+        {reintentar}
+      </Aviso>
     );
   }
 

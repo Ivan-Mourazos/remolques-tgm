@@ -16,7 +16,7 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
   const {
     tipo, lona, baqueton: baq, id, editorActivo,
     numeroPedido, cliente: clientePedido, registros: registrosPedido, cargandoPedido,
-    rps, aviso, accion,
+    rps, accion,
   } = ws.estado;
   const {
     materiales, params, input, resLona, resBaq, hayCambiosSinGuardar,
@@ -33,9 +33,9 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
       materialAplicado={ws.materialRpsAplicado}
       abierto={rps.selectorAbierto}
       onAbrir={ws.abrirSelectorRps}
-      onAplicar={(linea) => {
+      onAplicar={async (linea) => {
         if (pedidoRpsVisible && (
-          origenRpsActivo?.idLinea === linea.idLinea || ws.puedeCambiarElemento()
+          origenRpsActivo?.idLinea === linea.idLinea || await ws.puedeCambiarElemento()
         )) ws.aplicarPedidoRps(pedidoRpsVisible, linea);
       }}
       onReintentar={ws.reintentarRps}
@@ -53,6 +53,7 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
         borrador={editorActivo && !id ? { tipo, version: input.cabecera.version } : undefined}
         rpsPanel={panelRps}
         accion={accion}
+        progresoPdf={ws.progresoPdf}
         errorPedido={erroresVisibles.numeroPedido}
         onNumeroPedidoChange={ws.cambiarNumeroPedido}
         onClienteChange={ws.cambiarClientePedido}
@@ -61,12 +62,6 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
         onPreview={ws.previsualizarPdf}
         onGenerar={ws.generarPdf}
       />
-
-      {aviso && (
-        <p role="status" aria-live="polite" className="rounded-xl border border-line bg-surface/80 px-3.5 py-2.5 text-xs font-semibold text-ink-2 shadow-sm">
-          {aviso}
-        </p>
-      )}
 
       {editorActivo ? (
         <div className="grid gap-3 2xl:grid-cols-[500px_minmax(0,1fr)]">
@@ -84,10 +79,10 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
             </div>
             {tipo === "lona" ? (
               <FormularioLona input={lona} materiales={materiales} params={params} errores={erroresVisibles}
-                onChange={ws.cambiarInput} />
+                onChange={ws.cambiarInput} onCampoTocado={ws.marcarCampoTocado} />
             ) : (
               <FormularioBaqueton input={baq} materiales={materiales} params={params} errores={erroresVisibles}
-                onChange={ws.cambiarInput} />
+                onChange={ws.cambiarInput} onCampoTocado={ws.marcarCampoTocado} />
             )}
             <button
               onClick={ws.guardar}

@@ -22,6 +22,12 @@ export interface OpcionesOrquestarPdf {
 export interface DependenciasPdf {
   fetch: typeof globalThis.fetch;
   rasterizar: (svg: string) => Promise<string | null>;
+  /**
+   * Se llama una vez por dibujo rasterizado. Los dibujos se preparan en serie
+   * y es la parte lenta de generar el PDF de un pedido con varios remolques,
+   * así que es lo único que se puede contar honestamente.
+   */
+  onProgreso?: (hecho: number, total: number) => void;
 }
 
 export type ResultadoPdf =
@@ -58,15 +64,22 @@ export async function orquestarPdf(
     };
   }
 
+  // El total se conoce antes de empezar: las páginas guardadas más, si toca,
+  // el dibujo del elemento que se está editando.
+  const idPaginaActual = idGuardado ?? idBorrador;
+  const necesitaDibujoActual = editorActivo && !paginas.some((r) => r.id === idPaginaActual);
+  const total = paginas.length + (necesitaDibujoActual ? 1 : 0);
+  let hechos = 0;
+  const avanzar = () => deps.onProgreso?.(++hechos, total);
+
   const snapshots: Record<string, string | null> = {};
   for (const r of paginas) {
     snapshots[r.id] = r.snapshotSvg ? await deps.rasterizar(r.snapshotSvg) : null;
+    avanzar();
   }
-  if (editorActivo) {
-    const idPaginaActual = idGuardado ?? idBorrador;
-    if (!(idPaginaActual in snapshots)) {
-      snapshots[idPaginaActual] = await deps.rasterizar(opciones.svgActual ?? "");
-    }
+  if (necesitaDibujoActual) {
+    snapshots[idPaginaActual] = await deps.rasterizar(opciones.svgActual ?? "");
+    avanzar();
   }
 
   const respuesta = await deps.fetch("/api/pdf", {

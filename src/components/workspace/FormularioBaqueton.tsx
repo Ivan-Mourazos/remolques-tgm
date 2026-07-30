@@ -6,10 +6,11 @@ import { CampoCheck, CampoMaterial, CampoNum, CampoSelect, CampoTexto, Grupo, Pa
 import { MODOS_OLLAOS, opcionesConEtiqueta, TECNICOS } from "@/components/workspace/opciones-formulario";
 
 export function FormularioBaqueton({
-  input, materiales, params, errores = {}, onChange,
+  input, materiales, params, errores = {}, onChange, onCampoTocado,
 }: {
   input: BaquetonInput; materiales: Material[]; params?: CalcParams; errores?: Record<string, string>;
   onChange: (i: BaquetonInput) => void;
+  onCampoTocado?: (campo: string) => void;
 }) {
   const CLIENTES = opcionesConEtiqueta((params ?? DEFAULT_PARAMS).clientesBaqueton.map((c) => c.nombre));
   const set = <K extends keyof BaquetonInput>(k: K, v: BaquetonInput[K]) => onChange({ ...input, [k]: v });
@@ -17,7 +18,15 @@ export function FormularioBaqueton({
     onChange({ ...input, cabecera: { ...input.cabecera, [k]: v } });
 
   return (
-    <div className="flex flex-col gap-2.5">
+    // El onBlur de React es focusout, que sí burbujea: un solo manejador
+    // cubre todos los campos leyendo el data-campo que ya llevan.
+    <div
+      className="flex flex-col gap-2.5"
+      onBlur={(evento) => {
+        const campo = (evento.target as HTMLElement).dataset.campo;
+        if (campo) onCampoTocado?.(campo);
+      }}
+    >
       <Grupo titulo="Datos del baquetón" columnas={3} compacto>
         <CampoTexto name="ordenFabricacion" label="O.F." value={input.cabecera.ordenFabricacion ?? ""} onChange={(v) => setCab("ordenFabricacion", v)} />
         <CampoSelect name="realizadoPor" label="Realizado por" value={input.cabecera.realizadoPor} opciones={TECNICOS} onChange={(v) => setCab("realizadoPor", v)} />
