@@ -1,3 +1,5 @@
+import { aplicarValor, VALOR_CARA } from "@/lib/geometry/tono";
+
 export interface ColoresLona {
   techoClaro: string;
   techo: string;
@@ -41,14 +43,6 @@ const COLORES_NOMBRE: Array<[RegExp, string]> = [
 
 const NEUTRO = "#9aa8b5";
 
-function mezcla(hex: string, destino: string, proporcion: number): string {
-  const canal = (color: string, offset: number) => Number.parseInt(color.slice(offset, offset + 2), 16);
-  const componentes = [1, 3, 5].map((offset) =>
-    Math.round(canal(hex, offset) * (1 - proporcion) + canal(destino, offset) * proporcion),
-  );
-  return `#${componentes.map((valor) => valor.toString(16).padStart(2, "0")).join("")}`;
-}
-
 export function colorBaseMaterial(material: string): string {
   const texto = material.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
   const ral = Object.keys(COLORES_RAL).find((codigo) => texto.includes(codigo));
@@ -56,12 +50,18 @@ export function colorBaseMaterial(material: string): string {
   return COLORES_NOMBRE.find(([patron]) => patron.test(texto))?.[1] ?? NEUTRO;
 }
 
+/**
+ * El material aporta el tono; la cara aporta el valor. Antes se mezclaba el
+ * color base con blanco o negro en proporciones fijas, así que la claridad
+ * final dependía del material: una lona negra salía oscura entera y el volumen
+ * se perdía al imprimir en gris.
+ */
 export function coloresMaterial(material: string): ColoresLona {
   const base = colorBaseMaterial(material);
   return {
-    techoClaro: mezcla(base, "#ffffff", 0.28),
-    techo: mezcla(base, "#ffffff", 0.08),
-    lateralClaro: mezcla(base, "#ffffff", 0.06),
-    lateral: mezcla(base, "#0f172a", 0.2),
+    techoClaro: aplicarValor(base, VALOR_CARA.techoClaro),
+    techo: aplicarValor(base, VALOR_CARA.techo),
+    lateralClaro: aplicarValor(base, VALOR_CARA.lateralClaro),
+    lateral: aplicarValor(base, VALOR_CARA.lateral),
   };
 }
