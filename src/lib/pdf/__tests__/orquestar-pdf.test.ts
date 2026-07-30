@@ -104,3 +104,34 @@ describe("orquestarPdf", () => {
     });
   });
 });
+
+describe("progreso del rasterizado", () => {
+  it("informa una vez por dibujo rasterizado", async () => {
+    const { doble } = fetchFalso([
+      registro("a", "10", lonaValida("10")),
+      registro("b", "11", lonaValida("11")),
+    ]);
+    const pasos: Array<[number, number]> = [];
+    const resultado = await orquestarPdf(opciones(), {
+      ...deps(doble),
+      onProgreso: (hecho, total) => pasos.push([hecho, total]),
+    });
+    expect(resultado.ok).toBe(true);
+    expect(pasos).toEqual([[1, 2], [2, 2]]);
+  });
+
+  it("cuenta tambien el dibujo del elemento en edicion", async () => {
+    const { doble } = fetchFalso([registro("a", "10", lonaValida("10"))]);
+    const pasos: Array<[number, number]> = [];
+    await orquestarPdf(
+      opciones({ archivar: false, editorActivo: true, input: lonaValida("11") }),
+      { ...deps(doble), onProgreso: (hecho, total) => pasos.push([hecho, total]) },
+    );
+    expect(pasos).toEqual([[1, 2], [2, 2]]);
+  });
+
+  it("no falla si nadie escucha el progreso", async () => {
+    const { doble } = fetchFalso([registro("a", "10", lonaValida("10"))]);
+    await expect(orquestarPdf(opciones(), deps(doble))).resolves.toMatchObject({ ok: true });
+  });
+});

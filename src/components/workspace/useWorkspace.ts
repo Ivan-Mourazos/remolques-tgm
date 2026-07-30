@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useMemo, useReducer, useRef } from "react";
+import { useCallback, useMemo, useReducer, useRef, useState } from "react";
 import { calcLona, type LonaInput } from "@/lib/calc/lona";
 import { calcBaqueton, type BaquetonInput } from "@/lib/calc/baqueton";
 import type { Material } from "@/lib/calc/materiales-seed";
@@ -77,6 +77,9 @@ export function useWorkspace(inicial?: EntradaInicial) {
   // continuar», el registro recién guardado todavía no está en `registrosPedido`
   // cuando la promesa resuelve. Lo apuntamos aparte para no repetir su versión.
   const recienGuardadoRef = useRef<PlanteamientoRecord | null>(null);
+  // Presentación efímera de una acción en curso: no es estado del
+  // planteamiento, así que no entra en el reducer.
+  const [progresoPdf, setProgresoPdf] = useState<{ hecho: number; total: number } | null>(null);
 
   const resLona = useMemo(() => calcLona(lona, params), [lona, params]);
   const resBaq = useMemo(() => calcBaqueton(baq, params), [baq, params]);
@@ -302,6 +305,7 @@ export function useWorkspace(inicial?: EntradaInicial) {
     try {
       return await doGuardar();
     } finally {
+      setProgresoPdf(null);
       despachar({ tipo: "ACCION_TERMINADA" });
     }
   }
@@ -336,6 +340,7 @@ export function useWorkspace(inicial?: EntradaInicial) {
     }, {
       fetch: (entrada, init) => fetch(entrada, init),
       rasterizar: (svg) => rasterizarSvg(svg, { monocromo: true }),
+      onProgreso: (hecho, total) => setProgresoPdf({ hecho, total }),
     });
 
     if (!resultado.ok) {
@@ -379,6 +384,7 @@ export function useWorkspace(inicial?: EntradaInicial) {
       ventana.close();
       avisar("error", "Error de red al generar la vista previa del PDF.");
     } finally {
+      setProgresoPdf(null);
       despachar({ tipo: "ACCION_TERMINADA" });
     }
   }
@@ -407,6 +413,7 @@ export function useWorkspace(inicial?: EntradaInicial) {
     } catch {
       avisar("error", "Error de red al generar PDF");
     } finally {
+      setProgresoPdf(null);
       despachar({ tipo: "ACCION_TERMINADA" });
     }
   }
@@ -438,6 +445,7 @@ export function useWorkspace(inicial?: EntradaInicial) {
     resBaq,
     hayCambiosSinGuardar,
     erroresVisibles,
+    progresoPdf,
     marcarCampoTocado,
     medidasSuficientes,
     pedidoRpsVisible,

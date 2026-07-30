@@ -25,6 +25,7 @@ export function PedidoActivo({
   borrador,
   rpsPanel,
   accion,
+  progresoPdf,
   errorPedido,
   onNumeroPedidoChange,
   onClienteChange,
@@ -41,6 +42,7 @@ export function PedidoActivo({
   borrador?: { tipo: TipoPlanteamiento; version: string };
   rpsPanel: ReactNode;
   accion: "guardar" | "preview" | "pdf" | null;
+  progresoPdf: { hecho: number; total: number } | null;
   errorPedido?: string;
   onNumeroPedidoChange: (valor: string) => void;
   onClienteChange: (valor: string) => void;
@@ -52,6 +54,9 @@ export function PedidoActivo({
   const hayPedido = Boolean(numeroPedido.trim());
   const total = registros.length + (borrador ? 1 : 0);
   const ocupado = accion !== null;
+  // Los dibujos se rasterizan en serie antes de pedir el PDF: es la parte
+  // que tarda, y la única que se puede contar de verdad.
+  const avance = progresoPdf ? `Preparando dibujo ${progresoPdf.hecho} de ${progresoPdf.total}…` : null;
 
   return (
     <section className="relative overflow-visible rounded-[22px] border border-deep/20 bg-deep text-white shadow-[0_18px_48px_rgb(7_35_40/0.16)]">
@@ -130,7 +135,7 @@ export function PedidoActivo({
               disabled={!hayPedido || total === 0 || ocupado}
               className="rounded-lg border border-white/15 bg-white/[0.06] px-3 py-1.5 text-[11px] font-bold text-white/85 transition hover:border-gold/45 hover:text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold/15 disabled:cursor-not-allowed disabled:opacity-35"
             >
-              {accion === "preview" ? "Preparando…" : "Vista previa del pedido"}
+              {accion === "preview" ? (avance ?? "Preparando…") : "Vista previa del pedido"}
             </button>
             <button
               type="button"
@@ -138,7 +143,7 @@ export function PedidoActivo({
               disabled={!hayPedido || total === 0 || ocupado}
               className="rounded-lg bg-white px-3 py-1.5 text-[11px] font-extrabold text-deep transition hover:-translate-y-px hover:bg-gold focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/20 disabled:cursor-not-allowed disabled:opacity-35"
             >
-              {accion === "pdf" ? "Archivando…" : "Generar PDF completo"}
+              {accion === "pdf" ? (avance ?? "Archivando…") : "Generar PDF completo"}
             </button>
           </div>
         </div>

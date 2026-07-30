@@ -53,6 +53,7 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
         borrador={editorActivo && !id ? { tipo, version: input.cabecera.version } : undefined}
         rpsPanel={panelRps}
         accion={accion}
+        progresoPdf={ws.progresoPdf}
         errorPedido={erroresVisibles.numeroPedido}
         onNumeroPedidoChange={ws.cambiarNumeroPedido}
         onClienteChange={ws.cambiarClientePedido}
