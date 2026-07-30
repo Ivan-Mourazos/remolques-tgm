@@ -9,6 +9,7 @@ import {
 } from "@/lib/geometry/visibilidad";
 import { calcularVentanaFrontal } from "@/lib/geometry/ventana";
 import { coloresMaterial } from "@/lib/geometry/color-lona";
+import { controlDescuelgue, flechaDescuelgue, tamanoSimbolo } from "@/lib/geometry/caida";
 import type { TipoPerfil } from "@/lib/calc/params";
 
 type Punto = Punto2D;
@@ -91,13 +92,29 @@ function franjasCubierta(
   return franjas;
 }
 
-/* Colores propios del plano (inline: el snapshot SVG debe verse igual sin CSS). */
-const FUENTE_PLANO = "'Plus Jakarta Sans','Segoe UI',Arial,sans-serif";
-const COLOR_COTA = "#6b7f83";
-const COLOR_TEXTO_COTA = "#33484d";
-const COLOR_GUIA = "#a3b4b6";
-const COLOR_RECOGIDA = "#17383e";
+/* Colores propios del plano (inline: el snapshot SVG debe verse igual sin CSS).
+   Neutros, no los de la interfaz: el dibujo es una hoja técnica, no una captura
+   de la aplicación, y en gris un teal solo aporta un gris sin decidir. */
+const COLOR_SILUETA = "#141414";
+const COLOR_COTA = "#565656";
+const COLOR_TEXTO_COTA = "#1f1f1f";
+const COLOR_GUIA = "#9a9a9a";
+const COLOR_RECOGIDA = "#1f1f1f";
 const ANCHO_PANEL = 780;
+
+/* La tipografía del dibujo se separa de la de la aplicación. Sin poder añadir
+   una fuente, la distinción se consigue con familia, espaciado y cifras
+   tabulares. Los textos ya vienen en mayúsculas en el contenido. */
+const FUENTE_ANOTACION = "'Segoe UI Semibold','Segoe UI',Arial,sans-serif";
+const FUENTE_COTA = "'Segoe UI',Arial,sans-serif";
+
+/* Tres pesos de línea y no más: la silueta gana a todo, las aristas
+   estructurales quedan en medio, y el detalle y la anotación nunca compiten.
+   El halo blanco de los textos no es línea: es legibilidad sobre el dibujo. */
+const TRAZO_SILUETA = 2.6;
+const TRAZO_ARISTA = 1.4;
+const TRAZO_FINO = 0.9;
+const HALO_TEXTO = 4.5;
 
 function Cota({
   desde, hasta, texto, rotacion = 0, textoDx = 0, textoDy = -7,
@@ -110,12 +127,12 @@ function Cota({
     <g>
       <line
         x1={desde.x} y1={desde.y} x2={hasta.x} y2={hasta.y}
-        stroke={COLOR_COTA} strokeWidth="1" markerStart="url(#cota)" markerEnd="url(#cota)"
+        stroke={COLOR_COTA} strokeWidth={TRAZO_FINO} markerStart="url(#cota)" markerEnd="url(#cota)"
       />
       <text
-        x={cx} y={cy} textAnchor="middle" fontSize="13" fontWeight="800"
-        fontFamily={FUENTE_PLANO}
-        fill={COLOR_TEXTO_COTA} stroke="#ffffff" strokeWidth="6" paintOrder="stroke"
+        x={cx} y={cy} textAnchor="middle" fontSize="13" fontWeight="700"
+        fontFamily={FUENTE_COTA} style={{ fontVariantNumeric: "tabular-nums" }}
+        fill={COLOR_TEXTO_COTA} stroke="#ffffff" strokeWidth={HALO_TEXTO} paintOrder="stroke"
         strokeLinejoin="round" transform={`rotate(${rotacion} ${cx} ${cy})`}
       >
         {texto}
@@ -126,7 +143,13 @@ function Cota({
 
 interface Costura { x: number; yBase: number; yTop: number }
 
-/** Símbolo de la recogida sobre la costura vertical paño–contorno. */
+/**
+ * Símbolo de la recogida sobre la costura vertical paño–contorno.
+ *
+ * Los cierres se identifican, no se miden: sus dimensiones pasan por
+ * `tamanoSimbolo` para que las variaciones se distingan de un vistazo, tal
+ * como pidieron los operarios. La posición de la costura no se toca.
+ */
 function SimboloRecogida({ costura, tipo }: { costura: Costura; tipo: string }) {
   const { x, yBase, yTop } = costura;
   const alto = yBase - yTop;
@@ -134,27 +157,29 @@ function SimboloRecogida({ costura, tipo }: { costura: Costura; tipo: string }) 
 
   if (tipo === "GOMA") {
     // cuerda elástica en zigzag a lo largo de la costura
+    const amplitud = tamanoSimbolo(10) / 2;
     const paso = 13;
     const n = Math.max(2, Math.floor(alto / paso));
     let d = `M ${x.toFixed(1)} ${yBase.toFixed(1)}`;
     for (let i = 1; i <= n; i += 1) {
       const y = yBase - (alto * i) / n;
-      const dx = i % 2 === 1 ? 5 : -5;
+      const dx = i % 2 === 1 ? amplitud : -amplitud;
       d += ` L ${(x + dx).toFixed(1)} ${y.toFixed(1)}`;
     }
-    return <path d={d} fill="none" stroke={COLOR_RECOGIDA} strokeWidth="1.6" strokeLinejoin="round" />;
+    return <path d={d} fill="none" stroke={COLOR_RECOGIDA} strokeWidth={TRAZO_ARISTA} strokeLinejoin="round" />;
   }
 
   if (tipo === "CREMALLERA") {
     // doble línea con dientes
+    const medio = tamanoSimbolo(6) / 2;
     const dientes: Punto[] = [];
     for (let y = yBase - 6; y > yTop + 4; y -= 8) dientes.push({ x, y });
     return (
-      <g stroke={COLOR_RECOGIDA} strokeWidth="1.3">
-        <line x1={x - 3} y1={yBase} x2={x - 3} y2={yTop} />
-        <line x1={x + 3} y1={yBase} x2={x + 3} y2={yTop} />
+      <g stroke={COLOR_RECOGIDA} strokeWidth={TRAZO_ARISTA}>
+        <line x1={x - medio} y1={yBase} x2={x - medio} y2={yTop} />
+        <line x1={x + medio} y1={yBase} x2={x + medio} y2={yTop} />
         {dientes.map((p, i) => (
-          <line key={i} x1={p.x - 3} y1={p.y} x2={p.x + 3} y2={p.y} />
+          <line key={i} x1={p.x - medio} y1={p.y} x2={p.x + medio} y2={p.y} />
         ))}
       </g>
     );
@@ -162,13 +187,14 @@ function SimboloRecogida({ costura, tipo }: { costura: Costura; tipo: string }) 
 
   if (tipo === "VELCRO") {
     // franja rayada pegada a la costura
+    const anchoFranja = tamanoSimbolo(8);
     const rayas: number[] = [];
     for (let y = yBase - 4; y > yTop + 3; y -= 7) rayas.push(y);
     return (
-      <g stroke={COLOR_RECOGIDA} strokeWidth="1.2">
-        <rect x={x - 4} y={yTop} width={8} height={alto} fill="none" strokeWidth="1" />
+      <g stroke={COLOR_RECOGIDA} strokeWidth={TRAZO_ARISTA}>
+        <rect x={x - anchoFranja / 2} y={yTop} width={anchoFranja} height={alto} fill="none" strokeWidth={TRAZO_FINO} />
         {rayas.map((y, i) => (
-          <line key={i} x1={x - 4} y1={y} x2={x + 4} y2={y - 4} />
+          <line key={i} x1={x - anchoFranja / 2} y1={y} x2={x + anchoFranja / 2} y2={y - 4} />
         ))}
       </g>
     );
@@ -176,12 +202,13 @@ function SimboloRecogida({ costura, tipo }: { costura: Costura; tipo: string }) 
 
   if (tipo.startsWith("PUENTES")) {
     // trabillas repartidas por la costura
+    const lado = tamanoSimbolo(9);
     const trabillas: number[] = [];
     for (let y = yBase - 12; y > yTop + 6; y -= 22) trabillas.push(y);
     return (
-      <g stroke={COLOR_RECOGIDA} strokeWidth="1.5" fill="#ffffff">
+      <g stroke={COLOR_RECOGIDA} strokeWidth={TRAZO_ARISTA} fill="#ffffff">
         {trabillas.map((y, i) => (
-          <rect key={i} x={x - 4.5} y={y - 4} width={9} height={9} rx={2} />
+          <rect key={i} x={x - lado / 2} y={y - lado / 2} width={lado} height={lado} rx={2} />
         ))}
       </g>
     );
@@ -210,7 +237,15 @@ interface OpcionesVista {
   ollaosLaterales: number[];
   /** true en la vista delantera: los laterales se cuentan desde el fondo (atrás). */
   lateralesDesdeFar: boolean;
+  /** Con bastilla de enfundar el dobladillo va sujeto: los bordes no ceden. */
+  conBastilla: boolean;
 }
+
+/** Punto de una curva cuadrática en el parámetro t. */
+const puntoEnCuadratica = (a: Punto, control: Punto, b: Punto, t: number): Punto => ({
+  x: (1 - t) ** 2 * a.x + 2 * t * (1 - t) * control.x + t ** 2 * b.x,
+  y: (1 - t) ** 2 * a.y + 2 * t * (1 - t) * control.y + t ** 2 * b.y,
+});
 
 function calcularVista(o: OpcionesVista) {
   const perfil = o.modo === "baqueton" ? "TIPO 01" : o.tipoPerfil;
@@ -255,7 +290,6 @@ function calcularVista(o: OpcionesVista) {
     && picoTechoFrente > 0
     && picoTechoFrente < techoFrente.length - 1;
   const cubierta = franjasCubierta(techoFrente, techoFondo, picoTechoFrente, tieneCumbrera);
-  const lateralDcha = [frente.at(-2)!, frente.at(-1)!, fondo.at(-1)!, fondo.at(-2)!];
   // Primero descartamos las aristas cuyas dos caras contiguas miran en
   // dirección opuesta a la cámara. Después, la cara cercana opaca recorta
   // cualquier tramo restante que se proyecte dentro de su contorno.
@@ -309,39 +343,94 @@ function calcularVista(o: OpcionesVista) {
       } : null,
     };
   })() : null;
+  // Bordes inferiores: si la lona no va sujeta (sin bastilla de enfundar), el
+  // dobladillo cede un poco. Es lo que distingue tela de chapa. El descuelgue
+  // es una cuadrática cuyo control da `controlDescuelgue`.
+  const bordeLibre = o.modo === "lona" && !o.conBastilla;
+  const baseIzq = frente[0];
+  const baseDcha = frente.at(-1)!;
+  const fondoBase = fondo.at(-1)!;
+  const ctrlFrente = bordeLibre ? controlDescuelgue(baseIzq, baseDcha) : null;
+  const ctrlLateral = bordeLibre ? controlDescuelgue(baseDcha, fondoBase) : null;
+  // Cierre del paño cercano para el relleno, y trazos de silueta del dobladillo.
+  const cierrePinche = ctrlFrente
+    ? ` Q ${puntoSvg(ctrlFrente)} ${puntoSvg(baseIzq)} Z`
+    : " Z";
+  const bordeInferiorFrente = ctrlFrente
+    ? `M ${puntoSvg(baseIzq)} Q ${puntoSvg(ctrlFrente)} ${puntoSvg(baseDcha)}`
+    : `M ${puntoSvg(baseIzq)} L ${puntoSvg(baseDcha)}`;
+  const bordeInferiorLateral = ctrlLateral
+    ? `M ${puntoSvg(baseDcha)} Q ${puntoSvg(ctrlLateral)} ${puntoSvg(fondoBase)}`
+    : `M ${puntoSvg(baseDcha)} L ${puntoSvg(fondoBase)}`;
+  // La cara lateral como camino, para que su borde inferior siga el descuelgue.
+  const lateralCamino = `M ${puntoSvg(frente.at(-2)!)} L ${puntoSvg(baseDcha)}`
+    + (ctrlLateral ? ` Q ${puntoSvg(ctrlLateral)} ${puntoSvg(fondoBase)}` : ` L ${puntoSvg(fondoBase)}`)
+    + ` L ${puntoSvg(fondo.at(-2)!)} Z`;
+  // Pliegues: la tela comprimida junto a las esquinas tensadas. Dos trazos
+  // cortos por esquina, subiendo hacia el interior del paño.
+  const largoPliegue = 2.2 * flechaDescuelgue(Math.abs(baseDcha.x - baseIzq.x));
+  const pliegues = bordeLibre && largoPliegue > 4
+    ? [baseIzq, baseDcha].flatMap((esquina, lado) => {
+      const haciaCentro = lado === 0 ? 1 : -1;
+      return [50, 70].map((angulo) => {
+        const rad = (angulo * Math.PI) / 180;
+        const desde = { x: esquina.x + haciaCentro * 4, y: esquina.y - 3 };
+        const hasta = {
+          x: desde.x + haciaCentro * Math.cos(rad) * largoPliegue,
+          y: desde.y - Math.sin(rad) * largoPliegue,
+        };
+        return `M ${puntoSvg(desde)} L ${puntoSvg(hasta)}`;
+      });
+    })
+    : [];
   // Marcas de ollaos sobre las aristas de base visibles (la trasera de esta
-  // vista queda oculta tras el faldón).
+  // vista queda oculta tras el faldón). El símbolo va exagerado para que se
+  // reconozca impreso; la posición sale del reparto calculado y no se toca.
+  const radioOllao = tamanoSimbolo(4) / 2;
   const interpola = (a: Punto, b: Punto, t: number): Punto => ({
     x: a.x + (b.x - a.x) * t,
     y: a.y + (b.y - a.y) * t,
   });
-  const enTramo = (posiciones: number[], medida: number, desde: Punto, hasta: Punto) =>
+  const enTramo = (
+    posiciones: number[], medida: number, desde: Punto, hasta: Punto, control: Punto | null,
+  ) =>
     medida > 0
-      ? posiciones.filter((p) => p >= 0 && p <= medida).map((p) => interpola(desde, hasta, p / medida))
+      ? posiciones.filter((p) => p >= 0 && p <= medida).map((p) => (
+        control
+          ? puntoEnCuadratica(desde, control, hasta, p / medida)
+          : interpola(desde, hasta, p / medida)
+      ))
       : [];
-  const lateralDesde = o.lateralesDesdeFar ? fondo.at(-1)! : frente.at(-1)!;
-  const lateralHasta = o.lateralesDesdeFar ? frente.at(-1)! : fondo.at(-1)!;
+  const lateralDesde = o.lateralesDesdeFar ? fondoBase : baseDcha;
+  const lateralHasta = o.lateralesDesdeFar ? baseDcha : fondoBase;
   // Normal del borde lateral, apuntando hacia dentro de la lona.
-  const largoLateral = Math.hypot(fondo.at(-1)!.x - frente.at(-1)!.x, fondo.at(-1)!.y - frente.at(-1)!.y);
+  const largoLateral = Math.hypot(fondoBase.x - baseDcha.x, fondoBase.y - baseDcha.y);
   const normalLateral = {
-    x: ((fondo.at(-1)!.y - frente.at(-1)!.y) / largoLateral) * 6,
-    y: (-(fondo.at(-1)!.x - frente.at(-1)!.x) / largoLateral) * 6,
+    x: ((fondoBase.y - baseDcha.y) / largoLateral) * 6,
+    y: (-(fondoBase.x - baseDcha.x) / largoLateral) * 6,
   };
-  // Los ollaos van por dentro de la lona, no sobre el borde.
+  const insetOllao = radioOllao + 2.5;
+  // Los ollaos van por dentro de la lona, no sobre el borde, y siguen el
+  // dobladillo: si el borde cede, ellos ceden con él.
   const marcasOllaos = [
-    ...enTramo(o.ollaosNear, o.anchoNear, frente[0], frente.at(-1)!)
-      .map((p) => ({ x: p.x, y: p.y - 5 })),
-    ...enTramo(o.ollaosLaterales, o.largo, lateralDesde, lateralHasta)
-      .map((p) => ({ x: p.x + normalLateral.x * 0.8, y: p.y + normalLateral.y * 0.8 })),
+    ...enTramo(o.ollaosNear, o.anchoNear, baseIzq, baseDcha, ctrlFrente)
+      .map((p) => ({ x: p.x, y: p.y - insetOllao })),
+    ...enTramo(o.ollaosLaterales, o.largo, lateralDesde, lateralHasta, ctrlLateral)
+      .map((p) => ({ x: p.x + normalLateral.x, y: p.y + normalLateral.y })),
   ];
   // Costuras verticales paño–contorno («el alto de los lados»): donde va la recogida.
   const costuraIzq: Costura = { x: frente[0].x, yBase: frente[0].y, yTop: frente[1].y };
   const costuraDcha: Costura = { x: frente.at(-1)!.x, yBase: frente.at(-1)!.y, yTop: frente.at(-2)!.y };
-  // Bastilla de enfundar: banda paralela a los bordes de base visibles.
-  const bastillaBorde = `M ${puntoSvg(frente[0])} L ${puntoSvg(frente.at(-1)!)} L ${puntoSvg(fondo.at(-1)!)}`;
-  const bastillaInterior = `M ${puntoSvg({ x: frente[0].x, y: frente[0].y - 6 })}`
-    + ` L ${puntoSvg({ x: frente.at(-1)!.x, y: frente.at(-1)!.y - 6 })}`
-    + ` L ${puntoSvg({ x: fondo.at(-1)!.x + normalLateral.x, y: fondo.at(-1)!.y + normalLateral.y })}`;
+  // Bastilla de enfundar: banda paralela a los bordes de base visibles. Se
+  // identifica, no se mide: su ancho pasa por la exageración de símbolos.
+  const anchoBastilla = tamanoSimbolo(6);
+  const bastillaBorde = `M ${puntoSvg(baseIzq)} L ${puntoSvg(baseDcha)} L ${puntoSvg(fondoBase)}`;
+  const bastillaInterior = `M ${puntoSvg({ x: baseIzq.x, y: baseIzq.y - anchoBastilla })}`
+    + ` L ${puntoSvg({ x: baseDcha.x, y: baseDcha.y - anchoBastilla })}`
+    + ` L ${puntoSvg({
+      x: fondoBase.x + normalLateral.x * (anchoBastilla / 6),
+      y: fondoBase.y + normalLateral.y * (anchoBastilla / 6),
+    })}`;
   const chaflanCota = o.modo === "lona" && o.tipoPerfil === "TIPO 04" && o.chaflan > 0
     ? (() => {
         const inicio = frente.at(-3)!;
@@ -366,7 +455,9 @@ function calcularVista(o: OpcionesVista) {
   const xCotaAguas = frente.at(-1)!.x + 34;
   const largoPerspectiva = Math.hypot(profundidadX, profundidadY) || 1;
   return {
-    frente, fondo, lateralDcha, aristasLongitudinales, contornoFrente,
+    frente, fondo, aristasLongitudinales, contornoFrente,
+    cierrePinche, bordeInferiorFrente, bordeInferiorLateral, lateralCamino,
+    pliegues, radioOllao,
     cubierta, tieneCumbrera, ventana, marcasOllaos, costuraIzq, costuraDcha,
     bastillaBorde, bastillaInterior, chaflanCota,
     anchoDesde: { x: frente[0].x, y: baseY + 35 },
@@ -395,7 +486,7 @@ type VistaCalculada = ReturnType<typeof calcularVista>;
 
 function PanelVista({
   d, titulo, etiquetaAlto, etiquetaAncho, altoNear, ancho, largo, mostrarLargo, mostrarAguas, aguas,
-  recogida, bastilla, modo,
+  recogida, bastilla, modo, colores,
 }: {
   d: VistaCalculada;
   titulo: string;
@@ -410,58 +501,63 @@ function PanelVista({
   recogida: string;
   bastilla: boolean;
   modo: "lona" | "baqueton";
+  colores: ReturnType<typeof coloresMaterial>;
 }) {
   const hayRecogida = recogida !== "" && recogida !== "NO";
   return (
     <g>
       <text
-        x={40} y={45} fontSize="12" fontWeight="800" letterSpacing="2"
-        fontFamily={FUENTE_PLANO} fill="#71878a"
+        x={40} y={45} fontSize="12" fontWeight="700" letterSpacing="2"
+        fontFamily={FUENTE_ANOTACION} fill="#4a4a4a"
       >
         {titulo}
       </text>
-      {/* Techo y lateral muestran el color de lona; la cara cercana queda abierta. */}
-      <g filter="url(#sombraLona)">
+      {/* Cada cara con su valor plano de la escala: cubierta la más clara,
+          paño cercano intermedio, lateral el más oscuro. El volumen sale del
+          contraste entre caras, no de degradados que el gris se comería. */}
+      <g>
         {/* El pinche (paño delantero o trasero) cubre la cara cercana. */}
-        <path d={`${d.contornoFrente} Z`} fill="url(#pinche)" stroke="none" />
+        <path d={`${d.contornoFrente}${d.cierrePinche}`} fill={colores.lateralClaro} stroke="none" />
         {d.cubierta.map((franja, indice) => (
           <polygon
             key={indice}
             points={puntosSvg(franja.puntos)}
-            fill={franja.lado === "dcha" ? "url(#cubiertaDerecha)" : "url(#cubiertaIzquierda)"}
-            stroke={franja.lado === "dcha" ? "url(#cubiertaDerecha)" : "url(#cubiertaIzquierda)"}
-            strokeWidth="1"
+            fill={franja.lado === "dcha" ? colores.techo : colores.techoClaro}
+            stroke={franja.lado === "dcha" ? colores.techo : colores.techoClaro}
+            strokeWidth={TRAZO_FINO}
           />
         ))}
-        <polygon points={puntosSvg(d.lateralDcha)} fill="url(#lateral)" stroke="none" />
+        <path d={d.lateralCamino} fill={colores.lateral} stroke="none" />
       </g>
 
       {d.ventana && (
         <g>
-          {/* A través de la ventana se intuye el interior en penumbra. */}
+          {/* A través de la ventana se intuye el interior en penumbra. El
+              redondeo es físico: las ventanas de lona llevan esquinas
+              redondeadas. Va a escala porque lleva cota. */}
           <rect
             x={d.ventana.x} y={d.ventana.y}
             width={d.ventana.ancho} height={d.ventana.alto}
             rx={d.ventana.radio}
-            fill="#0e2a2f" fillOpacity="0.38"
+            fill="#1a1a1a" fillOpacity="0.35"
           />
           <rect
             x={d.ventana.x} y={d.ventana.y}
             width={d.ventana.ancho} height={d.ventana.alto}
             rx={d.ventana.radio}
-            fill="none" stroke="#0f766e" strokeWidth="1.8"
+            fill="none" stroke={COLOR_SILUETA} strokeWidth={TRAZO_ARISTA}
           />
           {d.ventana.cotas && (
             <g>
               {d.ventana.cotas.ancho.guias.map((guia, indice) => (
                 <line key={`ancho-${indice}`} x1={guia.desde.x} y1={guia.desde.y}
-                  x2={guia.hasta.x} y2={guia.hasta.y} stroke={COLOR_GUIA} strokeWidth="1" />
+                  x2={guia.hasta.x} y2={guia.hasta.y} stroke={COLOR_GUIA} strokeWidth={TRAZO_FINO} />
               ))}
               <Cota desde={d.ventana.cotas.ancho.desde} hasta={d.ventana.cotas.ancho.hasta}
                 texto={d.ventana.cotas.ancho.texto} textoDy={17} />
               {d.ventana.cotas.alto.guias.map((guia, indice) => (
                 <line key={`alto-${indice}`} x1={guia.desde.x} y1={guia.desde.y}
-                  x2={guia.hasta.x} y2={guia.hasta.y} stroke={COLOR_GUIA} strokeWidth="1" />
+                  x2={guia.hasta.x} y2={guia.hasta.y} stroke={COLOR_GUIA} strokeWidth={TRAZO_FINO} />
               ))}
               <Cota desde={d.ventana.cotas.alto.desde} hasta={d.ventana.cotas.alto.hasta}
                 texto={d.ventana.cotas.alto.texto} rotacion={-90} textoDx={-8} textoDy={0} />
@@ -475,29 +571,39 @@ function PanelVista({
           key={indice}
           x1={arista.desde.x} y1={arista.desde.y}
           x2={arista.hasta.x} y2={arista.hasta.y}
-          stroke="#4c6468" strokeWidth="1.3" strokeLinecap="round"
+          stroke="#3a3a3a" strokeWidth={TRAZO_ARISTA} strokeLinecap="round"
         />
       ))}
-      <path d={d.contornoFrente} fill="none" stroke="#122d32" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+      {/* Pliegues: la tela comprimida junto a las esquinas tensadas. */}
+      {d.pliegues.map((pliegue, indice) => (
+        <path
+          key={indice} d={pliegue} fill="none"
+          stroke="#3a3a3a" strokeWidth={TRAZO_FINO} strokeLinecap="round" opacity="0.5"
+        />
+      ))}
+      {/* La silueta completa —perfil y dobladillos— gana a todo lo demás. */}
+      <path d={d.contornoFrente} fill="none" stroke={COLOR_SILUETA} strokeWidth={TRAZO_SILUETA} strokeLinecap="round" strokeLinejoin="round" />
+      <path d={d.bordeInferiorFrente} fill="none" stroke={COLOR_SILUETA} strokeWidth={TRAZO_SILUETA} strokeLinecap="round" />
+      <path d={d.bordeInferiorLateral} fill="none" stroke={COLOR_SILUETA} strokeWidth={TRAZO_SILUETA} strokeLinecap="round" />
       {/* Bastilla de enfundar: refuerzo perimetral inferior, donde los ollaos →
           banda de doble línea a lo largo de los bordes de base visibles. */}
       {bastilla && (
         <>
-          <path d={d.bastillaBorde} fill="none" stroke="#122d32" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-          <path d={d.bastillaInterior} fill="none" stroke="#122d32" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
+          <path d={d.bastillaBorde} fill="none" stroke={COLOR_SILUETA} strokeWidth={TRAZO_ARISTA} strokeLinecap="round" strokeLinejoin="round" />
+          <path d={d.bastillaInterior} fill="none" stroke={COLOR_SILUETA} strokeWidth={TRAZO_FINO} strokeLinecap="round" strokeLinejoin="round" />
         </>
       )}
       {d.marcasOllaos.map((marca, indice) => (
         <circle
           key={indice}
-          cx={marca.x} cy={marca.y} r="2"
-          fill="#ffffff" stroke="#4c6468" strokeWidth="1"
+          cx={marca.x} cy={marca.y} r={d.radioOllao}
+          fill="#ffffff" stroke={COLOR_SILUETA} strokeWidth={TRAZO_ARISTA}
         />
       ))}
       {modo === "baqueton" && (
         <path
           d={d.contornoFrente} fill="none" stroke="#d3a024"
-          strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"
+          strokeWidth={TRAZO_SILUETA * 2} strokeLinecap="round" strokeLinejoin="round"
         />
       )}
 
@@ -506,29 +612,45 @@ function PanelVista({
         <g>
           <SimboloRecogida costura={d.costuraIzq} tipo={recogida} />
           <SimboloRecogida costura={d.costuraDcha} tipo={recogida} />
+          {/* La anotación se une con un trazo a lo que nombra: sin línea de
+              referencia, el nombre flota y hay que adivinar a qué se refiere. */}
+          <line
+            x1={d.costuraDcha.x - 14} y1={(d.costuraDcha.yBase + d.costuraDcha.yTop) / 2 - 4}
+            x2={d.costuraDcha.x - 7} y2={(d.costuraDcha.yBase + d.costuraDcha.yTop) / 2 - 4}
+            stroke={COLOR_GUIA} strokeWidth={TRAZO_FINO}
+          />
           <text
-            x={d.costuraDcha.x - 10}
+            x={d.costuraDcha.x - 16}
             y={(d.costuraDcha.yBase + d.costuraDcha.yTop) / 2}
             textAnchor="end"
             fontSize={recogida.length > 16 ? 9 : 11}
-            fontWeight="800"
-            fontFamily={FUENTE_PLANO}
+            fontWeight="700"
+            fontFamily={FUENTE_ANOTACION}
+            letterSpacing="0.6"
             fill={COLOR_TEXTO_COTA}
-            stroke="#ffffff" strokeWidth="5" paintOrder="stroke" strokeLinejoin="round"
+            stroke="#ffffff" strokeWidth={HALO_TEXTO} paintOrder="stroke" strokeLinejoin="round"
           >
             {recogida}
           </text>
         </g>
       )}
       {bastilla && (
-        <text
-          x={(d.frente[0].x + d.frente.at(-1)!.x) / 2}
-          y={d.baseY + 16}
-          textAnchor="middle" fontSize="9" fontWeight="800" fontFamily={FUENTE_PLANO}
-          fill="#8a6410" stroke="#ffffff" strokeWidth="5" paintOrder="stroke" strokeLinejoin="round"
-        >
-          BASTILLA ENFUNDAR
-        </text>
+        <g>
+          <line
+            x1={(d.frente[0].x + d.frente.at(-1)!.x) / 2} y1={d.baseY + 9}
+            x2={(d.frente[0].x + d.frente.at(-1)!.x) / 2} y2={d.baseY + 1}
+            stroke={COLOR_GUIA} strokeWidth={TRAZO_FINO}
+          />
+          <text
+            x={(d.frente[0].x + d.frente.at(-1)!.x) / 2}
+            y={d.baseY + 19}
+            textAnchor="middle" fontSize="9" fontWeight="700" fontFamily={FUENTE_ANOTACION}
+            letterSpacing="0.6"
+            fill={COLOR_RECOGIDA} stroke="#ffffff" strokeWidth={HALO_TEXTO} paintOrder="stroke" strokeLinejoin="round"
+          >
+            BASTILLA ENFUNDAR
+          </text>
+        </g>
       )}
       {d.chaflanCota && (
         <Cota
@@ -541,12 +663,12 @@ function PanelVista({
         />
       )}
 
-      <line x1={d.frente[0].x} y1={d.baseY + 5} x2={d.frente[0].x} y2={d.baseY + 42} stroke={COLOR_GUIA} />
-      <line x1={d.frente.at(-1)!.x} y1={d.baseY + 5} x2={d.frente.at(-1)!.x} y2={d.baseY + 42} stroke={COLOR_GUIA} />
+      <line x1={d.frente[0].x} y1={d.baseY + 5} x2={d.frente[0].x} y2={d.baseY + 42} stroke={COLOR_GUIA} strokeWidth={TRAZO_FINO} />
+      <line x1={d.frente.at(-1)!.x} y1={d.baseY + 5} x2={d.frente.at(-1)!.x} y2={d.baseY + 42} stroke={COLOR_GUIA} strokeWidth={TRAZO_FINO} />
       <Cota desde={d.anchoDesde} hasta={d.anchoHasta} texto={`${etiquetaAncho} ${fmt(ancho)}`} textoDy={22} />
 
-      <line x1={d.frente[0].x - 5} y1={d.altoDesde.y} x2={d.altoDesde.x - 7} y2={d.altoDesde.y} stroke={COLOR_GUIA} />
-      <line x1={d.frente[0].x - 5} y1={d.altoHasta.y} x2={d.altoHasta.x - 7} y2={d.altoHasta.y} stroke={COLOR_GUIA} />
+      <line x1={d.frente[0].x - 5} y1={d.altoDesde.y} x2={d.altoDesde.x - 7} y2={d.altoDesde.y} stroke={COLOR_GUIA} strokeWidth={TRAZO_FINO} />
+      <line x1={d.frente[0].x - 5} y1={d.altoHasta.y} x2={d.altoHasta.x - 7} y2={d.altoHasta.y} stroke={COLOR_GUIA} strokeWidth={TRAZO_FINO} />
       <Cota
         desde={d.altoDesde} hasta={d.altoHasta}
         texto={`${etiquetaAlto} ${fmt(altoNear)}`}
@@ -565,12 +687,12 @@ function PanelVista({
           <line
             x1={d.aguasGuiaHombro.desde.x} y1={d.aguasGuiaHombro.desde.y}
             x2={d.aguasGuiaHombro.hasta.x} y2={d.aguasGuiaHombro.hasta.y}
-            stroke={COLOR_GUIA} strokeWidth="1"
+            stroke={COLOR_GUIA} strokeWidth={TRAZO_FINO}
           />
           <line
             x1={d.aguasGuiaPico.desde.x} y1={d.aguasGuiaPico.desde.y}
             x2={d.aguasGuiaPico.hasta.x} y2={d.aguasGuiaPico.hasta.y}
-            stroke={COLOR_GUIA} strokeWidth="1"
+            stroke={COLOR_GUIA} strokeWidth={TRAZO_FINO}
           />
           <Cota
             desde={d.aguasDesde} hasta={d.aguasHasta}
@@ -597,6 +719,7 @@ export function Escena3D(props: Escena3DProps) {
   const valido = props.largo > 0 && props.ancho > 0 && altoDelante > 0 && geometriaPerfilCompleta;
 
   const anchoAtras = (props.anchoAtras ?? 0) > 0 ? props.anchoAtras! : props.ancho;
+  const bastilla = props.modo === "lona" && (props.bastillaEnfundar ?? false);
   const vistas = useMemo(() => {
     if (!valido) return null;
     const base = {
@@ -610,6 +733,7 @@ export function Escena3D(props: Escena3DProps) {
       chaflan: props.chaflan ?? 0,
       ventanaAncho: props.ventanaAncho ?? 0,
       ventanaAlto: props.ventanaAlto ?? 0,
+      conBastilla: bastilla,
     };
     const delantera = calcularVista({
       ...base,
@@ -638,6 +762,7 @@ export function Escena3D(props: Escena3DProps) {
     valido, props.modo, props.tipoPerfil, props.ancho, props.largo,
     props.aguas, props.radioCumbrera, props.radioHombro, props.radioEsquina, props.chaflan,
     props.ventana, props.ventanaAncho, props.ventanaAlto, props.ollaos, altoDelante, altoAtras, anchoAtras,
+    bastilla,
   ]);
 
   useEffect(() => {
@@ -652,7 +777,6 @@ export function Escena3D(props: Escena3DProps) {
   const mostrarAguas = props.modo === "lona"
     && (props.aguas ?? 0) > 0
     && ["TIPO 02", "TIPO 03"].includes(props.tipoPerfil);
-  const bastilla = props.modo === "lona" && (props.bastillaEnfundar ?? false);
 
   return (
     <div className="flex w-full flex-col overflow-hidden rounded-[24px] border border-white/80 bg-white shadow-[0_18px_50px_rgb(15_23_42/0.09),0_2px_8px_rgb(15_23_42/0.04)] ring-1 ring-line/70">
@@ -675,40 +799,14 @@ export function Escena3D(props: Escena3DProps) {
         >
           <title>Perspectiva técnica acotada (vistas delantera y trasera)</title>
           <defs>
-            <linearGradient id="lienzo" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor="#fcfdfc" />
-              <stop offset="0.55" stopColor="#f4f8f6" />
-              <stop offset="1" stopColor="#ecf2ef" />
-            </linearGradient>
-            <linearGradient id="lateral" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor={colores.lateralClaro} />
-              <stop offset="1" stopColor={colores.lateral} />
-            </linearGradient>
-            {/* Paño delantero/trasero (pinche): plano frontal, más luminoso que el faldón. */}
-            <linearGradient id="pinche" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stopColor={colores.techoClaro} />
-              <stop offset="1" stopColor={colores.lateralClaro} />
-            </linearGradient>
-            {/* En coordenadas de usuario: las franjas de cubierta comparten un
-                sombreado continuo aunque sean polígonos independientes. */}
-            <linearGradient id="cubiertaIzquierda" gradientUnits="userSpaceOnUse" x1="145" y1="250" x2="640" y2="100">
-              <stop offset="0" stopColor={colores.techoClaro} />
-              <stop offset="1" stopColor={colores.techo} />
-            </linearGradient>
-            <linearGradient id="cubiertaDerecha" gradientUnits="userSpaceOnUse" x1="145" y1="100" x2="640" y2="250">
-              <stop offset="0" stopColor={colores.techo} />
-              <stop offset="1" stopColor={colores.lateralClaro} />
-            </linearGradient>
+            {/* Solo queda lo que un plano necesita: la flecha de cota. Las
+                tarjetas, la sombra y los degradados eran interfaz, no dibujo,
+                y al pasar a gris se comían el contraste. */}
             <marker id="cota" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto-start-reverse">
-              <path d="M 7 0 L 0 3.5 L 7 7 z" fill="#6b7f83" />
+              <path d="M 7 0 L 0 3.5 L 7 7 z" fill={COLOR_COTA} />
             </marker>
-            <filter id="sombraLona" x="-25%" y="-25%" width="160%" height="180%">
-              <feDropShadow dx="0" dy="10" stdDeviation="10" floodColor="#0e2a2f" floodOpacity="0.16" />
-            </filter>
           </defs>
-          <rect width="1560" height="440" fill="url(#lienzo)" />
-          <rect x="18" y="18" width="744" height="400" rx="18" fill="#ffffff" fillOpacity="0.64" stroke="#ffffff" />
-          <rect x="798" y="18" width="744" height="400" rx="18" fill="#ffffff" fillOpacity="0.64" stroke="#ffffff" />
+          <rect width="1560" height="440" fill="#ffffff" />
           <PanelVista
             d={vistas.delantera}
             titulo="VISTA DELANTERA"
@@ -723,6 +821,7 @@ export function Escena3D(props: Escena3DProps) {
             recogida={props.modo === "lona" ? (props.recogeDelante ?? "") : ""}
             bastilla={bastilla}
             modo={props.modo}
+            colores={colores}
           />
           <g transform={`translate(${ANCHO_PANEL} 0)`}>
             <PanelVista
@@ -739,6 +838,7 @@ export function Escena3D(props: Escena3DProps) {
               recogida={props.modo === "lona" ? (props.recogeAtras ?? "") : ""}
               bastilla={bastilla}
               modo={props.modo}
+              colores={colores}
             />
           </g>
         </svg>
