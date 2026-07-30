@@ -6,6 +6,7 @@ import type { Material } from "@/lib/calc/materiales-seed";
 import type { PlanteamientoRecord, TipoPlanteamiento } from "@/lib/store/types";
 import { rasterizarSvg } from "@/lib/svg/rasterizar";
 import { orquestarPdf } from "@/lib/pdf/orquestar-pdf";
+import { SALIDA_MONOCROMA } from "@/lib/pdf/salida";
 import { emptyLona, emptyBaqueton } from "@/components/workspace/entradas-vacias";
 import { crearInputDesdeRps } from "@/lib/rps/aplicar-linea";
 import { materialPreferidoRps } from "@/lib/rps/material-rps";
@@ -339,7 +340,7 @@ export function useWorkspace(inicial?: EntradaInicial) {
       svgActual: snapshotRef.current?.() ?? null,
     }, {
       fetch: (entrada, init) => fetch(entrada, init),
-      rasterizar: (svg) => rasterizarSvg(svg, { monocromo: true }),
+      rasterizar: (svg) => rasterizarSvg(svg, { monocromo: SALIDA_MONOCROMA }),
       onProgreso: (hecho, total) => setProgresoPdf({ hecho, total }),
     });
 
