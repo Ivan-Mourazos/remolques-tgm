@@ -163,3 +163,37 @@ describe("TIPO 04 con las aristas del chaflán curvadas", () => {
     expect(puntos[2][0]).toBeCloseTo(pata, 6);
   });
 });
+
+describe("TIPO 04 con una arista curva y la otra viva", () => {
+  const base = { ancho: 126, altoDelante: 90, chaflan: 13.2 };
+
+  it("no repite el vértice cuando el radio de abajo es cero", () => {
+    const { puntos } = perfilForma("TIPO 04", { ...base, radioChaflanArriba: 7.5 });
+    for (let i = 1; i < puntos.length; i += 1) {
+      const [ax, ay] = puntos[i - 1];
+      const [bx, by] = puntos[i];
+      expect(Math.hypot(bx - ax, by - ay)).toBeGreaterThan(1e-9);
+    }
+  });
+
+  it("no repite el vértice cuando el radio de arriba es cero", () => {
+    const { puntos } = perfilForma("TIPO 04", { ...base, radioChaflanAbajo: 7 });
+    for (let i = 1; i < puntos.length; i += 1) {
+      const [ax, ay] = puntos[i - 1];
+      const [bx, by] = puntos[i];
+      expect(Math.hypot(bx - ax, by - ay)).toBeGreaterThan(1e-9);
+    }
+  });
+
+  it("no deja dos aristas del dibujo en la misma coordenada", () => {
+    const { puntos, aristas } = perfilForma("TIPO 04", { ...base, radioChaflanAbajo: 7 });
+    const coordenadas = aristas.map((i) => `${puntos[i][0].toFixed(6)},${puntos[i][1].toFixed(6)}`);
+    expect(new Set(coordenadas).size).toBe(aristas.length);
+  });
+
+  it("con el radio de arriba a cero, el vértice virtual está en el perfil", () => {
+    const pata = 13.2 / Math.SQRT2;
+    const { puntos } = perfilForma("TIPO 04", { ...base, radioChaflanAbajo: 7 });
+    expect(puntos.some(([x, y]) => Math.abs(x - pata) < 1e-9 && Math.abs(y - 90) < 1e-9)).toBe(true);
+  });
+});

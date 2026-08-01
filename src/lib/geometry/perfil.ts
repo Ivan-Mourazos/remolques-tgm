@@ -143,21 +143,34 @@ export function perfilForma(tipo: TipoPerfil, opts: PerfilOpts): PerfilForma {
       const yTangenteAbajo = h - e.pata - e.tangenteAbajo;
       const xTangenteArriba = e.pata + e.tangenteArriba;
 
-      // Se construye solo el lado izquierdo, de la tangencia con la pared a la
-      // tangencia con el techo, y el derecho sale de reflejarlo.
+      // Se construye solo el lado izquierdo, de donde la pared deja de ser
+      // recta hasta donde el techo empieza a serlo, y el derecho sale de
+      // reflejarlo.
+      //
+      // Un radio a cero es una arista viva: aporta un único punto en el
+      // vértice virtual y una sola arista, no dos tangencias. Hay piezas con
+      // una arista curva y la otra no, y tratarlas como arco degenerado dejaba
+      // seis puntos idénticos y dos aristas en la misma coordenada.
       const izquierda: Pt[] = [[0, yTangenteAbajo]];
       const aristasIzquierda: number[] = [0];
-      // Arco de abajo: de 180° a 135°, girando 45°. Su primer punto ya está.
-      izquierda.push(
-        ...arco(e.radioAbajo, yTangenteAbajo, e.radioAbajo, Math.PI, Math.PI - GIRO_CHAFLAN, 5).slice(1),
-      );
-      aristasIzquierda.push(izquierda.length - 1);
-      // Arco de arriba: de 135° a 90°. Su primer punto cierra el tramo recto.
-      const inicioArcoArriba = izquierda.length;
-      izquierda.push(
-        ...arco(xTangenteArriba, h - e.radioArriba, e.radioArriba, Math.PI - GIRO_CHAFLAN, Math.PI / 2, 5),
-      );
-      aristasIzquierda.push(inicioArcoArriba, izquierda.length - 1);
+      if (e.radioAbajo > 0) {
+        // De 180° a 135°, girando 45°. Su primer punto ya está puesto.
+        izquierda.push(
+          ...arco(e.radioAbajo, yTangenteAbajo, e.radioAbajo, Math.PI, Math.PI - GIRO_CHAFLAN, 5).slice(1),
+        );
+        aristasIzquierda.push(izquierda.length - 1);
+      }
+      if (e.radioArriba > 0) {
+        // De 135° a 90°. Su primer punto cierra el tramo recto del chaflán.
+        const inicioArcoArriba = izquierda.length;
+        izquierda.push(
+          ...arco(xTangenteArriba, h - e.radioArriba, e.radioArriba, Math.PI - GIRO_CHAFLAN, Math.PI / 2, 5),
+        );
+        aristasIzquierda.push(inicioArcoArriba, izquierda.length - 1);
+      } else {
+        izquierda.push([e.pata, h]);
+        aristasIzquierda.push(izquierda.length - 1);
+      }
 
       const derecha = [...izquierda].reverse().map(([x, y]) => [w - x, y] as Pt);
       const puntos: Pt[] = [[0, 0], ...izquierda, ...derecha, [w, 0]];
