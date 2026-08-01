@@ -465,11 +465,15 @@ function calcularVista(o: OpcionesVista) {
           radioAbajo: o.radioChaflanAbajo, radioArriba: o.radioChaflanArriba,
         });
         if (!esquina) return null;
-        const { pata, tangenteAbajo, tangenteArriba } = esquina;
-        const diagonal = Math.SQRT1_2;
+        // La cota va de vértice virtual a vértice virtual, que es exactamente
+        // lo que mide el número escrito: la cara del chaflán. Acotar entre las
+        // tangencias dibujaría una línea de la mitad de largo que su propia
+        // cifra, y con radios que se comen la cara entera quedaría de longitud
+        // cero. Que los arcos sobresalgan de la cota es lo normal en un plano.
+        const { pata } = esquina;
         const [inicio, fin] = proyecta([
-          [o.anchoNear - pata + tangenteArriba * diagonal, o.altoNear - tangenteArriba * diagonal],
-          [o.anchoNear - tangenteAbajo * diagonal, o.altoNear - pata + tangenteAbajo * diagonal],
+          [o.anchoNear - pata, o.altoNear],
+          [o.anchoNear, o.altoNear - pata],
         ], 0, 0);
         const dx = fin.x - inicio.x;
         const dy = fin.y - inicio.y;
