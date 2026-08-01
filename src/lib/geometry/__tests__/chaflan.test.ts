@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { esquinaChaflan, GIRO_CHAFLAN } from "@/lib/geometry/chaflan";
+import { esquinaChaflan, GIRO_CHAFLAN, recorteEsquina } from "@/lib/geometry/chaflan";
 
 /** La pieza real de Iván: pedido AR.26.03714, sobre la lona hecha. */
 const PIEZA = { ancho: 126, alto: 90, chaflan: 13.2, radioAbajo: 7, radioArriba: 7.5 };
@@ -60,19 +60,53 @@ describe("esquinaChaflan", () => {
     expect(e.radioAbajo).toBeCloseTo(e.radioArriba, 6);
   });
 
+  it("reduce los radios manteniendo su proporción, no repartiendo la cara por igual", () => {
+    // radioAbajo:radioArriba = 2:1. Una implementación que, al comerse la
+    // cara, repartiera el hueco por igual entre los dos radios (en vez de
+    // reducir cada uno proporcionalmente) pasaría la prueba anterior — con
+    // radios iguales de entrada un reparto igual es indistinguible de una
+    // reducción proporcional — pero fallaría aquí.
+    const e = esquinaChaflan({ ancho: 400, alto: 400, chaflan: 10, radioAbajo: 50, radioArriba: 25 })!;
+    expect(e.radioAbajo / e.radioArriba).toBeCloseTo(2, 6);
+    // Las dos tangentes se reparten la cara en la misma proporción 2:1.
+    expect(e.tangenteAbajo).toBeCloseTo((2 / 3) * e.cara, 6);
+    expect(e.tangenteArriba).toBeCloseTo((1 / 3) * e.cara, 6);
+    expect(e.tangenteAbajo + e.tangenteArriba).toBeCloseTo(e.cara, 6);
+  });
+
   it("nunca produce tramo recto negativo ni valores no finitos", () => {
     for (const chaflan of [0.1, 1, 13.2, 50]) {
       for (const radio of [0, 1, 20, 500]) {
         const e = esquinaChaflan({ ancho: 126, alto: 90, chaflan, radioAbajo: radio, radioArriba: radio });
-        if (!e) continue;
-        expect(Number.isFinite(e.pata)).toBe(true);
-        expect(Number.isFinite(e.caraRecta)).toBe(true);
-        expect(e.caraRecta).toBeGreaterThanOrEqual(-1e-9);
+        expect(e).not.toBeNull();
+        expect(Number.isFinite(e!.pata)).toBe(true);
+        expect(Number.isFinite(e!.caraRecta)).toBe(true);
+        expect(e!.caraRecta).toBeGreaterThanOrEqual(-1e-9);
       }
     }
   });
 
+  it("trata un radio no finito como arista viva, sin propagar NaN a caraRecta", () => {
+    const e = esquinaChaflan({ ancho: 126, alto: 90, chaflan: 13.2, radioAbajo: NaN })!;
+    expect(e.radioAbajo).toBe(0);
+    expect(Number.isFinite(e.tangenteAbajo)).toBe(true);
+    expect(Number.isFinite(e.caraRecta)).toBe(true);
+    expect(e.caraRecta).toBeCloseTo(13.2, 3);
+  });
+
   it("el giro de cada esquina es de 45 grados", () => {
     expect(GIRO_CHAFLAN).toBeCloseTo(Math.PI / 4, 10);
+  });
+});
+
+describe("recorteEsquina", () => {
+  it("con giro de 45 grados, un radio de 7 recorta unas 0,3012 unidades", () => {
+    const esperado = 2 * 7 * Math.tan(GIRO_CHAFLAN / 2) - 7 * GIRO_CHAFLAN;
+    expect(recorteEsquina(7)).toBeCloseTo(esperado, 9);
+    expect(recorteEsquina(7)).toBeCloseTo(0.3012, 4);
+  });
+
+  it("el recorte es proporcional al radio", () => {
+    expect(recorteEsquina(2 * 7)).toBeCloseTo(2 * recorteEsquina(7), 9);
   });
 });

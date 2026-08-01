@@ -20,7 +20,14 @@ export interface EsquinaChaflan {
   pata: number;
   /** Cara entre vértices virtuales, ya efectiva tras acotar la pata. */
   cara: number;
+  /**
+   * Radio de abajo ya acotado (pared, techo y reparto con el de arriba si
+   * entre los dos se comían la cara) — no el valor de entrada. Dibuja el
+   * arco con este radio: con el de entrada sin acotar, el arco no sería
+   * tangente a las rectas que une.
+   */
   radioAbajo: number;
+  /** Igual que `radioAbajo`, pero acotado al techo en vez de a la pared. */
   radioArriba: number;
   /** Lo que cada arco consume sobre las rectas que une. */
   tangenteAbajo: number;
@@ -42,15 +49,17 @@ export function esquinaChaflan({
   const pata = Math.min(chaflan / Math.SQRT2, ancho / 2, alto);
   const cara = pata * Math.SQRT2;
 
-  // Cada arco necesita su tangente en la recta que toca.
-  let rAbajo = Math.max(radioAbajo, 0);
-  if (TANGENTE_MEDIA > 0) rAbajo = Math.min(rAbajo, (alto - pata) / TANGENTE_MEDIA);
-  let rArriba = Math.max(radioArriba, 0);
-  if (TANGENTE_MEDIA > 0) rArriba = Math.min(rArriba, (ancho / 2 - pata) / TANGENTE_MEDIA);
+  // Cada arco necesita su tangente en la recta que toca. Un radio no finito
+  // (NaN o Infinity) se trata como arista viva: se convierte en 0 en vez de
+  // propagarse (Math.max(NaN, 0) es NaN, y eso llegaría hasta caraRecta).
+  let rAbajo = Number.isFinite(radioAbajo) ? Math.max(radioAbajo, 0) : 0;
+  rAbajo = Math.min(rAbajo, (alto - pata) / TANGENTE_MEDIA);
+  let rArriba = Number.isFinite(radioArriba) ? Math.max(radioArriba, 0) : 0;
+  rArriba = Math.min(rArriba, (ancho / 2 - pata) / TANGENTE_MEDIA);
 
   // Y entre los dos no pueden comerse la cara del chaflán.
   const ocupado = (rAbajo + rArriba) * TANGENTE_MEDIA;
-  if (ocupado > cara && ocupado > 0) {
+  if (ocupado > cara) {
     const factor = cara / ocupado;
     rAbajo *= factor;
     rArriba *= factor;
@@ -69,7 +78,15 @@ export function esquinaChaflan({
   };
 }
 
-/** Lo que una esquina redondeada recorta frente a la misma esquina viva. */
-export function recorteEsquina(radio: number, tangente: number): number {
-  return 2 * tangente - radio * GIRO_CHAFLAN;
+/**
+ * Lo que una esquina redondeada recorta frente a la misma esquina viva.
+ *
+ * Solo toma el radio: en este módulo el giro es siempre de 45°, así que la
+ * tangente es siempre `radio · tan(22,5°)`. Aceptarla como argumento aparte
+ * permitiría pasar una tangente calculada para otro ángulo y obtener un
+ * recorte de perímetro silenciosamente incorrecto — y esto alimenta el
+ * contorno de corte.
+ */
+export function recorteEsquina(radio: number): number {
+  return 2 * radio * TANGENTE_MEDIA - radio * GIRO_CHAFLAN;
 }
