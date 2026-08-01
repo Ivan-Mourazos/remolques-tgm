@@ -16,12 +16,15 @@ describe("perfilPuntos", () => {
     expect(pts).toContainEqual([0, 40]);
     expect(pts.some(([x, y]) => x === 75 && y === 60)).toBe(true);
   });
-  it("TIPO 04: chaflán recorta las esquinas superiores", () => {
+  it("TIPO 04: el chaflán recorta las esquinas por la cara, no por la pata", () => {
+    // `chaflan` es la cara entre vértices virtuales, igual que en el contorno:
+    // la pata (lo que baja por la pared) sale de dividirla entre √2.
+    const pata = 15 / Math.SQRT2;
     const pts = perfilPuntos("TIPO 04", { ancho: 150, altoDelante: 60, chaflan: 15 });
-    expect(pts).toContainEqual([0, 45]);
-    expect(pts).toContainEqual([15, 60]);
-    expect(pts).toContainEqual([135, 60]);
-    expect(pts).toContainEqual([150, 45]);
+    expect(pts).toContainEqual([0, 60 - pata]);
+    expect(pts).toContainEqual([pata, 60]);
+    expect(pts).toContainEqual([150 - pata, 60]);
+    expect(pts).toContainEqual([150, 60 - pata]);
   });
   it("TIPO 05: esquinas redondeadas dentro de la caja", () => {
     const pts = perfilPuntos("TIPO 05", { ancho: 150, altoDelante: 60, radio: 15 });
@@ -109,5 +112,54 @@ describe("perfilPuntos", () => {
   it("expone nombres de perfil claros para oficina técnica", () => {
     expect(nombrePerfil("TIPO 04")).toContain("chaflanes");
     expect(nombrePerfil("TIPO 05")).toContain("esquinas curvas");
+  });
+});
+
+describe("TIPO 04 con las aristas del chaflán curvadas", () => {
+  // La pieza real del CAD: pedido AR.26.03714, la misma que fija el contorno
+  // en 293,81. `altoDelante` es la altura total; el perfil no tiene otro alto.
+  const OPTS = {
+    ancho: 126, altoDelante: 90, chaflan: 13.2,
+    radioChaflanAbajo: 7, radioChaflanArriba: 7.5,
+  };
+
+  it("mantiene las bases y la altura del perfil", () => {
+    const { puntos } = perfilForma("TIPO 04", OPTS);
+    expect(puntos[0]).toEqual([0, 0]);
+    expect(puntos.at(-1)).toEqual([126, 0]);
+    expect(Math.max(...puntos.map(([, y]) => y))).toBeCloseTo(90, 6);
+  });
+
+  it("empieza a curvar donde la pared deja de ser recta", () => {
+    const { puntos } = perfilForma("TIPO 04", OPTS);
+    // pata 9,3338 + tangente de abajo 2,8995
+    expect(puntos[1]).toEqual([0, expect.closeTo(90 - 9.3338 - 2.8995, 3)]);
+  });
+
+  it("deja los puntos de tangencia sobre la recta del chaflán", () => {
+    // La recta del chaflán izquierdo pasa por el vértice virtual (0, alto−pata)
+    // con pendiente 1: y = x + (alto − pata).
+    const { puntos } = perfilForma("TIPO 04", OPTS);
+    const pata = 13.2 / Math.SQRT2;
+    const enLaRecta = puntos.filter(([x, y]) => Math.abs(y - (x + 90 - pata)) < 1e-6);
+    // Las dos tangencias del chaflán izquierdo, y el tramo recto entre ellas.
+    expect(enLaRecta.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("es simétrico respecto al centro", () => {
+    const { puntos } = perfilForma("TIPO 04", OPTS);
+    for (const [x, y] of puntos) {
+      expect(puntos.some(([sx, sy]) => (
+        Math.abs(sx - (126 - x)) < 1e-6 && Math.abs(sy - y) < 1e-6
+      ))).toBe(true);
+    }
+  });
+
+  it("con radios a cero da el chaflán vivo de seis puntos", () => {
+    const { puntos } = perfilForma("TIPO 04", { ancho: 126, altoDelante: 90, chaflan: 13.2 });
+    const pata = 13.2 / Math.SQRT2;
+    expect(puntos).toHaveLength(6);
+    expect(puntos[1][1]).toBeCloseTo(90 - pata, 6);
+    expect(puntos[2][0]).toBeCloseTo(pata, 6);
   });
 });

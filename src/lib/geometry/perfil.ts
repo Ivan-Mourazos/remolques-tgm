@@ -1,15 +1,21 @@
 import type { TipoPerfil } from "@/lib/calc/params";
+import { esquinaChaflan, GIRO_CHAFLAN } from "@/lib/geometry/chaflan";
 
 export interface PerfilOpts {
   ancho: number;
   altoDelante: number;
   alturaPico?: number;
+  /** Chaflán (TIPO 04): cara entre los dos vértices virtuales, no la pata. */
   chaflan?: number;
   radio?: number;
   /** Radio del arco de cumbrera (TIPO 03); 0 = pico vivo. */
   radioCumbrera?: number;
   /** Radio de los hombros (TIPO 03); 0 = esquina viva. */
   radioHombro?: number;
+  /** Radio de la arista del chaflán contra la pared (TIPO 04); 0 = viva. */
+  radioChaflanAbajo?: number;
+  /** Radio de la arista del chaflán contra el techo (TIPO 04); 0 = viva. */
+  radioChaflanArriba?: number;
 }
 
 type Pt = [number, number];
@@ -35,7 +41,6 @@ export function perfilForma(tipo: TipoPerfil, opts: PerfilOpts): PerfilForma {
   // `altoDelante` es la altura total. `alturaPico` (aguas) indica cuánto
   // descienden los hombros respecto a la cumbrera, no una altura adicional.
   const pico = Math.min(Math.max(opts.alturaPico ?? w * 0.12, 0), h);
-  const ch = Math.min(opts.chaflan ?? 15, w / 2, h);
   const r = Math.min(opts.radio ?? 15, w / 2, h);
 
   switch (tipo) {
@@ -119,11 +124,51 @@ export function perfilForma(tipo: TipoPerfil, opts: PerfilOpts): PerfilForma {
       puntos.push([w, 0]);
       return { puntos, aristas };
     }
-    case "TIPO 04":
-      return {
-        puntos: [[0, 0], [0, h - ch], [ch, h], [w - ch, h], [w, h - ch], [w, 0]],
-        aristas: [1, 2, 3, 4],
-      };
+    case "TIPO 04": {
+      // `chaflan` es la cara entre vértices virtuales, no la pata.
+      const e = esquinaChaflan({
+        ancho: w, alto: h, chaflan: opts.chaflan ?? 0,
+        radioAbajo: opts.radioChaflanAbajo, radioArriba: opts.radioChaflanArriba,
+      });
+      if (!e) return { puntos: [[0, 0], [0, h], [w, h], [w, 0]], aristas: [1, 2] };
+      if (e.radioAbajo === 0 && e.radioArriba === 0) {
+        return {
+          puntos: [[0, 0], [0, h - e.pata], [e.pata, h], [w - e.pata, h], [w, h - e.pata], [w, 0]],
+          aristas: [1, 2, 3, 4],
+        };
+      }
+      // Centros: el de abajo a `radioAbajo` de la pared, el de arriba a
+      // `radioArriba` del techo. Las aristas van en las tangencias, no en los
+      // vértices virtuales: los arcos son superficie lisa, igual que el TIPO 03.
+      const yTangenteAbajo = h - e.pata - e.tangenteAbajo;
+      const xTangenteArriba = e.pata + e.tangenteArriba;
+
+      // Se construye solo el lado izquierdo, de la tangencia con la pared a la
+      // tangencia con el techo, y el derecho sale de reflejarlo.
+      const izquierda: Pt[] = [[0, yTangenteAbajo]];
+      const aristasIzquierda: number[] = [0];
+      // Arco de abajo: de 180° a 135°, girando 45°. Su primer punto ya está.
+      izquierda.push(
+        ...arco(e.radioAbajo, yTangenteAbajo, e.radioAbajo, Math.PI, Math.PI - GIRO_CHAFLAN, 5).slice(1),
+      );
+      aristasIzquierda.push(izquierda.length - 1);
+      // Arco de arriba: de 135° a 90°. Su primer punto cierra el tramo recto.
+      const inicioArcoArriba = izquierda.length;
+      izquierda.push(
+        ...arco(xTangenteArriba, h - e.radioArriba, e.radioArriba, Math.PI - GIRO_CHAFLAN, Math.PI / 2, 5),
+      );
+      aristasIzquierda.push(inicioArcoArriba, izquierda.length - 1);
+
+      const derecha = [...izquierda].reverse().map(([x, y]) => [w - x, y] as Pt);
+      const puntos: Pt[] = [[0, 0], ...izquierda, ...derecha, [w, 0]];
+      // El punto i de la izquierda queda reflejado en 1 + L + (L − 1 − i).
+      const L = izquierda.length;
+      const aristas = [
+        ...aristasIzquierda.map((i) => 1 + i),
+        ...aristasIzquierda.map((i) => 1 + L + (L - 1 - i)).reverse(),
+      ];
+      return { puntos, aristas };
+    }
     case "TIPO 05": {
       const subida: Pt[] = [[0, 0], [0, h - r]];
       const arcoIzq = arco(r, h - r, r, Math.PI, Math.PI / 2, 8).slice(1);
