@@ -1,9 +1,14 @@
-import { aplicarValor, VALOR_CARA } from "@/lib/geometry/tono";
+import { aplicarValor, VALOR_PLANO } from "@/lib/geometry/tono";
 
+/**
+ * Un color por plano del dibujo, no por nombre de material. `cubiertaLejana`
+ * es la vertiente que queda al otro lado de la cumbrera, que recibe menos luz
+ * que la cercana.
+ */
 export interface ColoresLona {
-  techoClaro: string;
-  techo: string;
-  lateralClaro: string;
+  cubierta: string;
+  cubiertaLejana: string;
+  frontal: string;
   lateral: string;
 }
 
@@ -59,9 +64,11 @@ export function colorBaseMaterial(material: string): string {
 export function coloresMaterial(material: string): ColoresLona {
   const base = colorBaseMaterial(material);
   return {
-    techoClaro: aplicarValor(base, VALOR_CARA.techoClaro),
-    techo: aplicarValor(base, VALOR_CARA.techo),
-    lateralClaro: aplicarValor(base, VALOR_CARA.lateralClaro),
-    lateral: aplicarValor(base, VALOR_CARA.lateral),
+    cubierta: aplicarValor(base, VALOR_PLANO.cubierta),
+    // Entre la cubierta y el frontal: la vertiente lejana pierde luz pero
+    // sigue siendo cubierta.
+    cubiertaLejana: aplicarValor(base, (VALOR_PLANO.cubierta + VALOR_PLANO.frontal) / 2),
+    frontal: aplicarValor(base, VALOR_PLANO.frontal),
+    lateral: aplicarValor(base, VALOR_PLANO.lateral),
   };
 }

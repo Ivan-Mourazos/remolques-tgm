@@ -54,3 +54,20 @@ export const VALOR_CARA = {
   lateralClaro: 0.54,
   lateral: 0.36,
 } as const;
+
+/**
+ * Qué valor le toca a cada plano del dibujo.
+ *
+ * `VALOR_CARA` tiene nombres heredados del material; esto los traduce a los
+ * planos que de verdad se ven, que son tres. Existe porque colapsarlos fue un
+ * fallo real: al aplanar los rellenos, el paño frontal se pintó con el valor
+ * de un lateral y el frente pasó a leerse como si fuera otra pared lateral.
+ *
+ * El valor más oscuro queda libre para lo que no es superficie de lona, como
+ * la penumbra que se ve a través de la ventana.
+ */
+export const VALOR_PLANO = {
+  cubierta: VALOR_CARA.techoClaro,
+  frontal: VALOR_CARA.techo,
+  lateral: VALOR_CARA.lateralClaro,
+} as const;

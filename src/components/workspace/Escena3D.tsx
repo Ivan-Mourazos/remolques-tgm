@@ -512,18 +512,19 @@ function PanelVista({
       >
         {titulo}
       </text>
-      {/* Cada cara con su valor plano de la escala: cubierta la más clara,
-          paño cercano intermedio, lateral el más oscuro. El volumen sale del
-          contraste entre caras, no de degradados que el gris se comería. */}
+      {/* Tres planos visibles, tres valores propios: la cubierta mira arriba y
+          recibe más luz, el frontal mira al observador y el lateral se va de
+          la luz. El volumen sale de ese contraste, no de degradados que el
+          paso a gris se comería. */}
       <g>
         {/* El pinche (paño delantero o trasero) cubre la cara cercana. */}
-        <path d={`${d.contornoFrente}${d.cierrePinche}`} fill={colores.lateralClaro} stroke="none" />
+        <path d={`${d.contornoFrente}${d.cierrePinche}`} fill={colores.frontal} stroke="none" />
         {d.cubierta.map((franja, indice) => (
           <polygon
             key={indice}
             points={puntosSvg(franja.puntos)}
-            fill={franja.lado === "dcha" ? colores.techo : colores.techoClaro}
-            stroke={franja.lado === "dcha" ? colores.techo : colores.techoClaro}
+            fill={franja.lado === "dcha" ? colores.cubiertaLejana : colores.cubierta}
+            stroke={franja.lado === "dcha" ? colores.cubiertaLejana : colores.cubierta}
             strokeWidth={TRAZO_FINO}
           />
         ))}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { aplicarValor, luminancia, mezcla, VALOR_CARA } from "@/lib/geometry/tono";
+import { aplicarValor, luminancia, mezcla, VALOR_CARA, VALOR_PLANO } from "@/lib/geometry/tono";
 
 /** Colores muy distintos en tono y en claridad. */
 const MATERIALES = ["#2874b2", "#008351", "#1d2025", "#f4f4f0", "#b82b2f"];
@@ -74,5 +74,27 @@ describe("VALOR_CARA", () => {
   it("evita los extremos: ni negro empastado ni blanco que desaparece", () => {
     expect(VALOR_CARA.lateral).toBeGreaterThan(0.2);
     expect(VALOR_CARA.techoClaro).toBeLessThan(0.95);
+  });
+});
+
+describe("VALOR_PLANO", () => {
+  it("da a cada plano visible un valor propio", () => {
+    // El fallo que esto impide: al aplanar los rellenos, el paño frontal se
+    // pintó con el valor de un lateral y el frente pasó a leerse como si
+    // fuera otra pared lateral.
+    const valores = [VALOR_PLANO.cubierta, VALOR_PLANO.frontal, VALOR_PLANO.lateral];
+    expect(new Set(valores).size).toBe(3);
+  });
+
+  it("ordena los planos como los ilumina una sola fuente de luz", () => {
+    // La cubierta mira arriba y recibe más luz; el frontal mira al
+    // observador; el lateral se va de la luz.
+    expect(VALOR_PLANO.cubierta).toBeGreaterThan(VALOR_PLANO.frontal);
+    expect(VALOR_PLANO.frontal).toBeGreaterThan(VALOR_PLANO.lateral);
+  });
+
+  it("separa los tres planos lo bastante para distinguirlos impresos", () => {
+    expect(VALOR_PLANO.cubierta - VALOR_PLANO.frontal).toBeGreaterThanOrEqual(0.12);
+    expect(VALOR_PLANO.frontal - VALOR_PLANO.lateral).toBeGreaterThanOrEqual(0.12);
   });
 });
