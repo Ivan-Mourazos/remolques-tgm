@@ -49,12 +49,17 @@ export function esquinaChaflan({
   const pata = Math.min(chaflan / Math.SQRT2, ancho / 2, alto);
   const cara = pata * Math.SQRT2;
 
-  // Cada arco necesita su tangente en la recta que toca. Un radio no finito
-  // (NaN o Infinity) se trata como arista viva: se convierte en 0 en vez de
-  // propagarse (Math.max(NaN, 0) es NaN, y eso llegaría hasta caraRecta).
-  let rAbajo = Number.isFinite(radioAbajo) ? Math.max(radioAbajo, 0) : 0;
+  // Cada arco necesita su tangente en la recta que toca.
+  //
+  // Solo se neutraliza el NaN, que es el único que envenena el resultado:
+  // Math.max(NaN, 0) es NaN y llegaría hasta caraRecta. Un radio infinito no
+  // hace falta tocarlo y no conviene: el Math.min siguiente lo acota al límite
+  // de la pared o del techo y sale una esquina redondeada válida, mientras que
+  // tratarlo como no finito daría una arista viva en silencio. Y −Infinity ya
+  // lo resuelve el Math.max.
+  let rAbajo = Number.isNaN(radioAbajo) ? 0 : Math.max(radioAbajo, 0);
   rAbajo = Math.min(rAbajo, (alto - pata) / TANGENTE_MEDIA);
-  let rArriba = Number.isFinite(radioArriba) ? Math.max(radioArriba, 0) : 0;
+  let rArriba = Number.isNaN(radioArriba) ? 0 : Math.max(radioArriba, 0);
   rArriba = Math.min(rArriba, (ancho / 2 - pata) / TANGENTE_MEDIA);
 
   // Y entre los dos no pueden comerse la cara del chaflán.

@@ -86,11 +86,34 @@ describe("esquinaChaflan", () => {
     }
   });
 
-  it("trata un radio no finito como arista viva, sin propagar NaN a caraRecta", () => {
-    const e = esquinaChaflan({ ancho: 126, alto: 90, chaflan: 13.2, radioAbajo: NaN })!;
+  it("trata un radio NaN como arista viva, sin propagar NaN a caraRecta", () => {
+    const abajo = esquinaChaflan({ ancho: 126, alto: 90, chaflan: 13.2, radioAbajo: NaN })!;
+    expect(abajo.radioAbajo).toBe(0);
+    expect(Number.isFinite(abajo.caraRecta)).toBe(true);
+    expect(abajo.caraRecta).toBeCloseTo(13.2, 3);
+
+    const arriba = esquinaChaflan({ ancho: 126, alto: 90, chaflan: 13.2, radioArriba: NaN })!;
+    expect(arriba.radioArriba).toBe(0);
+    expect(Number.isFinite(arriba.caraRecta)).toBe(true);
+  });
+
+  it("un radio infinito se acota, no se convierte en arista viva", () => {
+    // Es el desenlace de una división por cero aguas arriba. Anularlo daría
+    // una esquina viva en silencio; acotarlo da la esquina redondeada más
+    // grande que cabe, que es lo que ya hacía antes de tocar la guarda.
+    //
+    // Manda la restricción de la cara: la tangente se come el chaflán entero
+    // antes de llegar al límite de la pared, así que no queda tramo recto.
+    const e = esquinaChaflan({ ancho: 126, alto: 90, chaflan: 13.2, radioAbajo: Infinity })!;
+    expect(e.radioAbajo).toBeGreaterThan(0);
+    expect(Number.isFinite(e.radioAbajo)).toBe(true);
+    expect(e.tangenteAbajo).toBeCloseTo(e.cara, 6);
+    expect(e.caraRecta).toBeCloseTo(0, 6);
+  });
+
+  it("un radio negativo infinito se trata como cero", () => {
+    const e = esquinaChaflan({ ancho: 126, alto: 90, chaflan: 13.2, radioAbajo: -Infinity })!;
     expect(e.radioAbajo).toBe(0);
-    expect(Number.isFinite(e.tangenteAbajo)).toBe(true);
-    expect(Number.isFinite(e.caraRecta)).toBe(true);
     expect(e.caraRecta).toBeCloseTo(13.2, 3);
   });
 
