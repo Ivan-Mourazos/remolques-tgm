@@ -48,7 +48,14 @@ El cimiento. Un solo sitio que resuelve pata, tangentes y acotado, para que perf
     ancho: number; alto: number; chaflan: number;
     radioAbajo?: number; radioArriba?: number;
   }): EsquinaChaflan | null;
+  /** Lo que una esquina redondeada recorta frente a la misma esquina viva. */
+  export function recorteEsquina(radio: number): number;
   ```
+
+`recorteEsquina` toma **solo el radio** y deriva la tangente por dentro: el giro
+siempre es de 45° en este módulo, así que pasar la tangente aparte permitiría un
+par incoherente y un ahorro de perímetro silenciosamente mal, justo en el número
+que sale a corte.
 
 - [ ] **Step 1: Escribir el test que falla**
 
@@ -325,8 +332,8 @@ Y la rama:
         radioAbajo: m.radioChaflanAbajo, radioArriba: m.radioChaflanArriba,
       });
       if (!e) return null;
-      const recorte = recorteEsquina(e.radioAbajo, e.tangenteAbajo)
-        + recorteEsquina(e.radioArriba, e.tangenteArriba);
+      // Los radios son los ya acotados por `esquinaChaflan`, no los de entrada.
+      const recorte = recorteEsquina(e.radioAbajo) + recorteEsquina(e.radioArriba);
       return 2 * (h - e.pata) + 2 * e.cara + (w - 2 * e.pata) - 2 * recorte;
     }
 ```
