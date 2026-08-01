@@ -15,8 +15,20 @@ describe("datos geométricos del PDF", () => {
 
   it("incluye la medida propia de chaflán y esquina redonda", () => {
     expect(datosGeometriaPdf({ ...emptyLona(), tipoPerfil: "TIPO 04", chaflan: 25 }))
-      .toEqual(["CHAFLÁN ESQUINA 25 CM"]);
+      .toEqual(["CHAFLÁN 25 CM"]);
     expect(datosGeometriaPdf({ ...emptyLona(), tipoPerfil: "TIPO 05", radioEsquina: 30 }))
       .toEqual(["RADIO ESQUINA 30 CM"]);
+  });
+
+  it("añade los radios del chaflán solo cuando alguno es mayor que cero", () => {
+    expect(datosGeometriaPdf({
+      ...emptyLona(), tipoPerfil: "TIPO 04", chaflan: 25,
+      radioChaflanAbajo: 7, radioChaflanArriba: 7.5,
+    })).toEqual(["CHAFLÁN 25 CM", "RADIOS 7 / 7,5 CM"]);
+    expect(datosGeometriaPdf({
+      ...emptyLona(), tipoPerfil: "TIPO 04", chaflan: 25, radioChaflanArriba: 5,
+    })).toEqual(["CHAFLÁN 25 CM", "RADIOS 0 / 5 CM"]);
+    expect(datosGeometriaPdf({ ...emptyLona(), tipoPerfil: "TIPO 04", chaflan: 25 }))
+      .toEqual(["CHAFLÁN 25 CM"]);
   });
 });

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import type { Punto2D } from "@/lib/geometry/curva";
 import { perfilForma } from "@/lib/geometry/perfil";
+import { esquinaChaflan } from "@/lib/geometry/chaflan";
 import {
   aristaLongitudinalVisible,
   caraExtrudidaVisible,
@@ -32,6 +33,10 @@ export interface Escena3DProps {
   radioEsquina?: number;
   /** Chaflán real de esquina (TIPO 04). */
   chaflan?: number;
+  /** Radio de la arista del chaflán contra la pared (TIPO 04); 0 = viva. */
+  radioChaflanAbajo?: number;
+  /** Radio de la arista del chaflán contra el techo (TIPO 04); 0 = viva. */
+  radioChaflanArriba?: number;
   tipoPerfil: TipoPerfil;
   ventana?: boolean;
   ventanaAncho?: number;
@@ -240,6 +245,8 @@ interface OpcionesVista {
   radioHombro: number;
   radioEsquina: number;
   chaflan: number;
+  radioChaflanAbajo: number;
+  radioChaflanArriba: number;
   conVentana: boolean;
   ventanaAncho: number;
   ventanaAlto: number;
@@ -266,6 +273,8 @@ function calcularVista(o: OpcionesVista) {
     radioCumbrera: o.radioCumbrera,
     radioHombro: o.radioHombro,
     chaflan: o.chaflan,
+    radioChaflanAbajo: o.radioChaflanAbajo,
+    radioChaflanArriba: o.radioChaflanArriba,
     radio: o.radioEsquina,
   });
   const forma = perfilForma(perfil, opts(o.anchoNear, o.altoNear));
@@ -446,8 +455,22 @@ function calcularVista(o: OpcionesVista) {
     })}`;
   const chaflanCota = o.modo === "lona" && o.tipoPerfil === "TIPO 04" && o.chaflan > 0
     ? (() => {
-        const inicio = frente.at(-3)!;
-        const fin = frente.at(-2)!;
+        // Los extremos de la cara no son siempre los vértices virtuales: cada
+        // radio le consume `tangente·√½` a la recta del chaflán. No se leen de
+        // frente.at(-3)/(-2): esos índices solo eran la cara cuando los dos
+        // radios eran cero, porque cada arco curvado inserta puntos y desplaza
+        // qué posición del array ocupa la cara.
+        const esquina = esquinaChaflan({
+          ancho: o.anchoNear, alto: o.altoNear, chaflan: o.chaflan,
+          radioAbajo: o.radioChaflanAbajo, radioArriba: o.radioChaflanArriba,
+        });
+        if (!esquina) return null;
+        const { pata, tangenteAbajo, tangenteArriba } = esquina;
+        const diagonal = Math.SQRT1_2;
+        const [inicio, fin] = proyecta([
+          [o.anchoNear - pata + tangenteArriba * diagonal, o.altoNear - tangenteArriba * diagonal],
+          [o.anchoNear - tangenteAbajo * diagonal, o.altoNear - pata + tangenteAbajo * diagonal],
+        ], 0, 0);
         const dx = fin.x - inicio.x;
         const dy = fin.y - inicio.y;
         const longitud = Math.hypot(dx, dy) || 1;
@@ -745,6 +768,8 @@ export function Escena3D(props: Escena3DProps) {
       radioHombro: props.radioHombro ?? 0,
       radioEsquina: props.radioEsquina ?? 0,
       chaflan: props.chaflan ?? 0,
+      radioChaflanAbajo: props.radioChaflanAbajo ?? 0,
+      radioChaflanArriba: props.radioChaflanArriba ?? 0,
       ventanaAncho: props.ventanaAncho ?? 0,
       ventanaAlto: props.ventanaAlto ?? 0,
       conBastilla: bastilla,
@@ -775,6 +800,7 @@ export function Escena3D(props: Escena3DProps) {
   }, [
     valido, props.modo, props.tipoPerfil, props.ancho, props.largo,
     props.aguas, props.radioCumbrera, props.radioHombro, props.radioEsquina, props.chaflan,
+    props.radioChaflanAbajo, props.radioChaflanArriba,
     props.ventana, props.ventanaAncho, props.ventanaAlto, props.ollaos, altoDelante, altoAtras, anchoAtras,
     bastilla,
   ]);
