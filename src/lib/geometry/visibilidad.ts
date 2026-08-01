@@ -18,8 +18,12 @@ function areaFirmada(poligono: Punto2D[]): number {
  * En las coordenadas de pantalla (Y crece hacia abajo), las caras de la
  * extrusión orientadas hacia la cámara recorren su contorno en sentido
  * antihorario y tienen área negativa.
+ *
+ * Sirve tanto para decidir qué aristas se dibujan como qué franjas se
+ * rellenan. Sin ella, las franjas del lado oculto se proyectan encima del
+ * paño cercano y lo tapan: el frente parece transparente.
  */
-function caraExtrudidaVisible(
+export function caraExtrudidaVisible(
   frente: Punto2D[],
   fondo: Punto2D[],
   indiceTramo: number,

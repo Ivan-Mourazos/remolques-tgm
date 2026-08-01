@@ -5,6 +5,7 @@ import type { Punto2D } from "@/lib/geometry/curva";
 import { perfilForma } from "@/lib/geometry/perfil";
 import {
   aristaLongitudinalVisible,
+  caraExtrudidaVisible,
   recortarFueraDePoligono,
 } from "@/lib/geometry/visibilidad";
 import { calcularVentanaFrontal } from "@/lib/geometry/ventana";
@@ -77,13 +78,22 @@ function caminoPerfil(puntos: Punto[]): string {
  * La cubierta se rellena por franjas (un cuadrilátero por segmento del perfil):
  * un único polígono perfil-delantero→perfil-trasero deja sin cubrir las franjas
  * laterales cuando el cierre recto corta por debajo del chaflán o la vertiente.
+ *
+ * Solo se rellenan las que miran a la cámara. Las del lado oculto se proyectan
+ * dentro del paño cercano y, al dibujarse después, lo tapan: el frente parecía
+ * transparente y se veía asomar el chaflán del otro lado.
+ *
+ * `desplazamiento` es el índice del primer punto dentro del perfil completo,
+ * porque aquí llegan los puntos del techo ya recortados.
  */
 function franjasCubierta(
   frente: Punto[], fondo: Punto[], picoTecho: number, conCumbrera: boolean,
+  perfilFrente: Punto[], perfilFondo: Punto[], desplazamiento: number,
 ): Array<{ puntos: Punto[]; lado: "izq" | "dcha" }> {
   const franjas: Array<{ puntos: Punto[]; lado: "izq" | "dcha" }> = [];
   const tramos = Math.min(frente.length, fondo.length) - 1;
   for (let i = 0; i < tramos; i += 1) {
+    if (!caraExtrudidaVisible(perfilFrente, perfilFondo, i + desplazamiento)) continue;
     franjas.push({
       puntos: [frente[i], frente[i + 1], fondo[i + 1], fondo[i]],
       lado: conCumbrera && i >= picoTecho ? "dcha" : "izq",
@@ -289,7 +299,10 @@ function calcularVista(o: OpcionesVista) {
     && ["TIPO 02", "TIPO 03"].includes(o.tipoPerfil)
     && picoTechoFrente > 0
     && picoTechoFrente < techoFrente.length - 1;
-  const cubierta = franjasCubierta(techoFrente, techoFondo, picoTechoFrente, tieneCumbrera);
+  // `techoFrente` empieza en el índice 1 del perfil: de ahí el desplazamiento.
+  const cubierta = franjasCubierta(
+    techoFrente, techoFondo, picoTechoFrente, tieneCumbrera, frente, fondo, 1,
+  );
   // Primero descartamos las aristas cuyas dos caras contiguas miran en
   // dirección opuesta a la cámara. Después, la cara cercana opaca recorta
   // cualquier tramo restante que se proyecte dentro de su contorno.
