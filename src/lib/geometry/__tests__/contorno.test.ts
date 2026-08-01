@@ -101,6 +101,24 @@ describe("TIPO 04 con las aristas del chaflán curvadas", () => {
     })).toBeCloseTo(293.81, 1);
   });
 
+  it("descuenta con los radios acotados, no con los que le pasan", () => {
+    // Con radios enormes los tres acotados de `esquinaChaflan` muerden. Si el
+    // contorno descontara con los radios crudos, el ahorro sería gigante y el
+    // resultado negativo: la lona saldría cortada de menos.
+    const contorno = contornoCalculado("TIPO 04", {
+      ancho: 126, alto: 90, chaflan: 13.2,
+      radioChaflanAbajo: 1e6, radioChaflanArriba: 1e6,
+    })!;
+    expect(contorno).toBeGreaterThan(0);
+    expect(contorno).toBeCloseTo(292.32, 1);
+  });
+
+  it("acota el chaflán que no cabe en la pieza y recalcula la cara", () => {
+    // Una cara enorme no puede dar una pata mayor que media pieza.
+    expect(contornoCalculado("TIPO 04", { ancho: 20, alto: 90, chaflan: 400 }))
+      .toBeCloseTo(188.28, 1);
+  });
+
   it("sin radios da la fórmula del chaflán vivo", () => {
     const pata = 13.2 / Math.SQRT2;
     expect(contornoCalculado("TIPO 04", { ancho: 126, alto: 90, chaflan: 13.2 }))
