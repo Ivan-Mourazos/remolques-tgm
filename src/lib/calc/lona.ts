@@ -83,7 +83,9 @@ export function calcLona(input: LonaInput, params: CalcParams): LonaResult {
     anchoAtras: r1(anchoAtras + params.demasiaLonaHecha),
   };
 
-  const ajuste = ajusteContorno(params, input.tipoPerfil);
+  const ajuste = ajusteContorno(params, input.tipoPerfil, {
+    abajo: input.radioChaflanAbajo, arriba: input.radioChaflanArriba,
+  });
   const contornoNuevo = Math.max(input.contorno ?? 0, 0);
   const contornoLegacy = Math.max(input.contornoScad ?? 0, 0);
   const usaContornoLegacy = input.contorno == null && contornoLegacy > 0;

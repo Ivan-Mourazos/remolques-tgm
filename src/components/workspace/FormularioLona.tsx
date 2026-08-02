@@ -21,7 +21,9 @@ export function FormularioLona({
   onCampoTocado?: (campo: string) => void;
 }) {
   const RECOGIDAS = opcionesConEtiqueta((params ?? DEFAULT_PARAMS).recogidas.map((r) => r.nombre));
-  const ajuste = ajusteContorno(params ?? DEFAULT_PARAMS, input.tipoPerfil);
+  const ajuste = ajusteContorno(params ?? DEFAULT_PARAMS, input.tipoPerfil, {
+    abajo: input.radioChaflanAbajo, arriba: input.radioChaflanArriba,
+  });
   const contornoVisible = input.contorno
     ?? Math.max((input.contornoScad ?? 0) - ajuste, 0);
   // El contorno se desarrolla sobre la LONA HECHA (ancho + demasía), no sobre
