@@ -33,6 +33,8 @@ export interface PlanteamientoStore {
   save(
     rec: Omit<PlanteamientoRecord, "id" | "createdAt" | "updatedAt"> & { id?: string },
   ): Promise<PlanteamientoRecord>;
+  /** Borra un planteamiento. Devuelve true si existía. Irreversible. */
+  delete(id: string): Promise<boolean>;
   getParams(): Promise<CalcParams>;
   saveParams(p: CalcParams): Promise<void>;
 }
