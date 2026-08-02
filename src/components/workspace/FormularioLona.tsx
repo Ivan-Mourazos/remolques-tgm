@@ -4,7 +4,7 @@ import type { Material } from "@/lib/calc/materiales-seed";
 import { ajusteContorno, DEFAULT_PARAMS, PERFILES, type CalcParams } from "@/lib/calc/params";
 import { contornoCalculado } from "@/lib/geometry/contorno";
 import { excelRound } from "@/lib/calc/redondeo";
-import { CampoCheck, CampoMaterial, CampoNum, CampoSelect, CampoTexto, Grupo, PasoFormulario } from "@/components/workspace/campos";
+import { CampoMaterial, CampoNum, CampoSelect, CampoSiNo, CampoTexto, Grupo, PasoFormulario } from "@/components/workspace/campos";
 import { MODOS_OLLAOS, opcionesConEtiqueta, TECNICOS } from "@/components/workspace/opciones-formulario";
 
 const fmt = (n: number) => n.toLocaleString("es-ES", { maximumFractionDigits: 1 });
@@ -68,16 +68,20 @@ export function FormularioLona({
       <div className="relative space-y-2 rounded-2xl border border-line bg-surface/95 p-2.5 shadow-[0_12px_32px_rgb(14_45_49/0.055)] backdrop-blur-sm focus-within:z-40">
         <PasoFormulario numero={1} titulo="Forma del remolque" columnas={4}>
           <CampoSelect name="tipoPerfil" label="Tipo" span={2} value={input.tipoPerfil} opciones={PERFILES_VISIBLES}
+            sinElegir="Elige el perfil" error={errores.tipoPerfil}
             onChange={(v) => set("tipoPerfil", v as LonaInput["tipoPerfil"])} />
           <CampoMaterial compacto span={2} value={input.material} opciones={materiales} error={errores.material}
             onChange={(v) => set("material", v)} />
         </PasoFormulario>
         <PasoFormulario numero={2} titulo="Recogidas">
           <CampoSelect name="recogeDelante" label="Delante" value={input.recogeDelante} opciones={RECOGIDAS}
+            sinElegir="Elige la recogida" error={errores.recogeDelante}
             onChange={(v) => set("recogeDelante", v)} />
           <CampoSelect name="recogeAtras" label="Atrás" value={input.recogeAtras} opciones={RECOGIDAS}
+            sinElegir="Elige la recogida" error={errores.recogeAtras}
             onChange={(v) => set("recogeAtras", v)} />
-          <CampoCheck label="Bastilla enfundar" value={input.bastillaEnfundar} onChange={(v) => set("bastillaEnfundar", v)} />
+          <CampoSiNo name="bastillaEnfundar" label="Bastilla enfundar" error={errores.bastillaEnfundar}
+            value={input.bastillaEnfundar} onChange={(v) => set("bastillaEnfundar", v)} />
         </PasoFormulario>
         <PasoFormulario numero={3} titulo="Medidas · cm" columnas={4}>
           <CampoNum name="cantidad" error={errores.cantidad} label="Cantidad" value={input.cantidad} onChange={(v) => set("cantidad", v)} />
@@ -129,6 +133,7 @@ export function FormularioLona({
         <PasoFormulario numero={4} titulo="Ajustes finales" columnas={4} ultimo>
           <div className="col-span-2 grid grid-cols-2 gap-2 rounded-xl border border-line bg-surface-2/55 p-2 sm:col-span-4 sm:grid-cols-4">
             <CampoSelect name="modoOllaos" label="Distribución de ollaos" span={2} value={input.modoOllaos} opciones={MODOS_OLLAOS}
+              sinElegir="Elige el reparto" error={errores.modoOllaos}
               onChange={(v) => set("modoOllaos", v as LonaInput["modoOllaos"])} />
             {input.modoOllaos === "REPARTIDOS" ? (
               <>
@@ -144,7 +149,8 @@ export function FormularioLona({
           </div>
           <div className="col-span-2 grid grid-cols-2 gap-2">
             <div className="col-span-2">
-              <CampoCheck label="Ventana" value={input.ventana} onChange={(v) => set("ventana", v)} />
+              <CampoSiNo name="ventana" label="Ventana" error={errores.ventana}
+                value={input.ventana} onChange={(v) => set("ventana", v)} />
             </div>
             {input.ventana && (
               <>
@@ -156,7 +162,8 @@ export function FormularioLona({
             )}
           </div>
           <div className="col-span-2">
-            <CampoCheck label="Rotulación" value={input.rotulacion} onChange={(v) => set("rotulacion", v)} />
+            <CampoSiNo name="rotulacion" label="Rotulación" error={errores.rotulacion}
+              value={input.rotulacion} onChange={(v) => set("rotulacion", v)} />
           </div>
         </PasoFormulario>
       </div>

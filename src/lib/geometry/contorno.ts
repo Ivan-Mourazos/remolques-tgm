@@ -23,11 +23,13 @@ export interface MedidasContorno {
 /**
  * Longitud exacta del contorno terminado (lateral + cubierta + lateral, sin la
  * base). Devuelve null si falta el dato que ese perfil necesita: el chaflán en
- * el TIPO 04 y el radio de esquina en el TIPO 05. El TIPO 03 se mide sobre el
- * perfil teórico de líneas (laterales, vertientes y vértice) y cada radio
+ * el TIPO 04 y el radio de esquina en el TIPO 05. También si aún no se ha
+ * elegido perfil: sin forma no hay contorno que medir. El TIPO 03 se mide sobre
+ * el perfil teórico de líneas (laterales, vertientes y vértice) y cada radio
  * tangente recorta exactamente su esquina: 2·r·tan(φ/2) − r·φ.
  */
-export function contornoCalculado(tipo: TipoPerfil, m: MedidasContorno): number | null {
+export function contornoCalculado(tipo: TipoPerfil | "", m: MedidasContorno): number | null {
+  if (!tipo) return null;
   const w = m.ancho;
   const h = m.alto;
   if (!(w > 0) || !(h > 0)) return null;
