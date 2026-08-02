@@ -24,6 +24,14 @@ export function erroresPlanteamiento(input: LonaInput | BaquetonInput): ErrorPla
     agregar(!positivo(input.baqueton), "baqueton", "Introduce la medida del baquetón.");
   } else {
     agregar(!positivo(input.altoDelante), "altoDelante", "Introduce el alto delantero.");
+    // Las decisiones propias de la lona, con el mismo criterio: mientras no se
+    // elija el perfil no se sabe qué medidas hacen falta, y las comprobaciones
+    // de aguas, chaflán y radio de abajo callan a propósito hasta entonces.
+    agregar(!input.tipoPerfil, "tipoPerfil", "Elige el tipo de perfil del remolque.");
+    agregar(!input.recogeDelante, "recogeDelante", "Indica la recogida de delante.");
+    agregar(!input.recogeAtras, "recogeAtras", "Indica la recogida de atrás.");
+    agregar(input.ventana == null, "ventana", "Indica si lleva ventana.");
+    agregar(input.bastillaEnfundar == null, "bastillaEnfundar", "Indica si lleva bastilla de enfundar.");
     agregar(
       ["TIPO 02", "TIPO 03"].includes(input.tipoPerfil) && !positivo(input.aguas),
       "aguas",
@@ -35,15 +43,18 @@ export function erroresPlanteamiento(input: LonaInput | BaquetonInput): ErrorPla
       "radioEsquina",
       "Introduce el radio de esquina.",
     );
-    agregar(input.ventana && !positivo(input.ventanaAncho), "ventanaAncho", "Introduce el ancho de la ventana.");
-    agregar(input.ventana && !positivo(input.ventanaAlto), "ventanaAlto", "Introduce el alto de la ventana.");
+    // `ventana` ya puede estar sin elegir (null), y `null` no es un booleano:
+    // solo un «sí» explícito pide las medidas. El comportamiento es el de
+    // siempre —sin ventana no se piden—, el `=== true` es para el tipo.
+    agregar(input.ventana === true && !positivo(input.ventanaAncho), "ventanaAncho", "Introduce el ancho de la ventana.");
+    agregar(input.ventana === true && !positivo(input.ventanaAlto), "ventanaAlto", "Introduce el alto de la ventana.");
     agregar(
-      input.ventana && positivo(input.ventanaAncho) && Number(input.ventanaAncho) >= input.ancho,
+      input.ventana === true && positivo(input.ventanaAncho) && Number(input.ventanaAncho) >= input.ancho,
       "ventanaAncho",
       "El ancho de la ventana debe ser menor que el ancho del remolque.",
     );
     agregar(
-      input.ventana && positivo(input.ventanaAlto) && Number(input.ventanaAlto) >= input.altoDelante,
+      input.ventana === true && positivo(input.ventanaAlto) && Number(input.ventanaAlto) >= input.altoDelante,
       "ventanaAlto",
       "El alto de la ventana debe ser menor que el alto delantero.",
     );
@@ -53,6 +64,10 @@ export function erroresPlanteamiento(input: LonaInput | BaquetonInput): ErrorPla
       "Confirma el contorno de corte antes de guardar o generar el PDF.",
     );
   }
+
+  // Una decisión sin tomar no es un «no»: es que nadie ha mirado el dato.
+  agregar(!input.modoOllaos, "modoOllaos", "Elige cómo van repartidos los ollaos.");
+  agregar(input.rotulacion == null, "rotulacion", "Indica si lleva rotulación.");
 
   if (input.modoOllaos === "REPARTIDOS") {
     agregar(!positivo(input.pasoOllaos), "pasoOllaos", "El paso de ollaos debe ser mayor que cero.");

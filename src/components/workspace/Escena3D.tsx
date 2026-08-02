@@ -11,7 +11,7 @@ import {
 } from "@/lib/geometry/visibilidad";
 import { calcularVentanaFrontal } from "@/lib/geometry/ventana";
 import { coloresMaterial } from "@/lib/geometry/color-lona";
-import { controlDescuelgue, flechaDescuelgue, tamanoSimbolo } from "@/lib/geometry/caida";
+import { controlDescuelgue, flechaDescuelgue, marcasDistinguibles, tamanoSimbolo } from "@/lib/geometry/caida";
 import type { TipoPerfil } from "@/lib/calc/params";
 
 type Punto = Punto2D;
@@ -37,15 +37,16 @@ export interface Escena3DProps {
   radioChaflanAbajo?: number;
   /** Radio de la arista del chaflán contra el techo (TIPO 04); 0 = viva. */
   radioChaflanArriba?: number;
-  tipoPerfil: TipoPerfil;
-  ventana?: boolean;
+  /** "" = sin elegir: sin forma decidida no hay remolque que dibujar. */
+  tipoPerfil: TipoPerfil | "";
+  ventana?: boolean | null;
   ventanaAncho?: number;
   ventanaAlto?: number;
   /** Recogidas: unión vertical del paño de contorno con los paños delantero/trasero. */
   recogeDelante?: string;
   recogeAtras?: string;
   /** Refuerzo perimetral: se dibuja como contorno de doble línea. */
-  bastillaEnfundar?: boolean;
+  bastillaEnfundar?: boolean | null;
   material?: string;
   observaciones?: string;
   onObservacionesChange?: (value: string) => void;
@@ -441,13 +442,14 @@ function calcularVista(o: OpcionesVista) {
   };
   const insetOllao = radioOllao + 2.5;
   // Los ollaos van por dentro de la lona, no sobre el borde, y siguen el
-  // dobladillo: si el borde cede, ellos ceden con él.
-  const marcasOllaos = [
+  // dobladillo: si el borde cede, ellos ceden con él. En la esquina el del
+  // frente y el del lateral se superponen al proyectarse, y ahí solo cabe uno.
+  const marcasOllaos = marcasDistinguibles([
     ...enTramo(o.ollaosNear, o.anchoNear, baseIzq, baseDcha, ctrlFrente)
       .map((p) => ({ x: p.x, y: p.y - insetOllao })),
     ...enTramo(o.ollaosLaterales, o.largo, lateralDesde, lateralHasta, ctrlLateral)
       .map((p) => ({ x: p.x + normalLateral.x, y: p.y + normalLateral.y })),
-  ];
+  ], radioOllao * 2);
   // Costuras verticales paño–contorno («el alto de los lados»): donde va la recogida.
   const costuraIzq: Costura = { x: frente[0].x, yBase: frente[0].y, yTop: frente[1].y };
   const costuraDcha: Costura = { x: frente.at(-1)!.x, yBase: frente.at(-1)!.y, yTop: frente.at(-2)!.y };
@@ -765,11 +767,17 @@ export function Escena3D(props: Escena3DProps) {
   const altoAtras = props.modo === "baqueton"
     ? (props.baqueton ?? 0)
     : (props.altoAtras > 0 ? props.altoAtras : props.altoDelante);
+  // Un baquetón siempre se dibuja recto; una lona necesita que se haya elegido
+  // el perfil, y que estén las medidas que ese perfil pide.
   const geometriaPerfilCompleta = props.modo === "baqueton"
-    || (!["TIPO 02", "TIPO 03"].includes(props.tipoPerfil) || (props.aguas ?? 0) > 0)
+    || props.tipoPerfil !== ""
+      && (!["TIPO 02", "TIPO 03"].includes(props.tipoPerfil) || (props.aguas ?? 0) > 0)
       && (props.tipoPerfil !== "TIPO 04" || (props.chaflan ?? 0) > 0)
       && (props.tipoPerfil !== "TIPO 05" || (props.radioEsquina ?? 0) > 0);
   const valido = props.largo > 0 && props.ancho > 0 && altoDelante > 0 && geometriaPerfilCompleta;
+  // `valido` ya impide llegar aquí sin perfil; el respaldo solo existe para que
+  // el dibujo, que siempre trabaja sobre una forma concreta, no admita el vacío.
+  const perfilDibujado: TipoPerfil = props.tipoPerfil || "TIPO 01";
 
   const anchoAtras = (props.anchoAtras ?? 0) > 0 ? props.anchoAtras! : props.ancho;
   const bastilla = props.modo === "lona" && (props.bastillaEnfundar ?? false);
@@ -777,7 +785,7 @@ export function Escena3D(props: Escena3DProps) {
     if (!valido) return null;
     const base = {
       modo: props.modo,
-      tipoPerfil: props.tipoPerfil,
+      tipoPerfil: perfilDibujado,
       largo: props.largo,
       aguas: props.aguas ?? 0,
       radioCumbrera: props.radioCumbrera ?? 0,
@@ -814,7 +822,7 @@ export function Escena3D(props: Escena3DProps) {
     });
     return { delantera, trasera };
   }, [
-    valido, props.modo, props.tipoPerfil, props.ancho, props.largo,
+    valido, props.modo, perfilDibujado, props.ancho, props.largo,
     props.aguas, props.radioCumbrera, props.radioHombro, props.radioEsquina, props.chaflan,
     props.radioChaflanAbajo, props.radioChaflanArriba,
     props.ventana, props.ventanaAncho, props.ventanaAlto, props.ollaos, altoDelante, altoAtras, anchoAtras,

@@ -34,7 +34,8 @@ const bordeNegro = {
 // Tolerante con registros antiguos: campos que aún no existían llegan undefined.
 const num = (n: number | null | undefined) =>
   typeof n === "number" && Number.isFinite(n) ? Number(n.toFixed(2)) : "-";
-const siNo = (v: boolean) => (v ? "SÍ" : "NO");
+/** «Sin elegir» no es un «NO»: imprimirlo como tal sería inventar la decisión. */
+const siNo = (v: boolean | null | undefined) => (v == null ? "-" : v ? "SÍ" : "NO");
 
 function valor(cell: Cell, value: string | number | null, negrita = false) {
   cell.value = value;
@@ -137,17 +138,19 @@ function datosLona(ws: Worksheet, rec: PlanteamientoRecord, material?: Material)
     "Alto detrás",
     num(i.altoAtras > 0 ? i.altoAtras : i.altoDelante),
   ], ["Aguas", num(i.aguas ?? 0)]);
-  campoPar(ws, 9, ["Perfil", nombrePerfil(i.tipoPerfil)], ["Contorno remolque", num(r.contornoIntroducido)]);
+  campoPar(ws, 9, ["Perfil", i.tipoPerfil ? nombrePerfil(i.tipoPerfil) : "-"], ["Contorno remolque", num(r.contornoIntroducido)]);
   campoPar(ws, 10, ["Recoge delante", r.recogeDelanteTexto], ["Recoge atrás", r.recogeAtrasTexto]);
   campoPar(ws, 11, ["Bastilla enfundar", siNo(i.bastillaEnfundar)], [
     "Ventana",
-    i.ventana
-      ? (i.ventanaAncho ?? 0) > 0 && (i.ventanaAlto ?? 0) > 0
-        ? `${num(i.ventanaAncho!)} × ${num(i.ventanaAlto!)} cm`
-        : "SÍ · MEDIDAS PENDIENTES"
-      : "NO",
+    i.ventana == null
+      ? "-"
+      : i.ventana
+        ? (i.ventanaAncho ?? 0) > 0 && (i.ventanaAlto ?? 0) > 0
+          ? `${num(i.ventanaAncho!)} × ${num(i.ventanaAlto!)} cm`
+          : "SÍ · MEDIDAS PENDIENTES"
+        : "NO",
   ]);
-  campoPar(ws, 12, ["Ollaos", i.modoOllaos], ["Paso objetivo", num(i.pasoOllaos)]);
+  campoPar(ws, 12, ["Ollaos", i.modoOllaos || "-"], ["Paso objetivo", num(i.pasoOllaos)]);
   campoAncho(ws, 13, "Material", i.material || "-");
   campoPar(ws, 14, ["Bobina almacén", material?.codigoBobina ?? "MANUAL"], ["Stock Arzúa", material?.stockArzua ?? "-"]);
   campoAncho(ws, 15, "Rotulación", siNo(i.rotulacion));
@@ -174,8 +177,8 @@ function datosBaqueton(ws: Worksheet, rec: PlanteamientoRecord, material?: Mater
   seccion(ws, 5, "DATOS INTRODUCIDOS");
   campoPar(ws, 6, ["Cantidad", i.cantidad], ["Largo pedido", num(i.largo)]);
   campoPar(ws, 7, ["Ancho pedido", num(i.ancho)], ["Baquetón", num(i.baqueton)]);
-  campoPar(ws, 8, ["Cliente específico", i.clienteEspecifico || "-"], ["Ollaos", i.modoOllaos]);
-  campoPar(ws, 9, ["Paso objetivo", num(i.pasoOllaos)], ["Rotulación", i.rotulacion ? "SÍ" : "NO"]);
+  campoPar(ws, 8, ["Cliente específico", i.clienteEspecifico || "-"], ["Ollaos", i.modoOllaos || "-"]);
+  campoPar(ws, 9, ["Paso objetivo", num(i.pasoOllaos)], ["Rotulación", siNo(i.rotulacion)]);
   campoAncho(ws, 10, "", "");
   campoAncho(ws, 11, "Material", i.material || "-");
   campoPar(ws, 12, ["Bobina almacén", material?.codigoBobina ?? "MANUAL"], ["Stock Arzúa", material?.stockArzua ?? "-"]);

@@ -51,3 +51,27 @@ export const MINIMO_SIMBOLO = 7;
 export function tamanoSimbolo(tamanoBase: number): number {
   return Math.max(tamanoBase * FACTOR_SIMBOLO, MINIMO_SIMBOLO);
 }
+
+/**
+ * Descarta las marcas que la proyección ha juntado tanto que se dibujarían una
+ * encima de otra, conservando siempre la primera de cada grupo.
+ *
+ * El caso que lo motiva es la esquina: el último ollao del frente y el primero
+ * del lateral están a 2,5 cm del mismo vértice, pero en caras perpendiculares.
+ * De verdad los separan 3,5 cm; en perspectiva el lateral va escorzado y caen a
+ * un píxel, mientras el símbolo mide siete. Encogerlos no es salida —harían
+ * falta décimas de píxel, muy por debajo de `MINIMO_SIMBOLO`—, así que el
+ * dibujo enseña lo que este punto de vista puede distinguir y el reparto exacto
+ * se lee en la tabla de ollaos, que es donde lleva cota.
+ */
+export function marcasDistinguibles(marcas: Punto[], separacionMinima: number): Punto[] {
+  if (!(separacionMinima > 0)) return marcas;
+  const distinguibles: Punto[] = [];
+  for (const marca of marcas) {
+    const tapada = distinguibles.some(
+      (otra) => Math.hypot(marca.x - otra.x, marca.y - otra.y) < separacionMinima,
+    );
+    if (!tapada) distinguibles.push(marca);
+  }
+  return distinguibles;
+}

@@ -63,7 +63,7 @@ export interface RadiosChaflan {
  * asentarse, así que sigue al radio y no al nombre del perfil (decisión de
  * Iván, 2026-08-01, al añadirse el chaflán con aristas curvadas).
  */
-export function perfilTieneCurva(tipo: TipoPerfil, radiosChaflan?: RadiosChaflan): boolean {
+export function perfilTieneCurva(tipo: TipoPerfil | "", radiosChaflan?: RadiosChaflan): boolean {
   if (tipo === "TIPO 03" || tipo === "TIPO 05") return true;
   if (tipo !== "TIPO 04") return false;
   return (radiosChaflan?.abajo ?? 0) > 0 || (radiosChaflan?.arriba ?? 0) > 0;
@@ -71,7 +71,7 @@ export function perfilTieneCurva(tipo: TipoPerfil, radiosChaflan?: RadiosChaflan
 
 /** Suma de bastillas (y demasía de curva si procede) sobre el contorno real. */
 export function ajusteContorno(
-  params: CalcParams, tipo: TipoPerfil, radiosChaflan?: RadiosChaflan,
+  params: CalcParams, tipo: TipoPerfil | "", radiosChaflan?: RadiosChaflan,
 ): number {
   return params.ajusteContornoBase
     + (perfilTieneCurva(tipo, radiosChaflan) ? params.ajusteContornoCurva : 0);

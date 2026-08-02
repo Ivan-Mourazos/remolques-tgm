@@ -7,13 +7,13 @@ export interface BaquetonInput {
   cabecera: CabeceraInput;
   cantidad: number; largo: number; ancho: number; baqueton: number;
   clienteEspecifico: string;
-  modoOllaos: "REPARTIDOS" | "SEGUN SE INDICA";
+  modoOllaos: "REPARTIDOS" | "SEGUN SE INDICA" | "";
   pasoOllaos: number;
   /** Distancia del primer y último ollao al borde; por defecto la de los parámetros. */
   primerOllao?: number;
   ollaosManuales: { laterales: number[]; atras: number[]; delante: number[] };
-  /** Solo se indica si va rotulado; el contenido no forma parte del planteamiento. */
-  rotulacion: boolean;
+  /** Solo se indica si va rotulado. null = sin elegir. */
+  rotulacion: boolean | null;
   material: string; observaciones: string;
 }
 
@@ -46,8 +46,11 @@ export function calcBaqueton(input: BaquetonInput, params: CalcParams): Baqueton
   };
 
   const ollaos = calcOllaos(remolqueHecho.largo, remolqueHecho.ancho, input.pasoOllaos, params, input.primerOllao);
-  const reparto =
-    input.modoOllaos === "SEGUN SE INDICA"
+  // Sin modo elegido no se reparte nada, igual que en la lona: un reparto que
+  // nadie ha confirmado acabaría dibujado en la hoja de taller.
+  const reparto = input.modoOllaos === ""
+    ? { laterales: [], atras: [], delante: [] }
+    : input.modoOllaos === "SEGUN SE INDICA"
       ? input.ollaosManuales
       : {
           laterales: ollaos.largo.posiciones,

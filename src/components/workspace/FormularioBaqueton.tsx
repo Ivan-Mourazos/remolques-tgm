@@ -2,7 +2,7 @@
 import type { BaquetonInput } from "@/lib/calc/baqueton";
 import type { Material } from "@/lib/calc/materiales-seed";
 import { DEFAULT_PARAMS, type CalcParams } from "@/lib/calc/params";
-import { CampoCheck, CampoMaterial, CampoNum, CampoSelect, CampoTexto, Grupo, PasoFormulario } from "@/components/workspace/campos";
+import { CampoMaterial, CampoNum, CampoSelect, CampoSiNo, CampoTexto, Grupo, PasoFormulario } from "@/components/workspace/campos";
 import { MODOS_OLLAOS, opcionesConEtiqueta, TECNICOS } from "@/components/workspace/opciones-formulario";
 
 export function FormularioBaqueton({
@@ -46,6 +46,7 @@ export function FormularioBaqueton({
             onChange={(v) => set("material", v)} />
           <div className="col-span-2 grid grid-cols-2 gap-2 rounded-xl border border-line bg-surface-2/55 p-2 sm:col-span-4 sm:grid-cols-4">
             <CampoSelect name="modoOllaos" label="Distribución de ollaos" span={2} value={input.modoOllaos} opciones={MODOS_OLLAOS}
+              sinElegir="Elige el reparto" error={errores.modoOllaos}
               onChange={(v) => set("modoOllaos", v as BaquetonInput["modoOllaos"])} />
             {input.modoOllaos === "REPARTIDOS" ? (
               <>
@@ -60,7 +61,8 @@ export function FormularioBaqueton({
             )}
           </div>
           <div className="col-span-2">
-            <CampoCheck label="Rotulación" value={input.rotulacion} onChange={(v) => set("rotulacion", v)} />
+            <CampoSiNo name="rotulacion" label="Rotulación" error={errores.rotulacion}
+              value={input.rotulacion} onChange={(v) => set("rotulacion", v)} />
           </div>
         </PasoFormulario>
       </div>

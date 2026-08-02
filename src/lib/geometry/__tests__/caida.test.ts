@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  controlDescuelgue, flechaDescuelgue, MINIMO_SIMBOLO, tamanoSimbolo,
+  controlDescuelgue, flechaDescuelgue, MINIMO_SIMBOLO, marcasDistinguibles, tamanoSimbolo,
 } from "@/lib/geometry/caida";
 
 describe("flechaDescuelgue", () => {
@@ -56,5 +56,36 @@ describe("tamanoSimbolo", () => {
 
   it("sigue creciendo con el tamaño real por encima del mínimo", () => {
     expect(tamanoSimbolo(40)).toBeGreaterThan(tamanoSimbolo(20));
+  });
+});
+
+describe("marcasDistinguibles", () => {
+  it("deja pasar las marcas que se separan lo suficiente", () => {
+    const fila = [{ x: 0, y: 0 }, { x: 14, y: 0 }, { x: 28, y: 0 }];
+    expect(marcasDistinguibles(fila, 7)).toEqual(fila);
+  });
+
+  it("descarta la que la perspectiva ha dejado encima de otra", () => {
+    // El caso real de la esquina: el último ollao del frente y el primero del
+    // lateral, a 2,5 cm del mismo vértice pero en caras perpendiculares, caen
+    // a un píxel en pantalla mientras el símbolo mide 7.
+    const frente = { x: 355.7, y: 338 };
+    const lateral = { x: 354.7, y: 338.1 };
+    expect(marcasDistinguibles([frente, lateral], 7)).toEqual([frente]);
+  });
+
+  it("conserva la primera de cada grupo y respeta el orden", () => {
+    const marcas = [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 20, y: 0 }, { x: 21, y: 0 }];
+    expect(marcasDistinguibles(marcas, 7)).toEqual([{ x: 0, y: 0 }, { x: 20, y: 0 }]);
+  });
+
+  it("acepta las que se tocan justo sin llegar a solaparse", () => {
+    const marcas = [{ x: 0, y: 0 }, { x: 7, y: 0 }];
+    expect(marcasDistinguibles(marcas, 7)).toEqual(marcas);
+  });
+
+  it("no toca nada cuando no hay separación que exigir", () => {
+    const marcas = [{ x: 0, y: 0 }, { x: 0, y: 0 }];
+    expect(marcasDistinguibles(marcas, 0)).toEqual(marcas);
   });
 });

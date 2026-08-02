@@ -95,6 +95,44 @@ export function CampoTexto(props: {
   );
 }
 
+/**
+ * Sí / No que arranca vacío.
+ *
+ * Una casilla no vale aquí: marcada o desmarcada siempre afirma algo, y lo que
+ * hace falta es distinguir «no lleva» —una decisión— de «nadie lo ha mirado».
+ */
+export function CampoSiNo(props: {
+  label: string; value: boolean | null; onChange: (v: boolean) => void;
+  name?: string; error?: string; ancho?: boolean; span?: 1 | 2 | 3;
+}) {
+  const errorId = useId();
+  const opcion = (valor: boolean, texto: string) => (
+    <button
+      type="button"
+      data-campo={valor ? props.name : undefined}
+      aria-pressed={props.value === valor}
+      onClick={() => props.onChange(valor)}
+      className={`min-h-8 flex-1 rounded-lg border px-2 text-[12px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold/15 ${
+        props.value === valor
+          ? "border-gold/60 bg-gold/10 text-ink"
+          : "border-line bg-surface text-ink-2 hover:border-line-2"
+      }`}
+    >
+      {texto}
+    </button>
+  );
+  return (
+    <label className={`flex min-w-0 flex-col gap-1 text-[12px] ${columna(props.ancho, props.span)}`}>
+      <span className="font-bold text-muted">{props.label}</span>
+      <div className={`flex gap-1.5 ${props.error ? "rounded-lg ring-2 ring-red-500/40" : ""}`}>
+        {opcion(true, "Sí")}
+        {opcion(false, "No")}
+      </div>
+      <MensajeError id={errorId} mensaje={props.error} />
+    </label>
+  );
+}
+
 export function CampoSelect(props: {
   label: string;
   value: string;
@@ -104,6 +142,9 @@ export function CampoSelect(props: {
   span?: 1 | 2 | 3;
   name?: string;
   error?: string;
+  /** Texto a mostrar mientras no se ha elegido nada. Sin él, un valor vacío
+   *  se pinta como la primera opción, y el campo aparenta estar decidido. */
+  sinElegir?: string;
 }) {
   const listId = useId();
   const labelId = useId();
@@ -112,8 +153,13 @@ export function CampoSelect(props: {
   const opciones = props.opciones.map((opcion) => (
     typeof opcion === "string" ? { value: opcion, label: opcion } : opcion
   ));
+  const sinElegir = Boolean(props.sinElegir) && !props.value;
   const opcionActual = opciones.find((opcion) => opcion.value === props.value)
-    ?? (props.value ? { value: props.value, label: props.value } : opciones[0]);
+    ?? (props.value
+      ? { value: props.value, label: props.value }
+      : sinElegir
+        ? { value: "", label: props.sinElegir! }
+        : opciones[0]);
   const indiceActual = Math.max(opciones.findIndex((opcion) => opcion.value === props.value), 0);
   const [indiceActivo, setIndiceActivo] = useState(indiceActual);
 
@@ -165,7 +211,12 @@ export function CampoSelect(props: {
         }}
         className={`${control} ${props.error ? controlError : ""} flex w-full items-center justify-between gap-2 text-left`}
       >
-        <span id={`${listId}-value`} className="min-w-0 truncate">{opcionActual?.label ?? ""}</span>
+        <span
+          id={`${listId}-value`}
+          className={`min-w-0 truncate ${sinElegir ? "font-semibold text-muted-2" : ""}`}
+        >
+          {opcionActual?.label ?? ""}
+        </span>
         <span aria-hidden className={`shrink-0 text-[10px] font-black text-muted transition-transform ${abierto ? "rotate-180 text-gold-2" : ""}`}>⌄</span>
       </button>
 
@@ -373,20 +424,5 @@ export function CampoMaterial(props: {
         </div>
       )}
     </div>
-  );
-}
-
-export function CampoCheck(props: { label: string; value: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <label
-      className={`flex min-h-8 w-full cursor-pointer select-none items-center gap-2 self-end rounded-lg border px-2.5 py-1 text-[12px] font-bold transition-colors ${
-        props.value
-          ? "border-gold/60 bg-gold/10 text-ink"
-          : "border-line bg-surface text-ink-2 hover:border-line-2"
-      }`}
-    >
-      <input className="h-4 w-4 accent-gold" type="checkbox" checked={props.value} onChange={(e) => props.onChange(e.target.checked)} />
-      {props.label}
-    </label>
   );
 }

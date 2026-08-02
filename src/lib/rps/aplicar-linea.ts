@@ -77,8 +77,14 @@ export function crearInputDesdeRps(
       altoDelante: linea.altoDelante ?? altoComun,
       altoAtras: linea.altoAtras ?? linea.altoDelante ?? altoComun,
       aguas: linea.aguas ?? 0,
-      tipoPerfil: (linea.aguas ?? 0) > 0 ? "TIPO 02" : "TIPO 01",
+      // El perfil no lo aporta RPS: unas aguas no dicen si son rectas o curvas,
+      // así que se queda sin elegir y lo decide quien plantea.
       ventana: linea.ventana,
+      // RPS solo delata que el texto menciona una recogida, no de qué tipo es
+      // —el importador ya avisa «Revisar el tipo de recogida»—, así que
+      // mencionada se queda sin elegir y sin mencionar es un «NO».
+      recogeDelante: linea.recogidaDelante ? "" : "NO",
+      recogeAtras: linea.recogidaAtras ? "" : "NO",
       rotulacion: linea.rotulacion ?? input.rotulacion,
       material,
       observaciones: "",

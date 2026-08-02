@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { emptyLona } from "@/components/workspace/entradas-vacias";
 import { DEFAULT_PARAMS } from "@/lib/calc/params";
 import { calcLona, type LonaInput } from "@/lib/calc/lona";
 
@@ -129,5 +130,27 @@ describe("calcLona — variantes", () => {
     const res = calcLona({ ...base, recogeDelante: "INVENTADA" }, DEFAULT_PARAMS);
     expect(res.panoDelantero.ancho).toBe(154); // demasía de NO = 3
     expect(res.recogeDelanteTexto).toBe("NO");
+  });
+});
+
+describe("sin modo de ollaos elegido", () => {
+  it("no reparte ningún ollao", () => {
+    const sinElegir = {
+      ...emptyLona(), largo: 600, ancho: 250, altoDelante: 220,
+      tipoPerfil: "TIPO 01" as const, contorno: 620,
+    };
+    const res = calcLona(sinElegir, DEFAULT_PARAMS);
+    expect(res.reparto.laterales).toEqual([]);
+    expect(res.reparto.atras).toEqual([]);
+    expect(res.reparto.delante).toEqual([]);
+  });
+
+  it("elegir repartidos sí produce reparto", () => {
+    const elegida = {
+      ...emptyLona(), largo: 600, ancho: 250, altoDelante: 220,
+      tipoPerfil: "TIPO 01" as const, contorno: 620,
+      modoOllaos: "REPARTIDOS" as const,
+    };
+    expect(calcLona(elegida, DEFAULT_PARAMS).reparto.laterales.length).toBeGreaterThan(0);
   });
 });

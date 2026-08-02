@@ -81,6 +81,9 @@ function CabFila({ etiqueta, valor, ultima = false }: { etiqueta: string; valor:
   );
 }
 
+/** «Sin elegir» no es un «NO»: imprimirlo como tal sería inventar la decisión. */
+const siNo = (valor: boolean | null | undefined) => (valor == null ? "-" : valor ? "SÍ" : "NO");
+
 function Dato({ etiqueta, valor }: { etiqueta: string; valor: string }) {
   return (
     <View style={s.filaDato}>
@@ -155,7 +158,7 @@ function DatosLona({ rec }: { rec: PlanteamientoRecord }) {
       <Dato etiqueta="CONTORNO DE CORTE" valor={r.contornoAjustado ? fmt(r.contornoAjustado) : "PENDIENTE"} />
       {/* Fin del primer grupo (qué cortar); empieza cómo es el remolque. */}
       <View style={s.separacion} />
-      <Dato etiqueta="PERFIL" valor={nombrePerfil(i.tipoPerfil)} />
+      <Dato etiqueta="PERFIL" valor={i.tipoPerfil ? nombrePerfil(i.tipoPerfil) : ""} />
       <View style={s.bloque}>
         <Text style={s.etiqueta}>GEOMETRÍA:</Text>
         <View style={s.bloqueValores}>
@@ -164,12 +167,14 @@ function DatosLona({ rec }: { rec: PlanteamientoRecord }) {
       </View>
       <Dato etiqueta="RECOGE DELANTE" valor={r.recogeDelanteTexto} />
       <Dato etiqueta="RECOGE ATRÁS" valor={r.recogeAtrasTexto} />
-      <Dato etiqueta="VENTANA" valor={i.ventana
-        ? (i.ventanaAncho ?? 0) > 0 && (i.ventanaAlto ?? 0) > 0
-          ? `SÍ · ${fmt(i.ventanaAncho!)} X ${fmt(i.ventanaAlto!)} CM`
-          : "SÍ · MEDIDAS PENDIENTES"
-        : "NO"} />
-      <Dato etiqueta="ROTULACIÓN:" valor={i.rotulacion ? "SÍ" : "NO"} />
+      <Dato etiqueta="VENTANA" valor={i.ventana == null
+        ? "-"
+        : i.ventana
+          ? (i.ventanaAncho ?? 0) > 0 && (i.ventanaAlto ?? 0) > 0
+            ? `SÍ · ${fmt(i.ventanaAncho!)} X ${fmt(i.ventanaAlto!)} CM`
+            : "SÍ · MEDIDAS PENDIENTES"
+          : "NO"} />
+      <Dato etiqueta="ROTULACIÓN:" valor={siNo(i.rotulacion)} />
       <Dato etiqueta="OLLAOS:" valor={i.modoOllaos} />
       {/* Fin del segundo grupo (cómo es); empieza con qué se hace. */}
       <View style={s.separacion} />
@@ -192,7 +197,7 @@ function DatosBaqueton({ rec }: { rec: PlanteamientoRecord }) {
       <Dato etiqueta="BAQUETÓN" valor={`${fmt(i.baqueton)}${r.baquetonTrasero ? ` / TRASERO ${fmt(r.baquetonTrasero)}` : " EN LÍNEA"}`} />
       <Dato etiqueta="CLIENTE ESPECÍFICO" valor={i.clienteEspecifico} />
       <View style={s.separacion} />
-      <Dato etiqueta="ROTULACIÓN:" valor={i.rotulacion ? "SÍ" : "NO"} />
+      <Dato etiqueta="ROTULACIÓN:" valor={siNo(i.rotulacion)} />
       <Dato etiqueta="OLLAOS:" valor={i.modoOllaos} />
       <View style={s.separacion} />
       <Dato etiqueta="MATERIAL" valor={i.material} />

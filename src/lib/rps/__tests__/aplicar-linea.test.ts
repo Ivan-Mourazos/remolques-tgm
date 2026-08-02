@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { crearInputDesdeRps } from "@/lib/rps/aplicar-linea";
 import { materialPreferidoRps } from "@/lib/rps/material-rps";
 import { DEFAULT_PARAMS } from "@/lib/calc/params";
+import type { LonaInput } from "@/lib/calc/lona";
 import type { LineaPedidoRps, PedidoRps } from "@/lib/rps/types";
 
 const linea: LineaPedidoRps = {
@@ -44,6 +45,41 @@ describe("crearInputDesdeRps", () => {
     expect(materialPreferidoRps(linea, [...materiales, {
       nombre: "LONA RECORD 580 :GRIS 7038 :220 AN", codigoBobina: "C", stockArzua: 80,
     }])).toBe("LONA RECORD 580 :GRIS 7038 :220 AN");
+  });
+
+  describe("RPS resuelve lo que sabe y deja sin elegir lo que no", () => {
+    const crear = (cambios: Partial<LineaPedidoRps>) =>
+      crearInputDesdeRps(pedido, { ...linea, ...cambios }, 0, [], DEFAULT_PARAMS).input as LonaInput;
+
+    it("una recogida sin mencionar es un «NO»; mencionada, falta saber de qué tipo", () => {
+      // El regex de interpretar-linea solo delata que el texto la nombra.
+      const creado = crear({ recogidaDelante: true, recogidaAtras: false });
+      expect(creado.recogeDelante).toBe("");
+      expect(creado.recogeAtras).toBe("NO");
+    });
+
+    it("resuelve la ventana, que RPS sí afirma", () => {
+      expect(crear({ ventana: true }).ventana).toBe(true);
+      expect(crear({ ventana: false }).ventana).toBe(false);
+    });
+
+    it("deja la rotulación sin elegir cuando RPS no lo dice", () => {
+      // LineaPedidoRps declara rotulacion: boolean | null, con null cuando RPS
+      // no aporta el dato. Esa distinción llega hasta el formulario.
+      expect(crear({ rotulacion: null }).rotulacion).toBeNull();
+    });
+
+    it("la resuelve cuando RPS sí lo dice", () => {
+      expect(crear({ rotulacion: true }).rotulacion).toBe(true);
+    });
+
+    it("no inventa el perfil ni el reparto de ollaos, que RPS no aporta", () => {
+      const creado = crear({ aguas: 25 });
+      expect(creado.aguas).toBe(25);
+      expect(creado.tipoPerfil).toBe("");
+      expect(creado.modoOllaos).toBe("");
+      expect(creado.bastillaEnfundar).toBeNull();
+    });
   });
 
   it("mapea una tercera medida pequeña a baquetón", () => {
