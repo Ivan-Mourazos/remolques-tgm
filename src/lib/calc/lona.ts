@@ -28,8 +28,12 @@ export interface LonaInput {
   radioHombro?: number;
   /** Radio real de las esquinas superiores (TIPO 05); necesario para calcular el contorno. */
   radioEsquina?: number;
-  /** Chaflán real de las esquinas superiores (TIPO 04); necesario para calcular el contorno. */
+  /** Chaflán (TIPO 04): cara entre los dos vértices virtuales, no la pata; necesario para calcular el contorno. */
   chaflan?: number;
+  /** Radio de la arista del chaflán contra la pared (TIPO 04); 0 = viva. */
+  radioChaflanAbajo?: number;
+  /** Radio de la arista del chaflán contra el techo (TIPO 04); 0 = viva. */
+  radioChaflanArriba?: number;
   /** Contorno real del remolque, antes de añadir las bastillas y la demasía de curva. */
   contorno?: number;
   /** Campo histórico: contenía directamente la medida final de corte. */
@@ -79,7 +83,9 @@ export function calcLona(input: LonaInput, params: CalcParams): LonaResult {
     anchoAtras: r1(anchoAtras + params.demasiaLonaHecha),
   };
 
-  const ajuste = ajusteContorno(params, input.tipoPerfil);
+  const ajuste = ajusteContorno(params, input.tipoPerfil, {
+    abajo: input.radioChaflanAbajo, arriba: input.radioChaflanArriba,
+  });
   const contornoNuevo = Math.max(input.contorno ?? 0, 0);
   const contornoLegacy = Math.max(input.contornoScad ?? 0, 0);
   const usaContornoLegacy = input.contorno == null && contornoLegacy > 0;

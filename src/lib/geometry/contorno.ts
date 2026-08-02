@@ -1,3 +1,4 @@
+import { esquinaChaflan, recorteEsquina } from "@/lib/geometry/chaflan";
 import type { TipoPerfil } from "@/lib/calc/params";
 
 export interface MedidasContorno {
@@ -11,8 +12,12 @@ export interface MedidasContorno {
   radioHombro?: number;
   /** Radio real de las esquinas superiores (TIPO 05). */
   radioEsquina?: number;
-  /** Chaflán real de las esquinas superiores (TIPO 04). */
+  /** Chaflán (TIPO 04): cara entre los dos vértices virtuales, no la pata. */
   chaflan?: number;
+  /** Radio de la arista del chaflán contra la pared (TIPO 04); 0 = viva. */
+  radioChaflanAbajo?: number;
+  /** Radio de la arista del chaflán contra el techo (TIPO 04); 0 = viva. */
+  radioChaflanArriba?: number;
 }
 
 /**
@@ -54,9 +59,15 @@ export function contornoCalculado(tipo: TipoPerfil, m: MedidasContorno): number 
       return 2 * lateral + 2 * L - recorteCumbrera - 2 * recorteHombro;
     }
     case "TIPO 04": {
-      const chaflan = Math.min(m.chaflan ?? 0, w / 2, h);
-      if (!(chaflan > 0)) return null;
-      return 2 * (h - chaflan) + 2 * Math.hypot(chaflan, chaflan) + (w - 2 * chaflan);
+      // `chaflan` es la cara entre vértices virtuales, no la pata.
+      const e = esquinaChaflan({
+        ancho: w, alto: h, chaflan: m.chaflan ?? 0,
+        radioAbajo: m.radioChaflanAbajo, radioArriba: m.radioChaflanArriba,
+      });
+      if (!e) return null;
+      // Los radios son los ya acotados por `esquinaChaflan`, no los de entrada.
+      const recorte = recorteEsquina(e.radioAbajo) + recorteEsquina(e.radioArriba);
+      return 2 * (h - e.pata) + 2 * e.cara + (w - 2 * e.pata) - 2 * recorte;
     }
     case "TIPO 05": {
       const radio = Math.min(m.radioEsquina ?? 0, w / 2, h);

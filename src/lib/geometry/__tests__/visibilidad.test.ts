@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   aristaLongitudinalVisible,
+  caraExtrudidaVisible,
   recortarFueraDePoligono,
 } from "@/lib/geometry/visibilidad";
 
@@ -55,5 +56,55 @@ describe("aristaLongitudinalVisible", () => {
     expect([3, 4].every((indice) => (
       aristaLongitudinalVisible(frenteChaflan, fondoChaflan, indice)
     ))).toBe(true);
+  });
+});
+
+describe("caraExtrudidaVisible", () => {
+  // Caso real de un TIPO 04 (200×125, alto 90, chaflán 17,5) proyectado.
+  const frente = [
+    { x: 100, y: 344 }, { x: 100, y: 163 }, { x: 144, y: 119 },
+    { x: 369, y: 119 }, { x: 413, y: 163 }, { x: 413, y: 344 },
+  ];
+  const fondo = [
+    { x: 320, y: 244 }, { x: 320, y: 63 }, { x: 364, y: 19 },
+    { x: 589, y: 19 }, { x: 633, y: 63 }, { x: 633, y: 244 },
+  ];
+
+  it("descarta el chaflán del lado oculto", () => {
+    // Sin esta guarda, la franja del chaflán izquierdo se proyecta dentro del
+    // paño frontal y lo tapa: el frente parece transparente.
+    expect(caraExtrudidaVisible(frente, fondo, 1)).toBe(false);
+  });
+
+  it("conserva el techo y el chaflán que sí se ven", () => {
+    expect(caraExtrudidaVisible(frente, fondo, 2)).toBe(true);
+    expect(caraExtrudidaVisible(frente, fondo, 3)).toBe(true);
+  });
+
+  it("descarta índices fuera de rango en vez de reventar", () => {
+    expect(caraExtrudidaVisible(frente, fondo, -1)).toBe(false);
+    expect(caraExtrudidaVisible(frente, fondo, 99)).toBe(false);
+  });
+});
+
+describe("caraExtrudidaVisible no descarta de más", () => {
+  // TIPO 02 (dos aguas, 200×125, alto 90, aguas 15) proyectado. Las dos
+  // vertientes del tejado se ven: descartar una dejaría medio techo vacío.
+  const frente = [
+    { x: 100, y: 344 }, { x: 100, y: 156.5 }, { x: 256.25, y: 119 },
+    { x: 412.5, y: 156.5 }, { x: 412.5, y: 344 },
+  ];
+  const fondo = [
+    { x: 320, y: 244 }, { x: 320, y: 56.5 }, { x: 476.25, y: 19 },
+    { x: 632.5, y: 56.5 }, { x: 632.5, y: 244 },
+  ];
+
+  it("conserva las dos vertientes de un tejado a dos aguas", () => {
+    expect(caraExtrudidaVisible(frente, fondo, 1)).toBe(true);
+    expect(caraExtrudidaVisible(frente, fondo, 2)).toBe(true);
+  });
+
+  it("sigue descartando la pared del lado oculto", () => {
+    expect(caraExtrudidaVisible(frente, fondo, 0)).toBe(false);
   });
 });

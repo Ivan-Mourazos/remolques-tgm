@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_PARAMS, findClienteBaqueton, findRecogida } from "@/lib/calc/params";
+import { ajusteContorno, DEFAULT_PARAMS, findClienteBaqueton, findRecogida } from "@/lib/calc/params";
 
 describe("DEFAULT_PARAMS (hoja PAR)", () => {
   it("tiene las 7 recogidas con sus demasías", () => {
@@ -44,5 +44,30 @@ describe("DEFAULT_PARAMS (hoja PAR)", () => {
     });
     expect(findClienteBaqueton(DEFAULT_PARAMS, "GENERAL WOLDER").observaciones).toHaveLength(3);
     expect(findClienteBaqueton(DEFAULT_PARAMS, "").nombre).toBe("GENERAL");
+  });
+});
+
+describe("la demasía de curva alcanza al chaflán redondeado", () => {
+  const params = { ...DEFAULT_PARAMS, ajusteContornoBase: 7, ajusteContornoCurva: 1.5 };
+
+  it("un chaflán de aristas vivas no la lleva", () => {
+    expect(ajusteContorno(params, "TIPO 04")).toBe(7);
+    expect(ajusteContorno(params, "TIPO 04", { abajo: 0, arriba: 0 })).toBe(7);
+  });
+
+  it("basta con que una de las dos aristas tenga radio", () => {
+    // Decisión de Iván 2026-08-01: la demasía existe porque la tela curvada
+    // necesita algo más de material, así que la lleva cualquier chaflán con
+    // radio, no solo los perfiles que son curvos por definición.
+    expect(ajusteContorno(params, "TIPO 04", { abajo: 7, arriba: 0 })).toBe(8.5);
+    expect(ajusteContorno(params, "TIPO 04", { abajo: 0, arriba: 7.5 })).toBe(8.5);
+    expect(ajusteContorno(params, "TIPO 04", { abajo: 7, arriba: 7.5 })).toBe(8.5);
+  });
+
+  it("los perfiles curvos por definición no dependen de ese dato", () => {
+    expect(ajusteContorno(params, "TIPO 03")).toBe(8.5);
+    expect(ajusteContorno(params, "TIPO 05")).toBe(8.5);
+    expect(ajusteContorno(params, "TIPO 01")).toBe(7);
+    expect(ajusteContorno(params, "TIPO 02")).toBe(7);
   });
 });

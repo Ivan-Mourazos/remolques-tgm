@@ -16,8 +16,13 @@ export function datosGeometriaPdf(input: LonaInput): string[] {
         `RADIO CUMBRERA ${fmt(input.radioCumbrera)} CM`,
         `RADIO HOMBRO ${fmt(input.radioHombro)} CM`,
       ];
-    case "TIPO 04":
-      return [`CHAFLÁN ESQUINA ${fmt(input.chaflan)} CM`];
+    case "TIPO 04": {
+      const lineas = [`CHAFLÁN ${fmt(input.chaflan)} CM`];
+      if ((input.radioChaflanAbajo ?? 0) > 0 || (input.radioChaflanArriba ?? 0) > 0) {
+        lineas.push(`RADIOS ${fmt(input.radioChaflanAbajo)} / ${fmt(input.radioChaflanArriba)} CM`);
+      }
+      return lineas;
+    }
     case "TIPO 05":
       return [`RADIO ESQUINA ${fmt(input.radioEsquina)} CM`];
   }

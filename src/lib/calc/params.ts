@@ -48,13 +48,33 @@ export const PERFILES = [
 export type TipoPerfil = (typeof PERFILES)[number]["value"];
 export const TIPOS_PERFIL: TipoPerfil[] = PERFILES.map((perfil) => perfil.value);
 
-export function perfilTieneCurva(tipo: TipoPerfil): boolean {
-  return tipo === "TIPO 03" || tipo === "TIPO 05";
+/** Radios de las aristas del chaflán (TIPO 04); 0 o ausente = arista viva. */
+export interface RadiosChaflan {
+  abajo?: number;
+  arriba?: number;
+}
+
+/**
+ * El TIPO 03 y el TIPO 05 son curvos por definición. El TIPO 04 lo es solo si
+ * de verdad le han puesto radio en alguna arista: con las dos vivas es un
+ * chaflán recto de toda la vida.
+ *
+ * La demasía existe porque la tela curvada necesita algo más de material para
+ * asentarse, así que sigue al radio y no al nombre del perfil (decisión de
+ * Iván, 2026-08-01, al añadirse el chaflán con aristas curvadas).
+ */
+export function perfilTieneCurva(tipo: TipoPerfil, radiosChaflan?: RadiosChaflan): boolean {
+  if (tipo === "TIPO 03" || tipo === "TIPO 05") return true;
+  if (tipo !== "TIPO 04") return false;
+  return (radiosChaflan?.abajo ?? 0) > 0 || (radiosChaflan?.arriba ?? 0) > 0;
 }
 
 /** Suma de bastillas (y demasía de curva si procede) sobre el contorno real. */
-export function ajusteContorno(params: CalcParams, tipo: TipoPerfil): number {
-  return params.ajusteContornoBase + (perfilTieneCurva(tipo) ? params.ajusteContornoCurva : 0);
+export function ajusteContorno(
+  params: CalcParams, tipo: TipoPerfil, radiosChaflan?: RadiosChaflan,
+): number {
+  return params.ajusteContornoBase
+    + (perfilTieneCurva(tipo, radiosChaflan) ? params.ajusteContornoCurva : 0);
 }
 
 export function nombrePerfil(tipo: TipoPerfil): string {

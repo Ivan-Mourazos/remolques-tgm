@@ -21,7 +21,9 @@ export function FormularioLona({
   onCampoTocado?: (campo: string) => void;
 }) {
   const RECOGIDAS = opcionesConEtiqueta((params ?? DEFAULT_PARAMS).recogidas.map((r) => r.nombre));
-  const ajuste = ajusteContorno(params ?? DEFAULT_PARAMS, input.tipoPerfil);
+  const ajuste = ajusteContorno(params ?? DEFAULT_PARAMS, input.tipoPerfil, {
+    abajo: input.radioChaflanAbajo, arriba: input.radioChaflanArriba,
+  });
   const contornoVisible = input.contorno
     ?? Math.max((input.contornoScad ?? 0) - ajuste, 0);
   // El contorno se desarrolla sobre la LONA HECHA (ancho + demasía), no sobre
@@ -34,6 +36,8 @@ export function FormularioLona({
     radioHombro: input.radioHombro,
     radioEsquina: input.radioEsquina,
     chaflan: input.chaflan,
+    radioChaflanAbajo: input.radioChaflanAbajo,
+    radioChaflanArriba: input.radioChaflanArriba,
   });
   const contornoExacto = calculado == null ? null : excelRound(calculado, 1);
   const faltaDato = input.tipoPerfil === "TIPO 04" && !(input.chaflan ?? 0)
@@ -92,7 +96,14 @@ export function FormularioLona({
             </>
           )}
           {input.tipoPerfil === "TIPO 04" && (
-            <CampoNum name="chaflan" error={errores.chaflan} label="Chaflán esquina" value={input.chaflan ?? 0} onChange={(v) => set("chaflan", v)} />
+            <>
+              <CampoNum name="chaflan" error={errores.chaflan} label="Chaflán · entre vértices"
+                value={input.chaflan ?? 0} onChange={(v) => set("chaflan", v)} />
+              <CampoNum name="radioChaflanAbajo" label="Radio abajo"
+                value={input.radioChaflanAbajo ?? 0} onChange={(v) => set("radioChaflanAbajo", v)} />
+              <CampoNum name="radioChaflanArriba" label="Radio arriba"
+                value={input.radioChaflanArriba ?? 0} onChange={(v) => set("radioChaflanArriba", v)} />
+            </>
           )}
           {input.tipoPerfil === "TIPO 05" && (
             <CampoNum name="radioEsquina" error={errores.radioEsquina} label="Radio esquina" value={input.radioEsquina ?? 0} onChange={(v) => set("radioEsquina", v)} />

@@ -98,6 +98,7 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
                 altoDelante={lona.altoDelante} altoAtras={lona.altoAtras}
                 aguas={lona.aguas} radioCumbrera={lona.radioCumbrera} radioHombro={lona.radioHombro}
                 radioEsquina={lona.radioEsquina} chaflan={lona.chaflan}
+                radioChaflanAbajo={lona.radioChaflanAbajo} radioChaflanArriba={lona.radioChaflanArriba}
                 ollaos={resLona.reparto}
                 recogeDelante={lona.recogeDelante} recogeAtras={lona.recogeAtras}
                 bastillaEnfundar={lona.bastillaEnfundar}

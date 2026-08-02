@@ -54,8 +54,10 @@ describe("contornoCalculado", () => {
 
   it("TIPO 04: exige el chaflán y lo aplica en las dos esquinas", () => {
     expect(contornoCalculado("TIPO 04", { ancho: 150, alto: 100 })).toBeNull();
+    // `chaflan` es la cara entre vértices virtuales: la pata se deriva de ella.
+    const pata = 10 / Math.SQRT2;
     expect(contornoCalculado("TIPO 04", { ancho: 150, alto: 100, chaflan: 10 }))
-      .toBeCloseTo(2 * 90 + 2 * Math.hypot(10, 10) + 130, 10);
+      .toBeCloseTo(2 * (100 - pata) + 2 * 10 + (150 - 2 * pata), 10);
   });
 
   it("TIPO 05: exige el radio y suma los dos cuartos de círculo", () => {
@@ -83,5 +85,57 @@ describe("contornoCalculado", () => {
     // radio imposible (mayor que ancho/2) se recorta a 75
     expect(contornoCalculado("TIPO 05", { ancho: 150, alto: 100, radioEsquina: 500 }))
       .toBeCloseTo(2 * 25 + 0 + Math.PI * 75, 10);
+  });
+});
+
+describe("TIPO 04 con las aristas del chaflán curvadas", () => {
+  /**
+   * La pieza real: pedido AR.26.03714. Ancho 126 es la lona hecha (125 + 1 de
+   * demasía), que es donde se desarrolla el contorno. Si este número se mueve,
+   * el corte sale mal.
+   */
+  it("reproduce el contorno medido en el CAD", () => {
+    expect(contornoCalculado("TIPO 04", {
+      ancho: 126, alto: 90, chaflan: 13.2,
+      radioChaflanAbajo: 7, radioChaflanArriba: 7.5,
+    })).toBeCloseTo(293.81, 1);
+  });
+
+  it("descuenta con los radios acotados, no con los que le pasan", () => {
+    // Con radios enormes los tres acotados de `esquinaChaflan` muerden. Si el
+    // contorno descontara con los radios crudos, el ahorro sería gigante y el
+    // resultado negativo: la lona saldría cortada de menos.
+    const contorno = contornoCalculado("TIPO 04", {
+      ancho: 126, alto: 90, chaflan: 13.2,
+      radioChaflanAbajo: 1e6, radioChaflanArriba: 1e6,
+    })!;
+    expect(contorno).toBeGreaterThan(0);
+    expect(contorno).toBeCloseTo(292.32, 1);
+  });
+
+  it("acota el chaflán que no cabe en la pieza y recalcula la cara", () => {
+    // Una cara enorme no puede dar una pata mayor que media pieza.
+    expect(contornoCalculado("TIPO 04", { ancho: 20, alto: 90, chaflan: 400 }))
+      .toBeCloseTo(188.28, 1);
+  });
+
+  it("sin radios da la fórmula del chaflán vivo", () => {
+    const pata = 13.2 / Math.SQRT2;
+    expect(contornoCalculado("TIPO 04", { ancho: 126, alto: 90, chaflan: 13.2 }))
+      .toBeCloseTo(2 * (90 - pata) + 2 * 13.2 + (126 - 2 * pata), 6);
+  });
+
+  it("redondear las aristas acorta el contorno, nunca lo alarga", () => {
+    const vivo = contornoCalculado("TIPO 04", { ancho: 126, alto: 90, chaflan: 13.2 })!;
+    const curvo = contornoCalculado("TIPO 04", {
+      ancho: 126, alto: 90, chaflan: 13.2, radioChaflanAbajo: 7, radioChaflanArriba: 7.5,
+    })!;
+    expect(curvo).toBeLessThan(vivo);
+    // Y muy poco: el grueso del contorno lo pone el chaflán, no las curvas.
+    expect(vivo - curvo).toBeLessThan(2);
+  });
+
+  it("sigue exigiendo el chaflán", () => {
+    expect(contornoCalculado("TIPO 04", { ancho: 126, alto: 90 })).toBeNull();
   });
 });
