@@ -29,7 +29,14 @@ export async function rasterizarSvg(
     if (!ctx) return null;
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, ancho, alto);
-    if (opciones.monocromo) ctx.filter = "grayscale(1) contrast(1.22)";
+    // Solo se quita el color. El realce de contraste que había aquí existía
+    // porque los grises salían de aplastar unos degradados pensados para
+    // pantalla y había que rescatarlos. Ahora el valor de cada plano se elige
+    // a propósito y están separados al menos 0,16, así que el realce ya no
+    // tiene trabajo: lo único que hace es empujar la cubierta (0,88) a 246
+    // sobre 255 y dejarla en blanco de papel. Además impide calibrar, porque
+    // amplifica cualquier valor nuevo que se pruebe.
+    if (opciones.monocromo) ctx.filter = "grayscale(1)";
     ctx.drawImage(imagen, 0, 0, ancho, alto);
     ctx.filter = "none";
     return canvas.toDataURL("image/png");

@@ -279,7 +279,15 @@ function calcularVista(o: OpcionesVista) {
   });
   const forma = perfilForma(perfil, opts(o.anchoNear, o.altoNear));
   const near = forma.puntos;
-  const far = perfilForma(perfil, opts(o.anchoFar, o.altoFar)).puntos;
+  const farCalculado = perfilForma(perfil, opts(o.anchoFar, o.altoFar)).puntos;
+  // Las dos caras se emparejan por índice para tejer las franjas y las aristas.
+  // El número de puntos depende del acotado de radios, y ese acotado depende de
+  // las medidas de cada cara: con un ancho o un alto trasero muy pequeño —algo
+  // que pasa sin más al teclear medio número— la cara del fondo pierde arcos y
+  // los índices dejarían de corresponderse, tejiendo un dibujo sin sentido.
+  // Mientras no coincidan se usa la cercana también atrás: se ve un remolque
+  // recto durante un instante, que es mucho mejor que basura geométrica.
+  const far = farCalculado.length === near.length ? farCalculado : near;
   const maxY = Math.max(...near.map(([, y]) => y), ...far.map(([, y]) => y), 1);
   // Una única escala mantiene la proporción real ancho/alto. La profundidad
   // se comprime en perspectiva para que largos grandes sigan cabiendo en A4.
@@ -641,10 +649,14 @@ function PanelVista({
           fill="#ffffff" stroke={COLOR_SILUETA} strokeWidth={TRAZO_ARISTA}
         />
       ))}
+      {/* El baquetón se destaca con más grosor, no con el dorado de la marca:
+          ese oro pasado a gris queda más claro que la silueta negra sobre la
+          que se dibuja, así que en la hoja impresa aparecía como una banda
+          descolorida tapando el trazo bueno. */}
       {modo === "baqueton" && (
         <path
-          d={d.contornoFrente} fill="none" stroke="#d3a024"
-          strokeWidth={TRAZO_SILUETA * 2} strokeLinecap="round" strokeLinejoin="round"
+          d={d.contornoFrente} fill="none" stroke={COLOR_SILUETA}
+          strokeWidth={TRAZO_SILUETA * 1.8} strokeLinecap="round" strokeLinejoin="round"
         />
       )}
 
