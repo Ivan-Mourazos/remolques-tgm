@@ -16,3 +16,22 @@ describe("entradas vacías", () => {
     expect(emptyBaqueton().pasoOllaos).toBe(35);
   });
 });
+
+describe("una entrada vacía no puede estar completa", () => {
+  it("la lona arranca con las seis decisiones sin tomar", () => {
+    const lona = emptyLona();
+    expect(lona.tipoPerfil).toBe("");
+    expect(lona.modoOllaos).toBe("");
+    expect(lona.recogeDelante).toBe("");
+    expect(lona.recogeAtras).toBe("");
+    expect(lona.ventana).toBeNull();
+    expect(lona.rotulacion).toBeNull();
+    expect(lona.bastillaEnfundar).toBeNull();
+  });
+
+  it("el baquetón arranca sin modo de ollaos ni rotulación", () => {
+    const baqueton = emptyBaqueton();
+    expect(baqueton.modoOllaos).toBe("");
+    expect(baqueton.rotulacion).toBeNull();
+  });
+});

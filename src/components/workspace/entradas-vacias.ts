@@ -16,10 +16,10 @@ export function emptyLona(): LonaInput {
     cantidad: 1, largo: 0, ancho: 0, anchoAtras: 0, altoDelante: 0, altoAtras: 0, aguas: 0,
     radioCumbrera: 0, radioHombro: 0, radioEsquina: 0, chaflan: 0,
     radioChaflanAbajo: 0, radioChaflanArriba: 0,
-    contorno: 0, tipoPerfil: "TIPO 01",
-    recogeDelante: "NO", recogeAtras: "NO",
-    bastillaEnfundar: false, ventana: false, ventanaAncho: 0, ventanaAlto: 0, rotulacion: false,
-    modoOllaos: "REPARTIDOS", pasoOllaos: DEFAULT_PARAMS.pasoOllaosDefecto,
+    contorno: 0, tipoPerfil: "",
+    recogeDelante: "", recogeAtras: "",
+    bastillaEnfundar: null, ventana: null, ventanaAncho: 0, ventanaAlto: 0, rotulacion: null,
+    modoOllaos: "", pasoOllaos: DEFAULT_PARAMS.pasoOllaosDefecto,
     primerOllao: DEFAULT_PARAMS.primerOllao,
     ollaosManuales: sinOllaos(), material: "", observaciones: "",
   };
@@ -30,9 +30,9 @@ export function emptyBaqueton(): BaquetonInput {
     cabecera: cabecera(),
     cantidad: 1, largo: 0, ancho: 0, baqueton: 0,
     clienteEspecifico: "GENERAL",
-    modoOllaos: "REPARTIDOS", pasoOllaos: DEFAULT_PARAMS.pasoOllaosDefecto,
+    modoOllaos: "", pasoOllaos: DEFAULT_PARAMS.pasoOllaosDefecto,
     primerOllao: DEFAULT_PARAMS.primerOllao,
-    ollaosManuales: sinOllaos(), rotulacion: false,
+    ollaosManuales: sinOllaos(), rotulacion: null,
     material: "", observaciones: "",
   };
 }

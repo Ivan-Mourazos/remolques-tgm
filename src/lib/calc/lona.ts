@@ -38,15 +38,21 @@ export interface LonaInput {
   contorno?: number;
   /** Campo histórico: contenía directamente la medida final de corte. */
   contornoScad?: number;
-  tipoPerfil: TipoPerfil;
+  /** Sin elegir hasta que el usuario decide: un perfil recto por defecto pasaría
+   *  la validación entera sin que nadie haya mirado la forma. */
+  tipoPerfil: TipoPerfil | "";
+  /** "" = sin elegir. "NO" es una respuesta, no la ausencia de una. */
   recogeDelante: string; recogeAtras: string;
-  bastillaEnfundar: boolean; ventana: boolean;
+  /** null = sin elegir. false es «no lleva», que es una decisión distinta. */
+  bastillaEnfundar: boolean | null;
+  ventana: boolean | null;
   /** Medidas exteriores de la ventana en cm. */
   ventanaAncho?: number;
   ventanaAlto?: number;
-  /** Solo se indica si va rotulado; el contenido no forma parte del planteamiento. */
-  rotulacion: boolean;
-  modoOllaos: "REPARTIDOS" | "SEGUN SE INDICA";
+  /** Solo se indica si va rotulado; el contenido no forma parte del
+   *  planteamiento. null = sin elegir. */
+  rotulacion: boolean | null;
+  modoOllaos: "REPARTIDOS" | "SEGUN SE INDICA" | "";
   pasoOllaos: number;
   /** Distancia del primer y último ollao al borde; por defecto la de los parámetros. */
   primerOllao?: number;
