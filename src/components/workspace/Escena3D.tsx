@@ -374,15 +374,21 @@ function calcularVista(o: OpcionesVista) {
       } : null,
     };
   })() : null;
-  // Bordes inferiores: si la lona no va sujeta (sin bastilla de enfundar), el
-  // dobladillo cede un poco. Es lo que distingue tela de chapa. El descuelgue
-  // es una cuadrática cuyo control da `controlDescuelgue`.
+  // Bordes inferiores: la tela cede solo donde no hay nada que la amarre. Por
+  // cada ollao pasa la goma, así que un borde con ollaos queda sujeto cada 35 cm
+  // y el vano libre es ese, no los seis metros del remolque: descuelga medio
+  // píxel, o sea nada, y se dibuja recto (lo señaló Iván, 2026-08-02). La
+  // bastilla de enfundar lo sujeta de corrido. Solo un borde sin ollaos ni
+  // bastilla cae de verdad, y ahí el descuelgue es una cuadrática cuyo control
+  // da `controlDescuelgue`.
   const bordeLibre = o.modo === "lona" && !o.conBastilla;
   const baseIzq = frente[0];
   const baseDcha = frente.at(-1)!;
   const fondoBase = fondo.at(-1)!;
-  const ctrlFrente = bordeLibre ? controlDescuelgue(baseIzq, baseDcha) : null;
-  const ctrlLateral = bordeLibre ? controlDescuelgue(baseDcha, fondoBase) : null;
+  const ctrlFrente = bordeLibre && o.ollaosNear.length === 0
+    ? controlDescuelgue(baseIzq, baseDcha) : null;
+  const ctrlLateral = bordeLibre && o.ollaosLaterales.length === 0
+    ? controlDescuelgue(baseDcha, fondoBase) : null;
   // Cierre del paño cercano para el relleno, y trazos de silueta del dobladillo.
   const cierrePinche = ctrlFrente
     ? ` Q ${puntoSvg(ctrlFrente)} ${puntoSvg(baseIzq)} Z`
@@ -398,9 +404,10 @@ function calcularVista(o: OpcionesVista) {
     + (ctrlLateral ? ` Q ${puntoSvg(ctrlLateral)} ${puntoSvg(fondoBase)}` : ` L ${puntoSvg(fondoBase)}`)
     + ` L ${puntoSvg(fondo.at(-2)!)} Z`;
   // Pliegues: la tela comprimida junto a las esquinas tensadas. Dos trazos
-  // cortos por esquina, subiendo hacia el interior del paño.
+  // cortos por esquina, subiendo hacia el interior del paño. Acompañan al
+  // descuelgue del frente, así que desaparecen con él cuando la goma tensa.
   const largoPliegue = 2.2 * flechaDescuelgue(Math.abs(baseDcha.x - baseIzq.x));
-  const pliegues = bordeLibre && largoPliegue > 4
+  const pliegues = ctrlFrente && largoPliegue > 4
     ? [baseIzq, baseDcha].flatMap((esquina, lado) => {
       const haciaCentro = lado === 0 ? 1 : -1;
       return [50, 70].map((angulo) => {
