@@ -11,7 +11,7 @@ import {
 } from "@/lib/geometry/visibilidad";
 import { calcularVentanaFrontal } from "@/lib/geometry/ventana";
 import { coloresMaterial } from "@/lib/geometry/color-lona";
-import { controlDescuelgue, flechaDescuelgue, tamanoSimbolo } from "@/lib/geometry/caida";
+import { controlDescuelgue, flechaDescuelgue, marcasDistinguibles, tamanoSimbolo } from "@/lib/geometry/caida";
 import type { TipoPerfil } from "@/lib/calc/params";
 
 type Punto = Punto2D;
@@ -442,13 +442,14 @@ function calcularVista(o: OpcionesVista) {
   };
   const insetOllao = radioOllao + 2.5;
   // Los ollaos van por dentro de la lona, no sobre el borde, y siguen el
-  // dobladillo: si el borde cede, ellos ceden con él.
-  const marcasOllaos = [
+  // dobladillo: si el borde cede, ellos ceden con él. En la esquina el del
+  // frente y el del lateral se superponen al proyectarse, y ahí solo cabe uno.
+  const marcasOllaos = marcasDistinguibles([
     ...enTramo(o.ollaosNear, o.anchoNear, baseIzq, baseDcha, ctrlFrente)
       .map((p) => ({ x: p.x, y: p.y - insetOllao })),
     ...enTramo(o.ollaosLaterales, o.largo, lateralDesde, lateralHasta, ctrlLateral)
       .map((p) => ({ x: p.x + normalLateral.x, y: p.y + normalLateral.y })),
-  ];
+  ], radioOllao * 2);
   // Costuras verticales paño–contorno («el alto de los lados»): donde va la recogida.
   const costuraIzq: Costura = { x: frente[0].x, yBase: frente[0].y, yTop: frente[1].y };
   const costuraDcha: Costura = { x: frente.at(-1)!.x, yBase: frente.at(-1)!.y, yTop: frente.at(-2)!.y };
