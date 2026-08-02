@@ -263,6 +263,12 @@ Y dentro de la rama de lona (el `else` de `"baqueton" in input`):
 
 Cuidado con dos comprobaciones que ya existen y hoy dependen de estos campos: la de las medidas de la ventana usa `input.ventana`, que ahora puede ser `null` — al ser falsy sigue sin pedir medidas, que es lo correcto —, y las de `aguas`, `chaflan` y `radioEsquina` comparan `input.tipoPerfil` con un valor concreto, así que con `""` no piden nada. Correcto también: hasta que no se elige el perfil no se sabe qué medidas hacen falta, y el error de `tipoPerfil` ya está señalando el problema.
 
+**Pero el tipo sí cambia.** `agregar` recibe `condicion: boolean`, y las cuatro
+líneas que hoy pasan `input.ventana && …` ahora entregan `boolean | null`. Hay que
+envolverlas —`Boolean(input.ventana) && …` o `input.ventana === true && …`— y esto
+es un arreglo de tipos, no de lógica: el comportamiento no cambia. Lo señaló la
+Task 1 al ver lo que `tsc` marcaba.
+
 - [ ] **Step 4: Que el cálculo no reparta sin decisión**
 
 En `src/lib/calc/lona.ts` el reparto es hoy un ternario de dos ramas, así que un
@@ -432,6 +438,7 @@ git commit -m "feat: controles que distinguen «no» de «sin elegir»"
 - Modify: `src/components/workspace/Workspace.tsx`
 - Modify: `src/lib/pdf/PlanteamientoPdf.tsx`
 - Modify: `src/lib/pdf/datos-geometria.ts`
+- Modify: `src/lib/excel/planteamiento-excel.ts`
 - Modify: `src/lib/rps/__tests__/aplicar-linea.test.ts`
 
 - [ ] **Step 1: Escribir el test que falla**
@@ -529,6 +536,17 @@ const siNo = (valor: boolean | null | undefined) => (valor == null ? "-" : valor
 ```
 
 En `src/lib/pdf/datos-geometria.ts`, `tipoPerfil` puede ser `""`: devolver `["PERFIL SIN ELEGIR"]` en ese caso, en vez de dejar que `nombrePerfil` reciba un valor vacío.
+
+**Y el mismo tratamiento en `src/lib/excel/planteamiento-excel.ts`**, que exporta la
+misma hoja a Excel desde `/api/excel` y tiene el patrón idéntico: `siNo(i.bastillaEnfundar)`
+y `siNo(i.rotulacion)` en las líneas 142 y 153, `i.rotulacion ? "SÍ" : "NO"` en la 178,
+`nombrePerfil(i.tipoPerfil)` en la 140 y `i.modoOllaos` crudo en las 150, 177 y 313.
+Su ayudante `siNo` acepta hoy solo `boolean`: ampliarlo a `boolean | null` devolviendo
+`"-"`, igual que en el PDF.
+
+Este fichero no estaba en el plan original y lo encontró la Task 1 al listar lo que
+`tsc` señalaba. Es un exportador vivo, así que quedarse fuera habría dejado un camino
+por el que «sin elegir» sale impreso como «NO».
 
 En la práctica un pedido completado no llega aquí con nada sin elegir; esto es para que una vista previa a medias no mienta.
 
