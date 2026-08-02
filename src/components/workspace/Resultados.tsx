@@ -161,12 +161,21 @@ function EditorOllaos({
 function Ollaos({
   modo, reparto, primerOllao, error, onChange,
 }: {
-  modo: "REPARTIDOS" | "SEGUN SE INDICA";
+  modo: "REPARTIDOS" | "SEGUN SE INDICA" | "";
   reparto: RepartoOllaos;
   primerOllao: number;
   error?: string;
   onChange: (reparto: RepartoOllaos) => void;
 }) {
+  // Sin modo elegido no hay reparto que enseñar: una tabla vacía se leería como
+  // «este remolque no lleva ollaos», que es justo lo que nadie ha dicho.
+  if (modo === "") {
+    return (
+      <p className="rounded-xl border border-dashed border-line-2 bg-surface/65 px-4 py-5 text-center text-xs font-semibold text-muted">
+        Elige cómo van repartidos los ollaos para verlos aquí.
+      </p>
+    );
+  }
   return (
     <div className="flex flex-col gap-1">
       {modo === "SEGUN SE INDICA"
@@ -185,7 +194,7 @@ export function ResultadosLona({
   res, modoOllaos, primerOllao, errorOllaos, onOllaosChange,
 }: {
   res: LonaResult;
-  modoOllaos: "REPARTIDOS" | "SEGUN SE INDICA";
+  modoOllaos: "REPARTIDOS" | "SEGUN SE INDICA" | "";
   primerOllao: number;
   errorOllaos?: string;
   onOllaosChange: (reparto: RepartoOllaos) => void;
@@ -220,7 +229,7 @@ export function ResultadosBaqueton({
   res, modoOllaos, primerOllao, errorOllaos, onOllaosChange,
 }: {
   res: BaquetonResult;
-  modoOllaos: "REPARTIDOS" | "SEGUN SE INDICA";
+  modoOllaos: "REPARTIDOS" | "SEGUN SE INDICA" | "";
   primerOllao: number;
   errorOllaos?: string;
   onOllaosChange: (reparto: RepartoOllaos) => void;

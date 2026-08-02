@@ -37,15 +37,16 @@ export interface Escena3DProps {
   radioChaflanAbajo?: number;
   /** Radio de la arista del chaflán contra el techo (TIPO 04); 0 = viva. */
   radioChaflanArriba?: number;
-  tipoPerfil: TipoPerfil;
-  ventana?: boolean;
+  /** "" = sin elegir: sin forma decidida no hay remolque que dibujar. */
+  tipoPerfil: TipoPerfil | "";
+  ventana?: boolean | null;
   ventanaAncho?: number;
   ventanaAlto?: number;
   /** Recogidas: unión vertical del paño de contorno con los paños delantero/trasero. */
   recogeDelante?: string;
   recogeAtras?: string;
   /** Refuerzo perimetral: se dibuja como contorno de doble línea. */
-  bastillaEnfundar?: boolean;
+  bastillaEnfundar?: boolean | null;
   material?: string;
   observaciones?: string;
   onObservacionesChange?: (value: string) => void;
@@ -765,11 +766,17 @@ export function Escena3D(props: Escena3DProps) {
   const altoAtras = props.modo === "baqueton"
     ? (props.baqueton ?? 0)
     : (props.altoAtras > 0 ? props.altoAtras : props.altoDelante);
+  // Un baquetón siempre se dibuja recto; una lona necesita que se haya elegido
+  // el perfil, y que estén las medidas que ese perfil pide.
   const geometriaPerfilCompleta = props.modo === "baqueton"
-    || (!["TIPO 02", "TIPO 03"].includes(props.tipoPerfil) || (props.aguas ?? 0) > 0)
+    || props.tipoPerfil !== ""
+      && (!["TIPO 02", "TIPO 03"].includes(props.tipoPerfil) || (props.aguas ?? 0) > 0)
       && (props.tipoPerfil !== "TIPO 04" || (props.chaflan ?? 0) > 0)
       && (props.tipoPerfil !== "TIPO 05" || (props.radioEsquina ?? 0) > 0);
   const valido = props.largo > 0 && props.ancho > 0 && altoDelante > 0 && geometriaPerfilCompleta;
+  // `valido` ya impide llegar aquí sin perfil; el respaldo solo existe para que
+  // el dibujo, que siempre trabaja sobre una forma concreta, no admita el vacío.
+  const perfilDibujado: TipoPerfil = props.tipoPerfil || "TIPO 01";
 
   const anchoAtras = (props.anchoAtras ?? 0) > 0 ? props.anchoAtras! : props.ancho;
   const bastilla = props.modo === "lona" && (props.bastillaEnfundar ?? false);
@@ -777,7 +784,7 @@ export function Escena3D(props: Escena3DProps) {
     if (!valido) return null;
     const base = {
       modo: props.modo,
-      tipoPerfil: props.tipoPerfil,
+      tipoPerfil: perfilDibujado,
       largo: props.largo,
       aguas: props.aguas ?? 0,
       radioCumbrera: props.radioCumbrera ?? 0,
@@ -814,7 +821,7 @@ export function Escena3D(props: Escena3DProps) {
     });
     return { delantera, trasera };
   }, [
-    valido, props.modo, props.tipoPerfil, props.ancho, props.largo,
+    valido, props.modo, perfilDibujado, props.ancho, props.largo,
     props.aguas, props.radioCumbrera, props.radioHombro, props.radioEsquina, props.chaflan,
     props.radioChaflanAbajo, props.radioChaflanArriba,
     props.ventana, props.ventanaAncho, props.ventanaAlto, props.ollaos, altoDelante, altoAtras, anchoAtras,

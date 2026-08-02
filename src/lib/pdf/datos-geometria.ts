@@ -5,7 +5,11 @@ const fmt = (n: number | null | undefined) => Number(n ?? 0).toLocaleString("es-
 });
 
 export function datosGeometriaPdf(input: LonaInput): string[] {
-  switch (input.tipoPerfil) {
+  const tipo = input.tipoPerfil;
+  // Sin perfil no hay geometría que describir, y la hoja lo dice en vez de
+  // callarse: es una vista previa a medias, no un remolque recto.
+  if (!tipo) return ["PERFIL SIN ELEGIR"];
+  switch (tipo) {
     case "TIPO 01":
       return ["PERFIL RECTO"];
     case "TIPO 02":
