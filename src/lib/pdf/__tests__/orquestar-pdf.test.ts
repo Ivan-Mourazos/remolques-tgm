@@ -4,10 +4,16 @@ import type { LonaInput } from "@/lib/calc/lona";
 import type { PlanteamientoRecord } from "@/lib/store/types";
 import { orquestarPdf, type OpcionesOrquestarPdf } from "@/lib/pdf/orquestar-pdf";
 
+// «Válida» incluye las siete decisiones: `emptyLona()` arranca sin ninguna
+// tomada, y `orquestarPdf` filtra por `planteamientoGenerable`, así que una lona
+// solo medida se contaría como omitida — que es exactamente lo que debe pasar.
 const lonaValida = (version: string): LonaInput => ({
   ...emptyLona(),
   cabecera: { ...emptyLona().cabecera, numeroPedido: "AR2603583", version },
   largo: 600, ancho: 250, altoDelante: 220, contorno: 620, material: "PVC 580 AZUL",
+  tipoPerfil: "TIPO 01", recogeDelante: "NO", recogeAtras: "NO",
+  ventana: false, bastillaEnfundar: false, rotulacion: false,
+  modoOllaos: "REPARTIDOS",
 });
 
 const registro = (id: string, version: string, input: LonaInput): PlanteamientoRecord => ({
