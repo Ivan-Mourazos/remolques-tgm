@@ -49,7 +49,7 @@ export function useWorkspace(inicial?: EntradaInicial) {
   );
   const {
     numeroPedido, cliente: clientePedido, lineas, versionActiva,
-    validacionIntentada, camposTocados, rps, accion,
+    validacionIntentada, camposTocados, rps, accion, cargandoPedido,
   } = estado;
   const { materiales, params, materialesRef, setMateriales } = useCatalogos();
   const avisar = useAvisos();
@@ -248,6 +248,14 @@ export function useWorkspace(inicial?: EntradaInicial) {
       avisar("info", "Introduce primero el número de pedido.");
       return;
     }
+    // Con los registros del pedido todavía en vuelo, `lineas` está vacío y la
+    // versión que tocaría es la 10: la misma que ya tiene el primer
+    // planteamiento guardado. La línea nueva sustituiría a la guardada al
+    // fusionar —heredando su id— y completar el pedido la reescribiría.
+    if (cargandoPedido) {
+      avisar("info", "Espera a que carguen las líneas del pedido.");
+      return;
+    }
     capturarSnapshot();
     const plantilla = nuevoTipo === "lona" ? emptyLona() : emptyBaqueton();
     const version = siguienteVersion(lineas);
@@ -268,7 +276,7 @@ export function useWorkspace(inicial?: EntradaInicial) {
     };
     despachar({ tipo: "LINEA_ANADIDA", linea });
     avisar("info", `${nombreLinea(linea)} añadido al pedido. Completa sus datos.`);
-  }, [avisar, capturarSnapshot, clientePedido, input, lineas, numeroPedido]);
+  }, [avisar, capturarSnapshot, cargandoPedido, clientePedido, input, lineas, numeroPedido]);
 
   const eliminarLinea = useCallback(async (version: string) => {
     // Borrar mientras se completa el pedido deshace el borrado solo: el POST de
@@ -364,6 +372,10 @@ export function useWorkspace(inicial?: EntradaInicial) {
     // La versión la fija `crearInputDesdeRps` con el índice de la línea en RPS,
     // y esta es siempre la primera: la 10.
     if (lineas.some((linea) => linea.version === "10")) return;
+    // Esa guarda es ciega a los registros que todavía están en vuelo: si el GET
+    // de planteamientos tarda más que la consulta a RPS, `lineas` está vacío y
+    // la importación pisaría la versión 10 ya guardada. Lo automático espera.
+    if (cargandoPedido) return;
     let catalogo = materialesRef.current;
     if (catalogo.length === 0) {
       catalogo = await fetch("/api/materiales", { cache: "no-store" })
@@ -374,7 +386,7 @@ export function useWorkspace(inicial?: EntradaInicial) {
       }
     }
     await aplicarPedidoRps(pedido, pedido.lineas[0], catalogo);
-  }, [aplicarPedidoRps, lineas, materialesRef, setMateriales]);
+  }, [aplicarPedidoRps, cargandoPedido, lineas, materialesRef, setMateriales]);
 
   const pedidoRpsVisible = calcularPedidoRpsVisible(numeroPedido, rps.pedido);
   const origenRpsActivo = calcularOrigenRpsActivo(numeroPedido, activa);
@@ -461,7 +473,9 @@ export function useWorkspace(inicial?: EntradaInicial) {
       const lineasParaPdf = lineasConDibujoActual(svgActual);
       const guardados = await guardarTodas(lineasParaPdf);
       if (!guardados) return;
-      despachar({ tipo: "PEDIDO_COMPLETADO", registros: guardados });
+      // Con el número de pedido: si mientras se guardaba se cambió de pedido,
+      // el reducer sabe que estos ids no son de las líneas que hay ahora.
+      despachar({ tipo: "PEDIDO_COMPLETADO", numeroPedido, registros: guardados });
       const conIds = lineasParaPdf.map((linea) => ({
         ...linea,
         id: guardados.find((registro) => registro.version === linea.version)?.id ?? linea.id,
@@ -583,7 +597,6 @@ export function useWorkspace(inicial?: EntradaInicial) {
     origenRpsActivo,
     estadoRpsVisible,
     materialRpsAplicado,
-    busy,
     // manejadores
     cambiarNumeroPedido,
     cambiarClientePedido,

@@ -56,7 +56,7 @@ export type AccionWorkspace =
   | { tipo: "LINEA_ELIMINADA"; version: string }
   | { tipo: "INPUT_CAMBIADO"; input: LonaInput | BaquetonInput }
   | { tipo: "SNAPSHOT_CAPTURADO"; version: string; svg: string | null }
-  | { tipo: "PEDIDO_COMPLETADO"; registros: PlanteamientoRecord[] }
+  | { tipo: "PEDIDO_COMPLETADO"; numeroPedido: string; registros: PlanteamientoRecord[] }
   | { tipo: "RPS_SELECTOR_ABIERTO" }
   | { tipo: "RPS_REINTENTADO" }
   | { tipo: "RPS_CONSULTA_INICIADA"; numero: string }
@@ -229,11 +229,21 @@ export function reducirWorkspace(
       return {
         ...estado,
         lineas: estado.lineas.map((linea) => (linea.version === accion.version
-          ? { ...linea, snapshotSvg: accion.svg }
+          // Sin dibujo que capturar —la escena no está montada o no se pudo
+          // serializar— manda el que la línea ya tenía: no perder trabajo pesa
+          // más que reflejar un instante en que no se pudo leer. Es el mismo
+          // criterio que aplica `lineasConDibujoActual` antes del PDF.
+          ? { ...linea, snapshotSvg: accion.svg ?? linea.snapshotSvg }
           : linea)),
       };
 
     case "PEDIDO_COMPLETADO": {
+      // El guardado tarda, y en ese rato se puede haber cambiado de pedido. Los
+      // ids que llegan son de las líneas del pedido que se completó: estamparlos
+      // sobre las del pedido nuevo haría que completarlo sobrescribiera los
+      // planteamientos del anterior.
+      if (normalizarNumeroPedidoRps(accion.numeroPedido)
+        !== normalizarNumeroPedidoRps(estado.numeroPedido)) return estado;
       const idPorVersion = new Map(accion.registros.map((r) => [r.version, r.id]));
       return {
         ...estado,

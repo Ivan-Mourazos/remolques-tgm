@@ -215,15 +215,57 @@ describe("INPUT_CAMBIADO y SNAPSHOT_CAPTURADO", () => {
     expect(estado.lineas[1].snapshotSvg).toBeUndefined();
     expect(estado.versionActiva).toBe("11");
   });
+
+  it("capturar sin dibujo conserva el que la línea ya tenía", () => {
+    const conDibujo = reducirWorkspace(conDosLineas(), {
+      tipo: "SNAPSHOT_CAPTURADO", version: "10", svg: "<svg>viejo</svg>",
+    });
+    const sinLeer = reducirWorkspace(conDibujo, {
+      tipo: "SNAPSHOT_CAPTURADO", version: "10", svg: null,
+    });
+    expect(sinLeer.lineas[0].snapshotSvg).toBe("<svg>viejo</svg>");
+    const nuevo = reducirWorkspace(conDibujo, {
+      tipo: "SNAPSHOT_CAPTURADO", version: "10", svg: "<svg>nuevo</svg>",
+    });
+    expect(nuevo.lineas[0].snapshotSvg).toBe("<svg>nuevo</svg>");
+  });
 });
 
 describe("PEDIDO_COMPLETADO", () => {
   it("asigna a cada línea el id del registro que se acaba de guardar", () => {
-    const estado = reducirWorkspace(conDosLineas(), {
-      tipo: "PEDIDO_COMPLETADO", registros: [registro("a", "10"), registro("b", "11")],
+    const previo = reducirWorkspace(conDosLineas(), { tipo: "VALIDACION_INTENTADA" });
+    const estado = reducirWorkspace(previo, {
+      tipo: "PEDIDO_COMPLETADO",
+      numeroPedido: "AR2603583",
+      registros: [registro("a", "10"), registro("b", "11")],
     });
-    expect(estado.lineas.map((l) => l.id)).toEqual(["a", "b"]);
-    expect(estado.validacionIntentada).toBe(false);
+    expect(estado).toEqual({
+      ...previo,
+      lineas: [
+        { ...previo.lineas[0], id: "a" },
+        { ...previo.lineas[1], id: "b" },
+      ],
+      validacionIntentada: false,
+      camposTocados: [],
+    });
+  });
+
+  it("si ya se cambió de pedido no estampa los ids del anterior", () => {
+    // El guardado tarda: para cuando llegan los ids, en pantalla puede haber
+    // otro pedido, y sus líneas no son las que se acaban de guardar.
+    const previo = reducirWorkspace(conDosLineas(), {
+      tipo: "PEDIDO_CAMBIADO", valor: "AR2600001",
+    });
+    const conOtrasLineas = reducirWorkspace(previo, {
+      tipo: "LINEA_ANADIDA", linea: linea("10"),
+    });
+    const estado = reducirWorkspace(conOtrasLineas, {
+      tipo: "PEDIDO_COMPLETADO",
+      numeroPedido: "AR2603583",
+      registros: [registro("a", "10"), registro("b", "11")],
+    });
+    expect(estado).toEqual(conOtrasLineas);
+    expect(estado.lineas.map((l) => l.id)).toEqual([undefined]);
   });
 });
 

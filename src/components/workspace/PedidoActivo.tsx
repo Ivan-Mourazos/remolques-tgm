@@ -82,8 +82,12 @@ export function PedidoActivo({
             aria-invalid={Boolean(errorPedido)}
             aria-describedby={errorPedido ? "error-numero-pedido" : undefined}
             value={numeroPedido}
+            // Cambiar de pedido mientras se completa deja los ids del pedido
+            // anterior sobre las líneas del nuevo. El reducer ya se niega, pero
+            // el campo tiene que decir que ahora no es el momento.
+            disabled={ocupado}
             onChange={(evento) => onNumeroPedidoChange(evento.target.value)}
-            className="h-10 w-full rounded-xl border border-white/15 bg-white/[0.075] px-3 font-mono text-[18px] font-extrabold tracking-[-0.04em] text-white outline-none transition focus:border-gold/70 focus:bg-white/[0.11] focus:ring-4 focus:ring-gold/15"
+            className="h-10 w-full rounded-xl border border-white/15 bg-white/[0.075] px-3 font-mono text-[18px] font-extrabold tracking-[-0.04em] text-white outline-none transition focus:border-gold/70 focus:bg-white/[0.11] focus:ring-4 focus:ring-gold/15 disabled:cursor-not-allowed disabled:opacity-45"
           />
           {errorPedido && <span id="error-numero-pedido" className="mt-1 block text-[10px] font-bold text-red-200">{errorPedido}</span>}
         </label>
@@ -94,7 +98,9 @@ export function PedidoActivo({
             name="clientePedido"
             autoComplete="off"
             value={cliente}
-            disabled={!hayPedido || cargando}
+            // Igual que el número: lo que se escriba mientras se guarda no
+            // llega a la base de datos y el borrador se limpia al terminar.
+            disabled={!hayPedido || cargando || ocupado}
             onChange={(evento) => onClienteChange(evento.target.value)}
             className="h-10 w-full rounded-xl border border-white/12 bg-white/[0.065] px-3 text-sm font-bold text-white outline-none transition focus:border-gold/60 focus:bg-white/[0.1] focus:ring-4 focus:ring-gold/15 disabled:cursor-not-allowed disabled:opacity-45"
           />
@@ -111,7 +117,7 @@ export function PedidoActivo({
           </button>
           <button
             type="button"
-            disabled={!hayPedido}
+            disabled={!hayPedido || cargando}
             onClick={() => onNuevo("baqueton")}
             className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/20 bg-white/[0.08] px-3.5 text-[12px] font-extrabold text-white transition hover:-translate-y-px hover:border-gold/55 hover:bg-white/[0.13] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold/20 disabled:cursor-not-allowed disabled:opacity-35"
           >

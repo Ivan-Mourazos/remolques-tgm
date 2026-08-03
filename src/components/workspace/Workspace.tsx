@@ -64,6 +64,12 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
 
       {lineaActiva ? (
         <div className="grid gap-3 2xl:grid-cols-[500px_minmax(0,1fr)]">
+          {/* Lo que se teclee mientras se guarda no llega a la base de datos
+              —`guardarTodas` ya se llevó la lista— y al terminar se limpian los
+              borradores: el cambio se quedaría solo en memoria. `disabled` en el
+              fieldset apaga de una vez todos los controles que contiene, y
+              `contents` lo saca del layout para no alterar la rejilla. */}
+          <fieldset disabled={accion !== null} className="contents">
           <div>
             <div className="mb-2.5 rounded-xl border border-line bg-surface px-3.5 py-2.5 shadow-sm">
               <p className="text-[9px] font-extrabold uppercase tracking-[0.18em] text-gold-2">Editando dentro de {numeroPedido}</p>
@@ -135,6 +141,7 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
                   </div>
                 )}
           </div>
+          </fieldset>
         </div>
       ) : (
         <section className="grid min-h-[210px] place-items-center rounded-[22px] border border-dashed border-line-2 bg-surface/55 p-6 text-center shadow-inner">
