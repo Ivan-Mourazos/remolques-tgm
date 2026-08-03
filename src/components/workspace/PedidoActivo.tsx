@@ -1,8 +1,8 @@
 "use client";
 
 import type { ReactNode } from "react";
-import type { PlanteamientoRecord, TipoPlanteamiento } from "@/lib/store/types";
-import { nombreElementoPedido } from "@/lib/pedidos/agrupar-pedido";
+import type { TipoPlanteamiento } from "@/lib/store/types";
+import { nombreLinea, type EstadoLinea, type LineaPedido } from "@/lib/workspace/lineas";
 
 function IconoElemento({ tipo }: { tipo: TipoPlanteamiento }) {
   return tipo === "lona" ? (
@@ -19,10 +19,10 @@ function IconoElemento({ tipo }: { tipo: TipoPlanteamiento }) {
 export function PedidoActivo({
   numeroPedido,
   cliente,
-  registros,
+  lineas,
+  estadosLinea,
+  versionActiva,
   cargando,
-  idActivo,
-  borrador,
   rpsPanel,
   accion,
   progresoPdf,
@@ -30,29 +30,33 @@ export function PedidoActivo({
   onNumeroPedidoChange,
   onClienteChange,
   onSeleccionar,
+  onEliminar,
   onNuevo,
   onPreview,
-  onGenerar,
+  onCompletar,
 }: {
   numeroPedido: string;
   cliente: string;
-  registros: PlanteamientoRecord[];
+  lineas: LineaPedido[];
+  estadosLinea: Record<string, EstadoLinea>;
+  versionActiva: string | null;
   cargando: boolean;
-  idActivo?: string;
-  borrador?: { tipo: TipoPlanteamiento; version: string };
   rpsPanel: ReactNode;
-  accion: "guardar" | "preview" | "pdf" | null;
+  accion: "preview" | "completar" | null;
   progresoPdf: { hecho: number; total: number } | null;
   errorPedido?: string;
   onNumeroPedidoChange: (valor: string) => void;
   onClienteChange: (valor: string) => void;
-  onSeleccionar: (registro: PlanteamientoRecord) => void;
+  onSeleccionar: (version: string) => void;
+  onEliminar: (version: string) => void;
   onNuevo: (tipo: TipoPlanteamiento) => void;
   onPreview: () => void;
-  onGenerar: () => void;
+  onCompletar: () => void;
 }) {
   const hayPedido = Boolean(numeroPedido.trim());
-  const total = registros.length + (borrador ? 1 : 0);
+  const total = lineas.length;
+  // Lo que se mira antes de completar: completar exige que estén todas.
+  const listas = lineas.filter((l) => estadosLinea[l.version]?.lista).length;
   const ocupado = accion !== null;
   // Los dibujos se rasterizan en serie antes de pedir el PDF: es la parte
   // que tarda, y la única que se puede contar de verdad.
@@ -78,8 +82,12 @@ export function PedidoActivo({
             aria-invalid={Boolean(errorPedido)}
             aria-describedby={errorPedido ? "error-numero-pedido" : undefined}
             value={numeroPedido}
+            // Cambiar de pedido mientras se completa deja los ids del pedido
+            // anterior sobre las líneas del nuevo. El reducer ya se niega, pero
+            // el campo tiene que decir que ahora no es el momento.
+            disabled={ocupado}
             onChange={(evento) => onNumeroPedidoChange(evento.target.value)}
-            className="h-10 w-full rounded-xl border border-white/15 bg-white/[0.075] px-3 font-mono text-[18px] font-extrabold tracking-[-0.04em] text-white outline-none transition focus:border-gold/70 focus:bg-white/[0.11] focus:ring-4 focus:ring-gold/15"
+            className="h-10 w-full rounded-xl border border-white/15 bg-white/[0.075] px-3 font-mono text-[18px] font-extrabold tracking-[-0.04em] text-white outline-none transition focus:border-gold/70 focus:bg-white/[0.11] focus:ring-4 focus:ring-gold/15 disabled:cursor-not-allowed disabled:opacity-45"
           />
           {errorPedido && <span id="error-numero-pedido" className="mt-1 block text-[10px] font-bold text-red-200">{errorPedido}</span>}
         </label>
@@ -90,7 +98,9 @@ export function PedidoActivo({
             name="clientePedido"
             autoComplete="off"
             value={cliente}
-            disabled={!hayPedido || cargando}
+            // Igual que el número: lo que se escriba mientras se guarda no
+            // llega a la base de datos y el borrador se limpia al terminar.
+            disabled={!hayPedido || cargando || ocupado}
             onChange={(evento) => onClienteChange(evento.target.value)}
             className="h-10 w-full rounded-xl border border-white/12 bg-white/[0.065] px-3 text-sm font-bold text-white outline-none transition focus:border-gold/60 focus:bg-white/[0.1] focus:ring-4 focus:ring-gold/15 disabled:cursor-not-allowed disabled:opacity-45"
           />
@@ -107,7 +117,7 @@ export function PedidoActivo({
           </button>
           <button
             type="button"
-            disabled={!hayPedido}
+            disabled={!hayPedido || cargando}
             onClick={() => onNuevo("baqueton")}
             className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/20 bg-white/[0.08] px-3.5 text-[12px] font-extrabold text-white transition hover:-translate-y-px hover:border-gold/55 hover:bg-white/[0.13] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold/20 disabled:cursor-not-allowed disabled:opacity-35"
           >
@@ -125,7 +135,7 @@ export function PedidoActivo({
           <div className="flex items-center gap-2">
             <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/50">Contenido del pedido</p>
             <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-extrabold tabular-nums text-white/75">
-              {cargando ? "Cargando…" : `${total} ${total === 1 ? "elemento" : "elementos"}`}
+              {cargando ? "Cargando…" : `${listas} de ${total} listas`}
             </span>
           </div>
           <div className="flex flex-wrap gap-1.5">
@@ -139,48 +149,68 @@ export function PedidoActivo({
             </button>
             <button
               type="button"
-              onClick={onGenerar}
+              onClick={onCompletar}
               disabled={!hayPedido || total === 0 || ocupado}
               className="rounded-lg bg-white px-3 py-1.5 text-[11px] font-extrabold text-deep transition hover:-translate-y-px hover:bg-gold focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/20 disabled:cursor-not-allowed disabled:opacity-35"
             >
-              {accion === "pdf" ? (avance ?? "Archivando…") : "Generar PDF completo"}
+              {accion === "completar" ? (avance ?? "Completando…") : "Completar pedido"}
             </button>
           </div>
         </div>
 
-        {total > 0 ? (
+        {lineas.length > 0 ? (
           <div className="flex gap-2 overflow-x-auto pb-1">
-            {registros.map((registro) => {
-              const activo = registro.id === idActivo;
+            {lineas.map((linea) => {
+              const activa = linea.version === versionActiva;
+              const estado = estadosLinea[linea.version];
               return (
-                <button
-                  type="button"
-                  key={registro.id}
-                  aria-pressed={activo}
-                  onClick={() => onSeleccionar(registro)}
-                  className={`group flex min-w-[190px] items-center gap-2.5 rounded-xl border px-3 py-2 text-left transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold/20 ${activo ? "border-gold bg-gold text-deep shadow-[0_6px_20px_rgb(0_0_0/0.18)]" : "border-white/12 bg-white/[0.055] text-white hover:border-white/28 hover:bg-white/[0.1]"}`}
+                // Dos acciones hermanas —abrir y eliminar— dentro de un
+                // contenedor: un botón dentro de otro no es HTML válido.
+                <div
+                  key={linea.version}
+                  className={`group flex min-w-[210px] items-center gap-2 rounded-xl border px-2 py-2 transition ${activa ? "border-gold bg-gold text-deep shadow-[0_6px_20px_rgb(0_0_0/0.18)]" : "border-white/12 bg-white/[0.055] text-white hover:border-white/28 hover:bg-white/[0.1]"}`}
                 >
-                  <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${activo ? "bg-deep/12" : "bg-white/8 text-gold"}`}>
-                    <IconoElemento tipo={registro.tipo} />
-                  </span>
-                  <span className="min-w-0">
-                    <strong className="block truncate text-[12px] font-extrabold">{nombreElementoPedido(registro.version, registro.tipo)}</strong>
-                    <span className={`mt-0.5 block truncate text-[9px] font-bold uppercase tracking-wide ${activo ? "text-deep/65" : "text-white/45"}`}>
-                      {registro.input.cabecera.ordenFabricacion ? `OF ${registro.input.cabecera.ordenFabricacion}` : "Guardado"}
+                  <button
+                    type="button"
+                    aria-pressed={activa}
+                    onClick={() => onSeleccionar(linea.version)}
+                    className="flex min-w-0 flex-1 items-center gap-2.5 text-left focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold/20"
+                  >
+                    <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${activa ? "bg-deep/12" : "bg-white/8 text-gold"}`}>
+                      <IconoElemento tipo={linea.tipo} />
                     </span>
-                  </span>
-                </button>
+                    <span className="min-w-0">
+                      <strong className="block truncate text-[12px] font-extrabold">
+                        {nombreLinea(linea)}
+                      </strong>
+                      <span
+                        title={estado?.falta ?? undefined}
+                        className={`mt-0.5 block truncate text-[9px] font-extrabold uppercase tracking-wide ${
+                          estado?.lista
+                            ? activa ? "text-deep/65" : "text-emerald-300"
+                            : activa ? "text-deep/70" : "text-gold"
+                        }`}
+                      >
+                        {estado?.lista ? "Listo" : `Falta: ${estado?.falta ?? "completar datos"}`}
+                      </span>
+                    </span>
+                  </button>
+                  {/* El hook ya se niega a borrar mientras hay una acción en
+                      curso, pero el botón tiene que decirlo: un clic que no
+                      hace nada ni avisa se lee como que la aplicación se ha
+                      colgado, justo cuando está subiendo el PDF. */}
+                  <button
+                    type="button"
+                    disabled={ocupado}
+                    onClick={() => onEliminar(linea.version)}
+                    aria-label={`Eliminar ${nombreLinea(linea)} del pedido`}
+                    className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg text-[15px] font-bold leading-none transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-red-400/25 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent ${activa ? "text-deep/45 hover:bg-deep/10 hover:text-deep" : "text-white/35 hover:bg-white/10 hover:text-red-300"}`}
+                  >
+                    ×
+                  </button>
+                </div>
               );
             })}
-            {borrador && (
-              <div className="flex min-w-[190px] items-center gap-2.5 rounded-xl border border-dashed border-gold/70 bg-gold/12 px-3 py-2 text-left text-white">
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-gold/15 text-gold"><IconoElemento tipo={borrador.tipo} /></span>
-                <span className="min-w-0">
-                  <strong className="block truncate text-[12px] font-extrabold">{nombreElementoPedido(borrador.version, borrador.tipo)}</strong>
-                  <span className="mt-0.5 block text-[9px] font-extrabold uppercase tracking-wide text-gold">Sin guardar</span>
-                </span>
-              </div>
-            )}
           </div>
         ) : (
           <p className="rounded-xl border border-dashed border-white/15 px-3 py-2.5 text-[11px] font-semibold text-white/48">

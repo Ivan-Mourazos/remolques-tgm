@@ -101,6 +101,13 @@ export class MssqlStore implements PlanteamientoStore {
     return rowToRecord(res.recordset[0]);
   }
 
+  async delete(id: string): Promise<boolean> {
+    const pool = await this.getPool();
+    const res = await pool.request().input("id", sql.UniqueIdentifier, id)
+      .query("DELETE FROM dbo.Planteamientos WHERE Id = @id");
+    return (res.rowsAffected[0] ?? 0) > 0;
+  }
+
   async getParams(): Promise<CalcParams> {
     const pool = await this.getPool();
     const res = await pool.request().query("SELECT ParamsJson FROM dbo.Parametros WHERE Id = 1");

@@ -52,4 +52,20 @@ describe("FileStore", () => {
     expect(await store.list({ tipo: "baqueton" })).toHaveLength(0);
     expect(await store.list({ pedido: "AR.26.02796" })).toHaveLength(1);
   });
+
+  it("delete borra solo ese registro y dice que existía", async () => {
+    const store = makeStore();
+    const uno = await store.save(rec);
+    const otro = await store.save({ ...rec, version: "11" });
+    expect(await store.delete(uno.id)).toBe(true);
+    expect(await store.get(uno.id)).toBeNull();
+    expect(await store.get(otro.id)).not.toBeNull();
+  });
+
+  it("delete de un id que no existe no borra nada y devuelve false", async () => {
+    const store = makeStore();
+    const uno = await store.save(rec);
+    expect(await store.delete("no-existe")).toBe(false);
+    expect(await store.get(uno.id)).not.toBeNull();
+  });
 });

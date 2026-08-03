@@ -60,6 +60,14 @@ export class FileStore implements PlanteamientoStore {
     return saved;
   }
 
+  async delete(id: string): Promise<boolean> {
+    const recs = this.readAll();
+    const quedan = recs.filter((r) => r.id !== id);
+    if (quedan.length === recs.length) return false;
+    this.writeAll(quedan);
+    return true;
+  }
+
   async getParams(): Promise<CalcParams> {
     const f = this.file("parametros.json");
     if (!existsSync(f)) return DEFAULT_PARAMS;

@@ -1,6 +1,7 @@
 import type { LonaInput } from "@/lib/calc/lona";
 import type { BaquetonInput } from "@/lib/calc/baqueton";
-import type { TipoPlanteamiento } from "@/lib/store/types";
+import type { EstadoWorkspace } from "@/lib/workspace/estado";
+import type { LineaPedido } from "@/lib/workspace/lineas";
 import type { OrigenRps, PedidoRps } from "@/lib/rps/types";
 import type { ErrorPlanteamiento } from "@/lib/pedidos/validar-planteamiento";
 import { FORMA_PEDIDO_RPS, normalizarNumeroPedidoRps } from "@/lib/rps/numero-pedido";
@@ -8,20 +9,9 @@ import { FORMA_PEDIDO_RPS, normalizarNumeroPedidoRps } from "@/lib/rps/numero-pe
 export type EstadoConsultaRps =
   | "idle" | "buscando" | "encontrado" | "no-encontrado" | "error";
 
-export function inputActivo(
-  tipo: TipoPlanteamiento,
-  lona: LonaInput,
-  baqueton: BaquetonInput,
-): LonaInput | BaquetonInput {
-  return tipo === "lona" ? lona : baqueton;
-}
-
-export function hayCambiosSinGuardar(
-  editorActivo: boolean,
-  input: LonaInput | BaquetonInput,
-  baseGuardada: string | null,
-): boolean {
-  return editorActivo && JSON.stringify(input) !== baseGuardada;
+/** La línea abierta, o null si el pedido no tiene ninguna. */
+export function lineaActiva(estado: EstadoWorkspace): LineaPedido | null {
+  return estado.lineas.find((linea) => linea.version === estado.versionActiva) ?? null;
 }
 
 /** Medidas mínimas para que el cálculo de paños y ollaos tenga sentido. */
@@ -57,10 +47,12 @@ export function pedidoRpsVisible(
     : null;
 }
 
+/** El origen de RPS es de la línea, no del workspace: cada una vino de la suya. */
 export function origenRpsActivo(
   numeroPedido: string,
-  origen: OrigenRps | null,
+  linea: LineaPedido | null,
 ): OrigenRps | null {
+  const origen = linea?.origenRps;
   if (!origen) return null;
   return normalizarNumeroPedidoRps(origen.numeroPedido) === normalizarNumeroPedidoRps(numeroPedido)
     ? origen

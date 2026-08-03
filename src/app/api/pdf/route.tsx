@@ -17,42 +17,37 @@ export const runtime = "nodejs";
 // Genera un único PDF por pedido y, en Linux de producción, archiva los mismos
 // bytes en la carpeta general y en la carpeta del año correspondiente.
 export async function POST(req: NextRequest) {
-  let ids: string[];
+  let paginasPedidas: Array<{
+    clave: string; id?: string; tipo: TipoPlanteamiento; input: LonaInput | BaquetonInput;
+  }>;
   let snapshots: Record<string, string | null>;
   let archivar: boolean;
-  let borrador: { id?: string; tipo: TipoPlanteamiento; input: LonaInput | BaquetonInput } | null;
   try {
     const body = await req.json();
-    ids = Array.isArray(body.ids) ? body.ids : [];
+    paginasPedidas = Array.isArray(body.paginas) ? body.paginas : [];
     snapshots = body.snapshots ?? {};
     archivar = body.archivar === true;
-    borrador = body.borrador ?? null;
   } catch {
     return NextResponse.json({ error: "Cuerpo de petición inválido" }, { status: 400 });
   }
   const store = getStore();
-  const recs = (await Promise.all(ids.map((id) => store.get(id))))
-    .filter((r): r is PlanteamientoRecord => r !== null);
-  if (borrador) {
-    const errorValidacion = errorPlanteamientoIncompleto(borrador.input);
+  const params = await store.getParams();
+  const ahora = new Date().toISOString();
+  // Cada página llega con su input: las líneas del pedido son borradores hasta
+  // que se completa. De las guardadas se recupera su fecha de creación para que
+  // el orden del PDF sea el de siempre.
+  const recs: PlanteamientoRecord[] = [];
+  for (const pagina of paginasPedidas) {
+    const errorValidacion = errorPlanteamientoIncompleto(pagina.input);
     if (errorValidacion) return NextResponse.json({ error: errorValidacion }, { status: 400 });
-    const idBorrador = borrador.id?.trim() || "__vista-previa__";
-    const existente = borrador.id ? await store.get(borrador.id) : null;
-    const ahora = new Date().toISOString();
-    const base = buildRecord(
-      borrador.tipo,
-      borrador.input,
-      await store.getParams(),
-      idBorrador,
-      null,
-    );
+    const existente = pagina.id ? await store.get(pagina.id) : null;
+    const base = buildRecord(pagina.tipo, pagina.input, params, pagina.id, null);
     recs.push({
       ...base,
-      id: idBorrador,
+      id: pagina.clave,
       createdAt: existente?.createdAt ?? ahora,
       updatedAt: ahora,
     });
-    recs.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   }
   const paginas = remolquesUnicos(recs).filter((registro) => planteamientoGenerable(registro.input));
   const omitidos = recs.length - paginas.length;

@@ -1,22 +1,14 @@
 import type { LonaInput } from "@/lib/calc/lona";
 import type { BaquetonInput } from "@/lib/calc/baqueton";
-import type { PlanteamientoRecord, TipoPlanteamiento } from "@/lib/store/types";
+import type { TipoPlanteamiento } from "@/lib/store/types";
 import { nombrePdf } from "@/lib/pdf/ruta-pdf";
-import { remolquesUnicos } from "@/lib/pedidos/agrupar-pedido";
-import { planteamientoGenerable } from "@/lib/pedidos/validar-planteamiento";
+import { estadoLinea, type LineaPedido } from "@/lib/workspace/lineas";
 
 export interface OpcionesOrquestarPdf {
   numeroPedido: string;
   archivar: boolean;
-  editorActivo: boolean;
-  /** id devuelto por el guardado previo, si el flujo guardó antes de generar. */
-  idGuardado: string | null;
-  /** id del elemento en edición, o "__vista-previa__" si aún no se ha guardado. */
-  idBorrador: string;
-  tipo: TipoPlanteamiento;
-  input: LonaInput | BaquetonInput;
-  /** SVG serializado de la vista técnica en pantalla. */
-  svgActual: string | null;
+  /** Las líneas del pedido, en orden. Las guardadas traen `id`. */
+  lineas: LineaPedido[];
 }
 
 export interface DependenciasPdf {
@@ -30,76 +22,63 @@ export interface DependenciasPdf {
   onProgreso?: (hecho: number, total: number) => void;
 }
 
+export interface PaginaPdf {
+  clave: string;
+  id?: string;
+  tipo: TipoPlanteamiento;
+  input: LonaInput | BaquetonInput;
+}
+
 export type ResultadoPdf =
   | { ok: true; respuesta: Response; nombre: string; omitidos: number }
   | { ok: false; motivo: "sin-elementos" | "http"; mensaje: string };
+
+/** Las líneas sin guardar no tienen id y aun así necesitan casar con su dibujo. */
+const claveLinea = (linea: LineaPedido) => linea.id ?? `borrador:${linea.version}`;
 
 export async function orquestarPdf(
   opciones: OpcionesOrquestarPdf,
   deps: DependenciasPdf,
 ): Promise<ResultadoPdf> {
-  const { archivar, editorActivo, idBorrador, idGuardado, input, tipo } = opciones;
-  const pedido = opciones.numeroPedido.trim();
-  const nombre = nombrePdf(pedido);
-
-  // Un PDF por pedido: una página por cada remolque guardado, en orden de creación.
-  let registros: PlanteamientoRecord[] = [];
-  if (pedido) {
-    registros = await deps.fetch(`/api/planteamientos?pedido=${encodeURIComponent(pedido)}`)
-      .then((r) => (r.ok ? r.json() as Promise<PlanteamientoRecord[]> : []))
-      .catch(() => []);
-  }
-  const agrupados = remolquesUnicos(registros);
-  const generables = agrupados.filter((registro) => planteamientoGenerable(registro.input));
-  const omitidos = agrupados.length - generables.length;
-  const paginas = generables
-    .filter((registro) => archivar || !editorActivo || registro.version !== input.cabecera.version)
-    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-  const ids = paginas.map((r) => r.id);
-  if (ids.length === 0 && !editorActivo) {
+  const nombre = nombrePdf(opciones.numeroPedido.trim());
+  // Las líneas ya vienen dadas: el workspace las tiene en la mano y casi
+  // ninguna está guardada todavía. Completar el pedido comprueba antes que
+  // están todas listas; aquí el filtro solo protege a la vista previa.
+  const generables = opciones.lineas.filter((linea) => estadoLinea(linea).lista);
+  const omitidos = opciones.lineas.length - generables.length;
+  if (generables.length === 0) {
     return {
       ok: false,
       motivo: "sin-elementos",
-      mensaje: "El pedido todavía no contiene ningún elemento válido para generar el PDF.",
+      mensaje: "El pedido todavía no contiene ninguna línea completa para generar el PDF.",
     };
   }
 
-  // El total se conoce antes de empezar: las páginas guardadas más, si toca,
-  // el dibujo del elemento que se está editando.
-  const idPaginaActual = idGuardado ?? idBorrador;
-  const necesitaDibujoActual = editorActivo && !paginas.some((r) => r.id === idPaginaActual);
-  const total = paginas.length + (necesitaDibujoActual ? 1 : 0);
+  const total = generables.length;
   let hechos = 0;
-  const avanzar = () => deps.onProgreso?.(++hechos, total);
-
   const snapshots: Record<string, string | null> = {};
-  for (const r of paginas) {
-    snapshots[r.id] = r.snapshotSvg ? await deps.rasterizar(r.snapshotSvg) : null;
-    avanzar();
+  for (const linea of generables) {
+    snapshots[claveLinea(linea)] = linea.snapshotSvg
+      ? await deps.rasterizar(linea.snapshotSvg)
+      : null;
+    deps.onProgreso?.(++hechos, total);
   }
-  if (necesitaDibujoActual) {
-    snapshots[idPaginaActual] = await deps.rasterizar(opciones.svgActual ?? "");
-    avanzar();
-  }
+
+  const paginas: PaginaPdf[] = generables.map((linea) => ({
+    clave: claveLinea(linea),
+    id: linea.id,
+    tipo: linea.tipo,
+    input: linea.input,
+  }));
 
   const respuesta = await deps.fetch("/api/pdf", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      ids,
-      snapshots,
-      archivar,
-      borrador: archivar || !editorActivo ? null : { id: idBorrador, tipo, input },
-    }),
+    body: JSON.stringify({ paginas, snapshots, archivar: opciones.archivar }),
   });
   if (!respuesta.ok) {
     const detalle = await respuesta.json().catch(() => null) as { error?: string } | null;
     return { ok: false, motivo: "http", mensaje: detalle?.error ?? String(respuesta.status) };
   }
-  return {
-    ok: true,
-    respuesta,
-    nombre,
-    omitidos: Math.max(omitidos, Number(respuesta.headers.get("X-Pdf-Omitidos") ?? 0)),
-  };
+  return { ok: true, respuesta, nombre, omitidos };
 }
