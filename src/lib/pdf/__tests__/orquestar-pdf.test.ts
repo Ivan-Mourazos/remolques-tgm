@@ -93,4 +93,16 @@ describe("orquestarPdf", () => {
     );
     expect(resultado).toEqual({ ok: false, motivo: "http", mensaje: "no se pudo" });
   });
+
+  it("no falla si nadie escucha el progreso", async () => {
+    // `onProgreso` es opcional: el PDF del servidor se genera sin nadie que lo
+    // pinte. Sin este caso, quitar el `?.` de la llamada no rompería ningún test.
+    const { onProgreso, ...sinProgreso } = deps();
+    void onProgreso;
+    const resultado = await orquestarPdf(
+      { numeroPedido: "AR2603583", archivar: false, lineas: [linea("10")] },
+      sinProgreso,
+    );
+    expect(resultado.ok).toBe(true);
+  });
 });
