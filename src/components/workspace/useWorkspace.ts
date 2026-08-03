@@ -318,8 +318,19 @@ export function useWorkspace(inicial?: EntradaInicial) {
       // Decir cuál y qué le falta, en vez de omitirla en silencio.
       avisar("info", mensajeImpedimentos(impedimentos));
       const primera = impedimentos[0].version;
+      const culpable = lineas.find((linea) => linea.version === primera);
       if (primera) despachar({ tipo: "LINEA_SELECCIONADA", version: primera });
       despachar({ tipo: "VALIDACION_INTENTADA" });
+      // Abrir la línea que falla y ponerse encima del campo: el aviso dice qué
+      // pasa, pero quien lo arregla necesita el cursor donde se arregla.
+      const campo = culpable ? erroresPlanteamiento(culpable.input)[0]?.campo : undefined;
+      if (campo) {
+        window.setTimeout(() => {
+          const nodo = document.querySelector<HTMLElement>(`[data-campo="${campo}"]`);
+          nodo?.focus();
+          nodo?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 0);
+      }
       return;
     }
     despachar({ tipo: "ACCION_INICIADA", accion: "completar" });
