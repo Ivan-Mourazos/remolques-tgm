@@ -6,7 +6,7 @@ import { Escena3D } from "@/components/workspace/Escena3D";
 import { ImportadorRps } from "@/components/workspace/ImportadorRps";
 import { PedidoActivo } from "@/components/workspace/PedidoActivo";
 import { useWorkspace } from "@/components/workspace/useWorkspace";
-import { nombreElementoPedido } from "@/lib/pedidos/agrupar-pedido";
+import { nombreLinea } from "@/lib/workspace/lineas";
 import type { EntradaInicial } from "@/lib/workspace/estado";
 
 export type WorkspaceInicial = EntradaInicial;
@@ -14,13 +14,13 @@ export type WorkspaceInicial = EntradaInicial;
 export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
   const ws = useWorkspace(inicial);
   const {
-    tipo, lona, baqueton: baq, id, editorActivo,
-    numeroPedido, cliente: clientePedido, registros: registrosPedido, cargandoPedido,
+    lineas, versionActiva,
+    numeroPedido, cliente: clientePedido, cargandoPedido,
     rps, accion,
   } = ws.estado;
   const {
-    materiales, params, input, resLona, resBaq, hayCambiosSinGuardar,
-    erroresVisibles, medidasSuficientes, busy,
+    materiales, params, lineaActiva, estadosLinea, lona, baq, resLona, resBaq,
+    erroresVisibles, medidasSuficientes,
     pedidoRpsVisible, origenRpsActivo, estadoRpsVisible,
   } = ws;
 
@@ -33,10 +33,8 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
       materialAplicado={ws.materialRpsAplicado}
       abierto={rps.selectorAbierto}
       onAbrir={ws.abrirSelectorRps}
-      onAplicar={async (linea) => {
-        if (pedidoRpsVisible && (
-          origenRpsActivo?.idLinea === linea.idLinea || await ws.puedeCambiarElemento()
-        )) ws.aplicarPedidoRps(pedidoRpsVisible, linea);
+      onAplicar={(linea) => {
+        if (pedidoRpsVisible) ws.aplicarPedidoRps(pedidoRpsVisible, linea);
       }}
       onReintentar={ws.reintentarRps}
     />
@@ -47,53 +45,53 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
       <PedidoActivo
         numeroPedido={numeroPedido}
         cliente={clientePedido}
-        registros={registrosPedido}
+        lineas={lineas}
+        estadosLinea={estadosLinea}
+        versionActiva={versionActiva}
         cargando={cargandoPedido}
-        idActivo={id}
-        borrador={editorActivo && !id ? { tipo, version: input.cabecera.version } : undefined}
         rpsPanel={panelRps}
         accion={accion}
         progresoPdf={ws.progresoPdf}
         errorPedido={erroresVisibles.numeroPedido}
         onNumeroPedidoChange={ws.cambiarNumeroPedido}
         onClienteChange={ws.cambiarClientePedido}
-        onSeleccionar={ws.seleccionarRegistro}
-        onNuevo={ws.nuevoElemento}
+        onSeleccionar={ws.seleccionarLinea}
+        onEliminar={ws.eliminarLinea}
+        onNuevo={ws.nuevaLinea}
         onPreview={ws.previsualizarPdf}
-        onGenerar={ws.generarPdf}
+        onCompletar={ws.completarPedido}
       />
 
-      {editorActivo ? (
+      {lineaActiva ? (
         <div className="grid gap-3 2xl:grid-cols-[500px_minmax(0,1fr)]">
           <div>
-            <div className="mb-2.5 flex items-center justify-between gap-3 rounded-xl border border-line bg-surface px-3.5 py-2.5 shadow-sm">
-              <div>
-                <p className="text-[9px] font-extrabold uppercase tracking-[0.18em] text-gold-2">Editando dentro de {numeroPedido}</p>
-                <h2 className="mt-0.5 text-[16px] font-extrabold tracking-[-0.025em] text-ink">
-                  {nombreElementoPedido(input.cabecera.version, tipo)}
-                </h2>
-              </div>
-              <span className={`rounded-full px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-wide ${hayCambiosSinGuardar ? "bg-gold/12 text-gold-2" : "bg-deep/8 text-deep"}`}>
-                {hayCambiosSinGuardar ? "Cambios sin guardar" : "Guardado"}
-              </span>
+            <div className="mb-2.5 rounded-xl border border-line bg-surface px-3.5 py-2.5 shadow-sm">
+              <p className="text-[9px] font-extrabold uppercase tracking-[0.18em] text-gold-2">Editando dentro de {numeroPedido}</p>
+              <h2 className="mt-0.5 text-[16px] font-extrabold tracking-[-0.025em] text-ink">
+                {nombreLinea(lineaActiva)}
+              </h2>
             </div>
-            {tipo === "lona" ? (
+            {lineaActiva.tipo === "lona" ? (
               <FormularioLona input={lona} materiales={materiales} params={params} errores={erroresVisibles}
                 onChange={ws.cambiarInput} onCampoTocado={ws.marcarCampoTocado} />
             ) : (
               <FormularioBaqueton input={baq} materiales={materiales} params={params} errores={erroresVisibles}
                 onChange={ws.cambiarInput} onCampoTocado={ws.marcarCampoTocado} />
             )}
-            <button
-              onClick={ws.guardar}
-              disabled={busy}
-              className="mt-2.5 w-full rounded-xl bg-deep px-4 py-2.5 text-[13px] font-extrabold text-white shadow-[0_7px_20px_rgb(9_39_44/0.20)] transition-[transform,background-color,box-shadow] hover:-translate-y-px hover:bg-deep-2 hover:shadow-lg focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-2/20 disabled:cursor-wait disabled:opacity-50"
-            >
-              {accion === "guardar" ? "Guardando…" : `Guardar ${nombreElementoPedido(input.cabecera.version, tipo).toLocaleLowerCase("es-ES")}`}
-            </button>
+            {/* Ya no hay guardado por elemento: lo que importa es si la línea
+                está lista para que el pedido se pueda completar. */}
+            <p className={`mt-2.5 rounded-xl px-4 py-2.5 text-center text-[12px] font-extrabold ${
+              estadosLinea[lineaActiva.version]?.lista
+                ? "bg-deep/8 text-deep"
+                : "bg-gold/12 text-gold-2"
+            }`}>
+              {estadosLinea[lineaActiva.version]?.lista
+                ? "Listo. Se guardará al completar el pedido."
+                : `Falta: ${estadosLinea[lineaActiva.version]?.falta}`}
+            </p>
           </div>
           <div className="flex flex-col gap-4">
-            {tipo === "lona" ? (
+            {lineaActiva.tipo === "lona" ? (
               <Escena3D modo="lona" largo={lona.largo} ancho={lona.ancho} anchoAtras={lona.anchoAtras}
                 altoDelante={lona.altoDelante} altoAtras={lona.altoAtras}
                 aguas={lona.aguas} radioCumbrera={lona.radioCumbrera} radioHombro={lona.radioHombro}
@@ -117,7 +115,7 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
                 onObservacionesChange={(observaciones) => ws.cambiarInput({ ...baq, observaciones })}
                 onSnapshotReady={ws.registrarSnapshot} />
             )}
-            {medidasSuficientes && tipo === "lona"
+            {medidasSuficientes && lineaActiva.tipo === "lona"
               ? <ResultadosLona
                   res={resLona}
                   modoOllaos={lona.modoOllaos}
@@ -125,7 +123,7 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
                   errorOllaos={erroresVisibles.ollaosManuales}
                   onOllaosChange={(ollaosManuales) => ws.cambiarInput({ ...lona, ollaosManuales })}
                 />
-              : medidasSuficientes && tipo === "baqueton" ? <ResultadosBaqueton
+              : medidasSuficientes && lineaActiva.tipo === "baqueton" ? <ResultadosBaqueton
                   res={resBaq}
                   modoOllaos={baq.modoOllaos}
                   primerOllao={baq.primerOllao ?? params.primerOllao}
