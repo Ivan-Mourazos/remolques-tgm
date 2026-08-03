@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useMemo, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { calcLona, type LonaInput } from "@/lib/calc/lona";
 import { calcBaqueton, type BaquetonInput } from "@/lib/calc/baqueton";
 import type { Material } from "@/lib/calc/materiales-seed";
@@ -12,17 +12,19 @@ import { crearInputDesdeRps } from "@/lib/rps/aplicar-linea";
 import { materialPreferidoRps } from "@/lib/rps/material-rps";
 import { normalizarNumeroPedidoRps } from "@/lib/rps/numero-pedido";
 import type { LineaPedidoRps, PedidoRps } from "@/lib/rps/types";
-import {
-  nombreElementoPedido,
-  siguienteVersionPedido,
-} from "@/lib/pedidos/agrupar-pedido";
 import { erroresPlanteamiento } from "@/lib/pedidos/validar-planteamiento";
 import { estadoInicial, reducirWorkspace, type EntradaInicial } from "@/lib/workspace/estado";
 import {
+  guardarBorradores, leerBorradores, limpiarBorradores,
+} from "@/lib/workspace/borradores-locales";
+import {
+  estadoLinea, nombreLinea, siguienteVersion, type LineaPedido,
+} from "@/lib/workspace/lineas";
+import { impedimentosCompletar, mensajeImpedimentos } from "@/lib/workspace/completar-pedido";
+import {
   erroresVisibles as calcularErroresVisibles,
   estadoRpsVisible as calcularEstadoRpsVisible,
-  hayCambiosSinGuardar as calcularHayCambiosSinGuardar,
-  inputActivo,
+  lineaActiva as calcularLineaActiva,
   medidasSuficientes as calcularMedidasSuficientes,
   origenRpsActivo as calcularOrigenRpsActivo,
   pedidoRpsVisible as calcularPedidoRpsVisible,
@@ -31,26 +33,6 @@ import { useAvisos, useConfirmar } from "@/components/feedback/useFeedback";
 import { useCatalogos } from "@/components/workspace/useCatalogos";
 import { useRegistrosPedido } from "@/components/workspace/useRegistrosPedido";
 import { useConsultaRps } from "@/components/workspace/useConsultaRps";
-import { useAvisoSalida } from "@/components/workspace/useAvisoSalida";
-
-/**
- * Añade a `registros` el registro recién guardado (`reciente`) cuando
- * pertenece al mismo pedido (`numeroPedidoActivo`). Sirve para no repetir su
- * versión ni perder su `id` mientras `registrosPedido` todavía no refleja el
- * `GUARDADO_OK` que se acaba de despachar (ver `recienGuardadoRef`). Vive
- * fuera del componente para no obligar a los `useCallback` que la llaman a
- * declararla como dependencia.
- */
-function conRecienGuardado(
-  registros: PlanteamientoRecord[],
-  reciente: PlanteamientoRecord | null,
-  numeroPedidoActivo: string,
-): PlanteamientoRecord[] {
-  return reciente
-    && normalizarNumeroPedidoRps(reciente.numeroPedido) === normalizarNumeroPedidoRps(numeroPedidoActivo)
-    ? [...registros, reciente]
-    : registros;
-}
 
 /**
  * Toda la lógica del workspace: estado, efectos, derivados y manejadores.
@@ -60,13 +42,11 @@ export function useWorkspace(inicial?: EntradaInicial) {
   const [estado, despachar] = useReducer(
     reducirWorkspace,
     undefined,
-    () => estadoInicial(inicial, { lona: emptyLona(), baqueton: emptyBaqueton() }),
+    () => estadoInicial(inicial),
   );
   const {
-    tipo, lona, baqueton: baq, id, editorActivo, baseGuardada, validacionIntentada,
-    camposTocados,
-    numeroPedido, cliente: clientePedido, registros: registrosPedido,
-    rps, accion,
+    numeroPedido, cliente: clientePedido, lineas, versionActiva,
+    validacionIntentada, camposTocados, rps, accion,
   } = estado;
   const { materiales, params, materialesRef, setMateriales } = useCatalogos();
   const avisar = useAvisos();
@@ -74,158 +54,192 @@ export function useWorkspace(inicial?: EntradaInicial) {
   const busy = accion !== null;
   const snapshotRef = useRef<(() => string | null) | null>(null);
   const reiniciarGuardaRps = useRef<(() => void) | null>(null);
-  // GUARDADO_OK aún no se ve desde este render: si el usuario elige «Guardar y
-  // continuar», el registro recién guardado todavía no está en `registrosPedido`
-  // cuando la promesa resuelve. Lo apuntamos aparte para no repetir su versión.
-  const recienGuardadoRef = useRef<PlanteamientoRecord | null>(null);
+  const almacen = typeof window === "undefined" ? null : window.localStorage;
+  // Un pedido cuyos borradores ya se recuperaron; evita recuperarlos otra vez
+  // por encima de lo que el usuario esté escribiendo.
+  const recuperados = useRef<string>("");
+  const avisoBorradores = useRef(false);
   // Presentación efímera de una acción en curso: no es estado del
   // planteamiento, así que no entra en el reducer.
   const [progresoPdf, setProgresoPdf] = useState<{ hecho: number; total: number } | null>(null);
 
+  useEffect(() => {
+    const clave = normalizarNumeroPedidoRps(numeroPedido);
+    if (!clave || recuperados.current === clave) return;
+    recuperados.current = clave;
+    const lineasGuardadas = leerBorradores(almacen, numeroPedido);
+    if (lineasGuardadas.length > 0) {
+      despachar({ tipo: "BORRADORES_RECUPERADOS", lineas: lineasGuardadas });
+    }
+  }, [almacen, numeroPedido]);
+
+  useEffect(() => {
+    if (!normalizarNumeroPedidoRps(numeroPedido)) return;
+    const guardado = guardarBorradores(almacen, numeroPedido, lineas);
+    // Si el navegador no deja escribir, el trabajo solo vive en memoria y hay
+    // que decirlo: es exactamente lo que este bloque prometía evitar.
+    if (!guardado && lineas.length > 0 && !avisoBorradores.current) {
+      avisoBorradores.current = true;
+      avisar("error", "Este navegador no permite guardar borradores: no cierres la pestaña sin completar el pedido.");
+    }
+  }, [almacen, avisar, lineas, numeroPedido]);
+
+  const activa = useMemo(() => calcularLineaActiva(estado), [estado]);
+  const input = activa?.input ?? null;
+  const tipo = activa?.tipo ?? "lona";
+  // Cuando la línea abierta es del otro tipo, el respaldo vacío solo sirve para
+  // que los `useMemo` de abajo reciban un objeto de la forma correcta; la
+  // escena y el formulario de ese tipo no se pintan. Va memoizado para no
+  // rehacer el cálculo entero en cada render por un objeto que nadie mira.
+  const lona = useMemo(
+    () => (activa?.tipo === "lona" ? activa.input : emptyLona()) as LonaInput,
+    [activa],
+  );
+  const baq = useMemo(
+    () => (activa?.tipo === "baqueton" ? activa.input : emptyBaqueton()) as BaquetonInput,
+    [activa],
+  );
   const resLona = useMemo(() => calcLona(lona, params), [lona, params]);
   const resBaq = useMemo(() => calcBaqueton(baq, params), [baq, params]);
-  const input = inputActivo(tipo, lona, baq);
-  const hayCambiosSinGuardar = calcularHayCambiosSinGuardar(editorActivo, input, baseGuardada);
-  const erroresActuales = useMemo(() => erroresPlanteamiento(input), [input]);
+  const erroresActuales = useMemo(
+    () => (input ? erroresPlanteamiento(input) : []),
+    [input],
+  );
   const erroresVisibles = calcularErroresVisibles(erroresActuales, validacionIntentada, camposTocados);
-  const medidasSuficientes = calcularMedidasSuficientes(input);
+  const medidasSuficientes = input ? calcularMedidasSuficientes(input) : false;
+  const estadosLinea = useMemo(
+    () => Object.fromEntries(lineas.map((linea) => [linea.version, estadoLinea(linea)])),
+    [lineas],
+  );
 
-  /** Un campo abandonado ya puede enseñar su error, sin esperar a Guardar. */
+  /** Un campo abandonado ya puede enseñar su error, sin esperar a completar. */
   const marcarCampoTocado = useCallback(
     (campo: string) => despachar({ tipo: "CAMPO_TOCADO", campo }),
     [],
   );
 
-  const validarYEnfocar = useCallback(() => {
-    const primero = erroresActuales[0];
-    despachar({ tipo: "VALIDACION_INTENTADA" });
-    if (!primero) return null;
-    avisar("info", `Revisa los campos marcados. ${primero.mensaje}`);
-    window.setTimeout(() => {
-      const campo = document.querySelector<HTMLElement>(`[data-campo="${primero.campo}"]`);
-      campo?.focus();
-      campo?.scrollIntoView({ behavior: "smooth", block: "center" });
-    }, 0);
-    return primero;
-  }, [avisar, erroresActuales]);
+  /** El dibujo de la línea que se deja se guarda antes de abrir otra. */
+  const capturarSnapshot = useCallback(() => {
+    if (!versionActiva) return;
+    despachar({
+      tipo: "SNAPSHOT_CAPTURADO",
+      version: versionActiva,
+      svg: snapshotRef.current?.() ?? null,
+    });
+  }, [versionActiva]);
 
   /**
-   * Guarda sin envolver la acción en curso. `guardar` es la versión pública,
-   * que además marca el workspace como ocupado.
+   * `capturarSnapshot` despacha, pero el `lineas` de este render todavía no
+   * lleva el dibujo de la línea abierta. Componer la lista a mano evita que
+   * esa línea llegue al PDF —o al guardado— sin su vista técnica.
    */
-  const doGuardar = useCallback(async (): Promise<string | null> => {
-    if (!editorActivo) {
-      avisar("info", "Selecciona o añade un elemento antes de guardar.");
-      return null;
-    }
-    if (validarYEnfocar()) return null;
-    try {
-      const res = await fetch("/api/planteamientos", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, tipo, input, snapshotSvg: snapshotRef.current?.() ?? null }),
-      });
-      if (!res.ok) {
-        let detalle = String(res.status);
-        try {
-          detalle = (await res.json()).error ?? detalle;
-        } catch {
-          // cuerpo no JSON: dejamos el código de estado
-        }
-        avisar("error", `Error al guardar: ${detalle}`);
-        return null;
-      }
-      const saved = await res.json() as PlanteamientoRecord;
-      recienGuardadoRef.current = saved;
-      despachar({ tipo: "GUARDADO_OK", registro: saved });
-      avisar("exito", `${nombreElementoPedido(saved.version, saved.tipo)} guardado dentro del pedido.`);
-      return saved.id as string;
-    } catch {
-      avisar("error", "Error de red al guardar");
-      return null;
-    }
-  }, [avisar, editorActivo, id, input, tipo, validarYEnfocar]);
+  const lineasConDibujoActual = useCallback((): LineaPedido[] => {
+    const svgActual = snapshotRef.current?.() ?? null;
+    return lineas.map((linea) => (linea.version === versionActiva
+      ? { ...linea, snapshotSvg: svgActual ?? linea.snapshotSvg }
+      : linea));
+  }, [lineas, versionActiva]);
 
-  /** Devuelve true si se puede continuar descartando o guardando el borrador. */
-  const confirmarDescarte = useCallback(async (mensaje: string): Promise<boolean> => {
-    const primerError = erroresActuales[0]?.mensaje;
-    const clave = await confirmar({
-      titulo: "Cambios sin guardar",
-      mensaje,
-      acciones: [
-        {
-          clave: "guardar",
-          etiqueta: "Guardar y continuar",
-          tono: "primario",
-          deshabilitada: primerError
-            ? `No se puede guardar todavía: ${primerError}`
-            : undefined,
+  const seleccionarLinea = useCallback((version: string) => {
+    if (version === versionActiva) return;
+    capturarSnapshot();
+    despachar({ tipo: "LINEA_SELECCIONADA", version });
+  }, [capturarSnapshot, versionActiva]);
+
+  const nuevaLinea = useCallback((nuevoTipo: TipoPlanteamiento) => {
+    if (!numeroPedido.trim()) {
+      avisar("info", "Introduce primero el número de pedido.");
+      return;
+    }
+    capturarSnapshot();
+    const plantilla = nuevoTipo === "lona" ? emptyLona() : emptyBaqueton();
+    const version = siguienteVersion(lineas);
+    const linea: LineaPedido = {
+      version,
+      tipo: nuevoTipo,
+      input: {
+        ...plantilla,
+        cabecera: {
+          ...plantilla.cabecera,
+          numeroPedido,
+          cliente: clientePedido,
+          version,
+          realizadoPor: input?.cabecera.realizadoPor ?? "",
+          revision: input?.cabecera.revision ?? "",
         },
-        { clave: "descartar", etiqueta: "Descartar cambios", tono: "peligro" },
+      },
+    };
+    despachar({ tipo: "LINEA_ANADIDA", linea });
+    avisar("info", `${nombreLinea(linea)} añadido al pedido. Completa sus datos.`);
+  }, [avisar, capturarSnapshot, clientePedido, input, lineas, numeroPedido]);
+
+  const eliminarLinea = useCallback(async (version: string) => {
+    const linea = lineas.find((item) => item.version === version);
+    if (!linea) return;
+    const clave = await confirmar({
+      titulo: `Eliminar ${nombreLinea(linea)}`,
+      mensaje: linea.id
+        ? "Se quitará del pedido y se borrará también su planteamiento guardado. No se puede deshacer."
+        : "Se quitará del pedido. Todavía no está guardado, así que no queda rastro.",
+      acciones: [
+        { clave: "eliminar", etiqueta: "Eliminar", tono: "peligro" },
         { clave: "cancelar", etiqueta: "Cancelar", tono: "neutro" },
       ],
     });
-    if (clave === "guardar") {
-      // Mismo sobre que `guardar()`: `busy` debe reflejar esta llamada a
-      // `doGuardar` para que el botón «Guardar» del toolbar quede
-      // deshabilitado mientras dura, y así no se dispare un segundo POST con
-      // el mismo `id` (que crearía un registro duplicado). `ACCION_TERMINADA`
-      // va en el `finally` para liberar `busy` también si `doGuardar` lanza.
-      despachar({ tipo: "ACCION_INICIADA", accion: "guardar" });
-      try {
-        return Boolean(await doGuardar());
-      } finally {
-        despachar({ tipo: "ACCION_TERMINADA" });
+    if (clave !== "eliminar") return;
+    if (linea.id) {
+      const respuesta = await fetch(`/api/planteamientos/${encodeURIComponent(linea.id)}`, {
+        method: "DELETE",
+      }).catch(() => null);
+      if (!respuesta) {
+        avisar("error", "Error de red al borrar el planteamiento guardado.");
+        return;
+      }
+      // Un 404 es que ya no estaba: el objetivo se cumple igual.
+      if (!respuesta.ok && respuesta.status !== 404) {
+        avisar("error", `No se pudo borrar ${nombreLinea(linea)} de la base de datos.`);
+        return;
       }
     }
-    return clave === "descartar";
-  }, [confirmar, doGuardar, erroresActuales]);
-
-  const puedeCambiarElemento = useCallback(async (): Promise<boolean> => (
-    !hayCambiosSinGuardar
-    || confirmarDescarte("El elemento actual todavía no está guardado. Puedes guardarlo antes de continuar.")
-  ), [confirmarDescarte, hayCambiosSinGuardar]);
-
-  const confirmarSalida = useCallback(
-    () => confirmarDescarte("Vas a salir de esta página y el elemento tiene cambios sin guardar."),
-    [confirmarDescarte],
-  );
-  useAvisoSalida({ activo: hayCambiosSinGuardar, confirmarSalida });
+    despachar({ tipo: "LINEA_ELIMINADA", version });
+    avisar("exito", `${nombreLinea(linea)} eliminado del pedido.`);
+  }, [avisar, confirmar, lineas]);
 
   const aplicarPedidoRps = useCallback((
     pedido: PedidoRps,
-    linea: LineaPedidoRps,
+    lineaRps: LineaPedidoRps,
     catalogoMateriales: Material[] = materialesRef.current,
   ) => {
-    const indice = pedido.lineas.findIndex((item) => item.idLinea === linea.idLinea);
-    const realizadoPor = (tipo === "lona" ? lona : baq).cabecera.realizadoPor;
+    const indice = pedido.lineas.findIndex((item) => item.idLinea === lineaRps.idLinea);
     const creado = crearInputDesdeRps(
-      pedido, linea, Math.max(indice, 0), catalogoMateriales, params, realizadoPor,
+      pedido, lineaRps, Math.max(indice, 0), catalogoMateriales, params,
+      input?.cabecera.realizadoPor ?? "",
     );
-    const conocidos = conRecienGuardado(registrosPedido, recienGuardadoRef.current, pedido.numero);
+    capturarSnapshot();
+    // La versión la fija `crearInputDesdeRps` a partir del índice de la línea
+    // en RPS, así que reimportar la misma línea sustituye la suya y no añade
+    // un duplicado. Si ya existe con id, lo conserva.
+    const version = creado.input.cabecera.version;
+    const existente = lineas.find((item) => item.version === version);
     despachar({
-      tipo: "RPS_APLICADO",
-      tipoElemento: creado.tipo,
-      input: creado.input,
-      origen: {
-        numeroPedido: pedido.numero,
-        numeroLinea: linea.numeroLinea,
-        idLinea: linea.idLinea,
-        ordenFabricacion: linea.ordenFabricacion,
-        importadoEn: new Date().toISOString(),
+      tipo: "LINEA_ANADIDA",
+      linea: {
+        version,
+        tipo: creado.tipo,
+        input: creado.input,
+        id: existente?.id,
+        snapshotSvg: null,
+        origenRps: {
+          numeroPedido: pedido.numero,
+          numeroLinea: lineaRps.numeroLinea,
+          idLinea: lineaRps.idLinea,
+          ordenFabricacion: lineaRps.ordenFabricacion,
+          importadoEn: new Date().toISOString(),
+        },
       },
-      id: conocidos.find((registro) => registro.version === creado.input.cabecera.version)?.id,
     });
-    avisar("info", `Línea ${linea.numeroLinea} de RPS aplicada. Todos los campos siguen siendo editables.`);
-  }, [
-    avisar, baq, lona, materialesRef, params, tipo,
-    // Carga, no adorno: al cambiar la identidad de `registrosPedido` (cuando
-    // llegan los registros guardados del pedido) este callback se recrea, y
-    // eso cancela y reprograma el debounce de la consulta RPS. Si se quita,
-    // RPS puede resolver antes que el listado del pedido, `RPS_APLICADO`
-    // viaja sin id y se crea un registro duplicado de la misma versión al guardar.
-    registrosPedido,
-  ]);
+    avisar("info", `Línea ${lineaRps.numeroLinea} de RPS aplicada. Todos los campos siguen siendo editables.`);
+  }, [avisar, capturarSnapshot, input, lineas, materialesRef, params]);
 
   const aplicarPrimeraLineaRps = useCallback(async (pedido: PedidoRps) => {
     let catalogo = materialesRef.current;
@@ -241,7 +255,7 @@ export function useWorkspace(inicial?: EntradaInicial) {
   }, [aplicarPedidoRps, materialesRef, setMateriales]);
 
   const pedidoRpsVisible = calcularPedidoRpsVisible(numeroPedido, rps.pedido);
-  const origenRpsActivo = calcularOrigenRpsActivo(numeroPedido, rps.origen);
+  const origenRpsActivo = calcularOrigenRpsActivo(numeroPedido, activa);
   const estadoRpsVisible = calcularEstadoRpsVisible(numeroPedido, rps.numeroConsultado, rps.estado);
 
   useRegistrosPedido(numeroPedido, despachar);
@@ -254,61 +268,12 @@ export function useWorkspace(inicial?: EntradaInicial) {
     reiniciarGuarda: reiniciarGuardaRps,
   });
 
-  async function cambiarNumeroPedido(valor: string) {
-    const cambiaPedido = normalizarNumeroPedidoRps(valor) !== normalizarNumeroPedidoRps(numeroPedido);
-    if (cambiaPedido && hayCambiosSinGuardar && !(await confirmarDescarte(
-      "Vas a cambiar de pedido y este elemento tiene cambios sin guardar.",
-    ))) return;
-    // El puente al registro recién guardado es de un solo uso: sirve para
-    // cruzar un `await` dentro del mismo pedido. Al cambiar de pedido deja de
-    // valer, y conservarlo haría que durante la recarga fuese la única entrada
-    // de la lista conocida.
-    if (cambiaPedido) recienGuardadoRef.current = null;
+  function cambiarNumeroPedido(valor: string) {
     despachar({ tipo: "PEDIDO_CAMBIADO", valor });
   }
 
   function cambiarClientePedido(valor: string) {
     despachar({ tipo: "CLIENTE_CAMBIADO", valor });
-  }
-
-  async function seleccionarRegistro(registro: PlanteamientoRecord) {
-    if (registro.id === id || !(await puedeCambiarElemento())) return;
-    despachar({ tipo: "REGISTRO_SELECCIONADO", registro });
-  }
-
-  async function nuevoElemento(nuevoTipo: TipoPlanteamiento) {
-    if (!numeroPedido.trim()) {
-      avisar("info", "Introduce primero el número de pedido.");
-      return;
-    }
-    if (!(await puedeCambiarElemento())) return;
-    const plantilla = nuevoTipo === "lona" ? emptyLona() : emptyBaqueton();
-    const conocidos = conRecienGuardado(registrosPedido, recienGuardadoRef.current, numeroPedido);
-    const version = siguienteVersionPedido(conocidos);
-    const base = {
-      ...plantilla,
-      cabecera: {
-        ...plantilla.cabecera,
-        numeroPedido,
-        cliente: clientePedido,
-        version,
-        realizadoPor: input.cabecera.realizadoPor,
-        revision: input.cabecera.revision,
-      },
-    };
-    despachar({ tipo: "ELEMENTO_ANADIDO", tipoElemento: nuevoTipo, base });
-    avisar("info", `${nombreElementoPedido(version, nuevoTipo)} añadido al pedido. Completa sus datos y guárdalo.`);
-  }
-
-  async function guardar(): Promise<string | null> {
-    if (busy) return null;
-    despachar({ tipo: "ACCION_INICIADA", accion: "guardar" });
-    try {
-      return await doGuardar();
-    } finally {
-      setProgresoPdf(null);
-      despachar({ tipo: "ACCION_TERMINADA" });
-    }
   }
 
   function descargar(blob: Blob, nombre: string) {
@@ -320,40 +285,81 @@ export function useWorkspace(inicial?: EntradaInicial) {
     URL.revokeObjectURL(url);
   }
 
-  async function solicitarPdf(archivar: boolean): Promise<{
-    respuesta: Response; nombre: string; omitidos: number;
-  } | null> {
-    if (editorActivo) {
-      if (validarYEnfocar()) return null;
+  /** Guarda todas las líneas y devuelve los registros, o null si algo falló. */
+  const guardarTodas = useCallback(async (
+    aGuardar: LineaPedido[],
+  ): Promise<PlanteamientoRecord[] | null> => {
+    const guardados: PlanteamientoRecord[] = [];
+    for (const linea of aGuardar) {
+      const respuesta = await fetch("/api/planteamientos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: linea.id,
+          tipo: linea.tipo,
+          input: linea.input,
+          snapshotSvg: linea.snapshotSvg ?? null,
+        }),
+      }).catch(() => null);
+      if (!respuesta || !respuesta.ok) {
+        avisar("error", `No se pudo guardar ${nombreLinea(linea)}. El pedido no se ha completado.`);
+        return null;
+      }
+      guardados.push(await respuesta.json() as PlanteamientoRecord);
     }
-    const savedId = archivar && editorActivo ? await doGuardar() : null;
-    if (archivar && editorActivo && !savedId) return null;
+    return guardados;
+  }, [avisar]);
 
-    const resultado = await orquestarPdf({
-      numeroPedido,
-      archivar,
-      editorActivo,
-      idGuardado: savedId,
-      idBorrador: id ?? "__vista-previa__",
-      tipo,
-      input,
-      svgActual: snapshotRef.current?.() ?? null,
-    }, {
-      fetch: (entrada, init) => fetch(entrada, init),
-      rasterizar: (svg) => rasterizarSvg(svg, { monocromo: SALIDA_MONOCROMA }),
-      onProgreso: (hecho, total) => setProgresoPdf({ hecho, total }),
-    });
-
-    if (!resultado.ok) {
-      if (resultado.motivo === "sin-elementos") avisar("info", resultado.mensaje);
-      else avisar("error", `Error al generar PDF: ${resultado.mensaje}`);
-      return null;
+  async function completarPedido() {
+    if (busy) return;
+    capturarSnapshot();
+    const impedimentos = impedimentosCompletar(lineas);
+    if (impedimentos.length > 0) {
+      // Decir cuál y qué le falta, en vez de omitirla en silencio.
+      avisar("info", mensajeImpedimentos(impedimentos));
+      const primera = impedimentos[0].version;
+      if (primera) despachar({ tipo: "LINEA_SELECCIONADA", version: primera });
+      despachar({ tipo: "VALIDACION_INTENTADA" });
+      return;
     }
-    return {
-      respuesta: resultado.respuesta,
-      nombre: resultado.nombre,
-      omitidos: resultado.omitidos,
-    };
+    despachar({ tipo: "ACCION_INICIADA", accion: "completar" });
+    try {
+      const lineasParaPdf = lineasConDibujoActual();
+      const guardados = await guardarTodas(lineasParaPdf);
+      if (!guardados) return;
+      despachar({ tipo: "PEDIDO_COMPLETADO", registros: guardados });
+      const conIds = lineasParaPdf.map((linea) => ({
+        ...linea,
+        id: guardados.find((registro) => registro.version === linea.version)?.id ?? linea.id,
+      }));
+      const resultado = await orquestarPdf(
+        { numeroPedido, archivar: true, lineas: conIds },
+        {
+          fetch: (entrada, init) => fetch(entrada, init),
+          rasterizar: (svg) => rasterizarSvg(svg, { monocromo: SALIDA_MONOCROMA }),
+          onProgreso: (hecho, total) => setProgresoPdf({ hecho, total }),
+        },
+      );
+      if (!resultado.ok) {
+        avisar("error", `Las líneas se han guardado, pero el PDF falló: ${resultado.mensaje}`);
+        return;
+      }
+      const destinos = Number(resultado.respuesta.headers.get("X-Pdf-Destinos") ?? 0);
+      const anio = resultado.respuesta.headers.get("X-Pdf-Anio") ?? "el año correspondiente";
+      // Ya están en la base de datos: los borradores locales sobran.
+      limpiarBorradores(almacen, numeroPedido);
+      if (destinos === 2) {
+        avisar("exito", `Pedido completado. PDF archivado en ESCÁNER/PLANTEAMIENTOS y OFICINA TÉCNICA/${anio}.`);
+      } else {
+        descargar(await resultado.respuesta.blob(), resultado.nombre);
+        avisar("exito", `Pedido completado y PDF descargado (${resultado.nombre}). Configura las rutas del servidor para archivarlo automáticamente.`);
+      }
+    } catch {
+      avisar("error", "Error de red al completar el pedido.");
+    } finally {
+      setProgresoPdf(null);
+      despachar({ tipo: "ACCION_TERMINADA" });
+    }
   }
 
   async function previsualizarPdf() {
@@ -369,50 +375,31 @@ export function useWorkspace(inicial?: EntradaInicial) {
     ventana.document.body.style.cssText = "font:600 14px sans-serif;color:#17393e;padding:24px";
     despachar({ tipo: "ACCION_INICIADA", accion: "preview" });
     try {
-      const generado = await solicitarPdf(false);
-      if (!generado) {
+      capturarSnapshot();
+      const resultado = await orquestarPdf(
+        { numeroPedido, archivar: false, lineas: lineasConDibujoActual() },
+        {
+          fetch: (entrada, init) => fetch(entrada, init),
+          rasterizar: (svg) => rasterizarSvg(svg, { monocromo: SALIDA_MONOCROMA }),
+          onProgreso: (hecho, total) => setProgresoPdf({ hecho, total }),
+        },
+      );
+      if (!resultado.ok) {
         ventana.close();
+        if (resultado.motivo === "sin-elementos") avisar("info", resultado.mensaje);
+        else avisar("error", `Error al generar PDF: ${resultado.mensaje}`);
         return;
       }
-      const url = URL.createObjectURL(await generado.respuesta.blob());
+      const url = URL.createObjectURL(await resultado.respuesta.blob());
       ventana.location.replace(url);
       avisar(
         "info",
-        `Vista previa abierta: ${generado.nombre}. No se ha archivado todavía.`
-          + (generado.omitidos ? ` Se han omitido ${generado.omitidos} registros duplicados o incompletos.` : ""),
+        `Vista previa abierta: ${resultado.nombre}. No se ha archivado todavía.`
+          + (resultado.omitidos ? ` Se han omitido ${resultado.omitidos} líneas incompletas.` : ""),
       );
     } catch {
       ventana.close();
       avisar("error", "Error de red al generar la vista previa del PDF.");
-    } finally {
-      setProgresoPdf(null);
-      despachar({ tipo: "ACCION_TERMINADA" });
-    }
-  }
-
-  async function generarPdf() {
-    if (busy) return;
-    despachar({ tipo: "ACCION_INICIADA", accion: "pdf" });
-    try {
-      const generado = await solicitarPdf(true);
-      if (!generado) return;
-      const destinos = Number(generado.respuesta.headers.get("X-Pdf-Destinos") ?? 0);
-      const anio = generado.respuesta.headers.get("X-Pdf-Anio") ?? "el año correspondiente";
-      if (destinos === 2) {
-        avisar(
-          "exito",
-          `PDF archivado en ESCÁNER/PLANTEAMIENTOS y OFICINA TÉCNICA/${anio}.`
-            + (generado.omitidos ? ` Se han omitido ${generado.omitidos} registros duplicados o incompletos.` : ""),
-        );
-      } else {
-        descargar(await generado.respuesta.blob(), generado.nombre);
-        avisar(
-          "exito",
-          `PDF descargado (${generado.nombre}). Configura las rutas del servidor para archivarlo automáticamente.`,
-        );
-      }
-    } catch {
-      avisar("error", "Error de red al generar PDF");
     } finally {
       setProgresoPdf(null);
       despachar({ tipo: "ACCION_TERMINADA" });
@@ -441,13 +428,16 @@ export function useWorkspace(inicial?: EntradaInicial) {
     materiales,
     params,
     // derivados
+    lineaActiva: activa,
+    estadosLinea,
+    tipo,
+    lona,
+    baq,
     input,
     resLona,
     resBaq,
-    hayCambiosSinGuardar,
     erroresVisibles,
     progresoPdf,
-    marcarCampoTocado,
     medidasSuficientes,
     pedidoRpsVisible,
     origenRpsActivo,
@@ -458,15 +448,15 @@ export function useWorkspace(inicial?: EntradaInicial) {
     cambiarNumeroPedido,
     cambiarClientePedido,
     cambiarInput,
-    seleccionarRegistro,
-    nuevoElemento,
-    puedeCambiarElemento,
+    seleccionarLinea,
+    eliminarLinea,
+    nuevaLinea,
     aplicarPedidoRps,
     abrirSelectorRps,
     reintentarRps,
-    guardar,
+    marcarCampoTocado,
     previsualizarPdf,
-    generarPdf,
+    completarPedido,
     registrarSnapshot,
   };
 }
