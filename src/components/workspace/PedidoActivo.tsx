@@ -189,11 +189,16 @@ export function PedidoActivo({
                       </span>
                     </span>
                   </button>
+                  {/* El hook ya se niega a borrar mientras hay una acción en
+                      curso, pero el botón tiene que decirlo: un clic que no
+                      hace nada ni avisa se lee como que la aplicación se ha
+                      colgado, justo cuando está subiendo el PDF. */}
                   <button
                     type="button"
+                    disabled={ocupado}
                     onClick={() => onEliminar(linea.version)}
                     aria-label={`Eliminar ${nombreLinea(linea)} del pedido`}
-                    className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg text-[15px] font-bold leading-none transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-red-400/25 ${activa ? "text-deep/45 hover:bg-deep/10 hover:text-deep" : "text-white/35 hover:bg-white/10 hover:text-red-300"}`}
+                    className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg text-[15px] font-bold leading-none transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-red-400/25 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent ${activa ? "text-deep/45 hover:bg-deep/10 hover:text-deep" : "text-white/35 hover:bg-white/10 hover:text-red-300"}`}
                   >
                     ×
                   </button>
