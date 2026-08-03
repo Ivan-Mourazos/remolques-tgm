@@ -2,11 +2,12 @@ import { describe, expect, it } from "vitest";
 import { emptyBaqueton, emptyLona } from "@/components/workspace/entradas-vacias";
 import type { LonaInput } from "@/lib/calc/lona";
 import type { OrigenRps, PedidoRps } from "@/lib/rps/types";
+import type { EstadoWorkspace } from "@/lib/workspace/estado";
+import type { LineaPedido } from "@/lib/workspace/lineas";
 import {
   erroresVisibles,
   estadoRpsVisible,
-  hayCambiosSinGuardar,
-  inputActivo,
+  lineaActiva,
   medidasSuficientes,
   origenRpsActivo,
   pedidoRpsVisible,
@@ -27,27 +28,29 @@ const origen = (numeroPedido: string): OrigenRps => ({
   importadoEn: "2026-07-29T10:00:00Z",
 });
 
-describe("inputActivo", () => {
-  it("devuelve la lona o el baquetón según el tipo activo", () => {
-    const lona = emptyLona();
-    const baqueton = emptyBaqueton();
-    expect(inputActivo("lona", lona, baqueton)).toBe(lona);
-    expect(inputActivo("baqueton", lona, baqueton)).toBe(baqueton);
-  });
-});
+const linea = (origenRps: OrigenRps | null = null): LineaPedido =>
+  ({ version: "10", tipo: "lona", input: emptyLona(), origenRps });
 
-describe("hayCambiosSinGuardar", () => {
-  it("es falso sin editor activo, aunque el input difiera de la base", () => {
-    expect(hayCambiosSinGuardar(false, lonaConMedidas(), JSON.stringify(emptyLona()))).toBe(false);
-  });
+describe("lineaActiva", () => {
+  const conLineas = (versionActiva: string | null): EstadoWorkspace => ({
+    lineas: [
+      { version: "10", tipo: "lona", input: emptyLona() },
+      { version: "11", tipo: "baqueton", input: emptyBaqueton() },
+    ],
+    versionActiva,
+  } as unknown as EstadoWorkspace);
 
-  it("es verdadero con editor activo y base nula", () => {
-    expect(hayCambiosSinGuardar(true, emptyLona(), null)).toBe(true);
+  it("devuelve la línea cuya versión está abierta", () => {
+    expect(lineaActiva(conLineas("11"))?.tipo).toBe("baqueton");
   });
 
-  it("es falso cuando el input coincide exactamente con la base guardada", () => {
-    const lona = lonaConMedidas();
-    expect(hayCambiosSinGuardar(true, lona, JSON.stringify(lona))).toBe(false);
+  it("devuelve null cuando no hay ninguna abierta", () => {
+    expect(lineaActiva(conLineas(null))).toBeNull();
+  });
+
+  it("devuelve null si la versión activa ya no está en la lista", () => {
+    // Pasa al eliminar una línea: el estado no puede quedar apuntando a un hueco.
+    expect(lineaActiva(conLineas("99"))).toBeNull();
   });
 });
 
@@ -95,8 +98,11 @@ describe("derivados de RPS", () => {
   it("oculta el pedido y el origen de RPS cuando no corresponden al pedido abierto", () => {
     expect(pedidoRpsVisible("AR2603583", pedidoRps("AR2603583"))?.numero).toBe("AR2603583");
     expect(pedidoRpsVisible("AR2699999", pedidoRps("AR2603583"))).toBeNull();
-    expect(origenRpsActivo("AR2603583", origen("AR.26.03583"))?.idLinea).toBe("L1");
-    expect(origenRpsActivo("AR2699999", origen("AR2603583"))).toBeNull();
+    expect(origenRpsActivo("AR2603583", linea(origen("AR.26.03583")))?.idLinea).toBe("L1");
+    expect(origenRpsActivo("AR2699999", linea(origen("AR2603583")))).toBeNull();
+    // Una línea que no vino de RPS, y no tener línea abierta, son lo mismo aquí.
+    expect(origenRpsActivo("AR2603583", linea())).toBeNull();
+    expect(origenRpsActivo("AR2603583", null)).toBeNull();
   });
 
   it("solo muestra el estado de la consulta si el número consultado es el actual", () => {

@@ -1,9 +1,11 @@
 import type { LonaInput } from "@/lib/calc/lona";
 import type { BaquetonInput } from "@/lib/calc/baqueton";
 import type { PlanteamientoRecord, TipoPlanteamiento } from "@/lib/store/types";
-import type { OrigenRps, PedidoRps } from "@/lib/rps/types";
+import type { PedidoRps } from "@/lib/rps/types";
 import type { EstadoConsultaRps } from "@/lib/workspace/selectores";
-import { remolquesUnicos } from "@/lib/pedidos/agrupar-pedido";
+import {
+  fusionarLineas, lineasDesdeRegistros, type LineaPedido,
+} from "@/lib/workspace/lineas";
 import { normalizarNumeroPedidoRps } from "@/lib/rps/numero-pedido";
 
 export interface EstadoRpsWorkspace {
@@ -12,35 +14,29 @@ export interface EstadoRpsWorkspace {
   numeroConsultado: string;
   pedido: PedidoRps | null;
   error: string | null;
-  origen: OrigenRps | null;
   reintento: number;
   selectorAbierto: boolean;
 }
 
 export interface EstadoWorkspace {
-  // Documento en edición
-  tipo: TipoPlanteamiento;
-  lona: LonaInput;
-  baqueton: BaquetonInput;
-  id?: string;
-  editorActivo: boolean;
-  /** JSON del input tal como quedó guardado; null si nunca se guardó. */
-  baseGuardada: string | null;
+  // El pedido y sus líneas
+  numeroPedido: string;
+  cliente: string;
+  lineas: LineaPedido[];
+  /** Versión de la línea abierta; null si no hay ninguna. */
+  versionActiva: string | null;
+  cargandoPedido: boolean;
+
+  // Edición de la línea abierta
   validacionIntentada: boolean;
   /** Campos que el usuario ya visitó y abandonó: enseñan su error. */
   camposTocados: string[];
-
-  // Pedido abierto
-  numeroPedido: string;
-  cliente: string;
-  registros: PlanteamientoRecord[];
-  cargandoPedido: boolean;
 
   // Importación RPS
   rps: EstadoRpsWorkspace;
 
   // Transversal
-  accion: "guardar" | "preview" | "pdf" | null;
+  accion: "preview" | "completar" | null;
 }
 
 export interface EntradaInicial {
@@ -52,55 +48,67 @@ export interface EntradaInicial {
 export type AccionWorkspace =
   | { tipo: "PEDIDO_CAMBIADO"; valor: string }
   | { tipo: "CLIENTE_CAMBIADO"; valor: string }
-  | { tipo: "INPUT_CAMBIADO"; input: LonaInput | BaquetonInput }
-  | { tipo: "ELEMENTO_ANADIDO"; tipoElemento: TipoPlanteamiento; base: LonaInput | BaquetonInput }
-  | { tipo: "REGISTRO_SELECCIONADO"; registro: PlanteamientoRecord }
-  | { tipo: "RPS_APLICADO"; tipoElemento: TipoPlanteamiento; input: LonaInput | BaquetonInput; origen: OrigenRps; id: string | undefined }
-  | { tipo: "RPS_SELECTOR_ABIERTO" }
-  | { tipo: "RPS_REINTENTADO" }
+  | { tipo: "BORRADORES_RECUPERADOS"; lineas: LineaPedido[] }
   | { tipo: "REGISTROS_CARGADOS"; registros: PlanteamientoRecord[] }
   | { tipo: "REGISTROS_FALLARON" }
+  | { tipo: "LINEA_ANADIDA"; linea: LineaPedido }
+  | { tipo: "LINEA_SELECCIONADA"; version: string }
+  | { tipo: "LINEA_ELIMINADA"; version: string }
+  | { tipo: "INPUT_CAMBIADO"; input: LonaInput | BaquetonInput }
+  | { tipo: "SNAPSHOT_CAPTURADO"; version: string; svg: string | null }
+  | { tipo: "PEDIDO_COMPLETADO"; registros: PlanteamientoRecord[] }
+  | { tipo: "RPS_SELECTOR_ABIERTO" }
+  | { tipo: "RPS_REINTENTADO" }
   | { tipo: "RPS_CONSULTA_INICIADA"; numero: string }
   | { tipo: "RPS_ENCONTRADO"; pedido: PedidoRps }
   | { tipo: "RPS_NO_ENCONTRADO" }
   | { tipo: "RPS_ERROR"; mensaje: string }
-  | { tipo: "GUARDADO_OK"; registro: PlanteamientoRecord }
-  | { tipo: "ACCION_INICIADA"; accion: "guardar" | "preview" | "pdf" }
+  | { tipo: "ACCION_INICIADA"; accion: "preview" | "completar" }
   | { tipo: "ACCION_TERMINADA" }
   | { tipo: "VALIDACION_INTENTADA" }
   | { tipo: "CAMPO_TOCADO"; campo: string };
 
-type Cabecera = LonaInput["cabecera"];
+/** Al abrir otra línea, lo que se enseñaba en rojo de la anterior no vale. */
+const SIN_VALIDAR = { validacionIntentada: false, camposTocados: [] as string[] };
 
-const conCabecera = <T extends LonaInput | BaquetonInput>(
-  input: T,
-  cambios: Partial<Cabecera>,
-): T => ({ ...input, cabecera: { ...input.cabecera, ...cambios } });
+const conNumeroPedido = (linea: LineaPedido, numeroPedido: string): LineaPedido => ({
+  ...linea,
+  input: { ...linea.input, cabecera: { ...linea.input.cabecera, numeroPedido } },
+});
+
+const conCliente = (linea: LineaPedido, cliente: string): LineaPedido => ({
+  ...linea,
+  input: { ...linea.input, cabecera: { ...linea.input.cabecera, cliente } },
+});
 
 /**
- * `vacios` llega desde fuera porque `emptyLona()` lee la fecha del día: el
- * reducer y su estado inicial se mantienen puros y deterministas.
+ * Ya no recibe las entradas vacías: el estado arranca sin ninguna línea, y las
+ * plantillas solo hacen falta al añadir una. Así el reducer y su estado inicial
+ * siguen siendo puros y deterministas sin arrastrar la fecha del día que lee
+ * `emptyLona()`. Quien llamaba con el segundo argumento (`useWorkspace`) deja de
+ * pasarlo.
  */
-export function estadoInicial(
-  inicial: EntradaInicial | undefined,
-  vacios: { lona: LonaInput; baqueton: BaquetonInput },
-): EstadoWorkspace {
+export function estadoInicial(inicial?: EntradaInicial): EstadoWorkspace {
+  const lineas: LineaPedido[] = inicial
+    ? [{
+        version: inicial.input.cabecera.version,
+        tipo: inicial.tipo,
+        input: inicial.input,
+        id: inicial.id,
+        snapshotSvg: null,
+      }]
+    : [];
   return {
-    tipo: inicial?.tipo ?? "lona",
-    lona: inicial?.tipo === "lona" ? (inicial.input as LonaInput) : vacios.lona,
-    baqueton: inicial?.tipo === "baqueton" ? (inicial.input as BaquetonInput) : vacios.baqueton,
-    id: inicial?.id,
-    editorActivo: Boolean(inicial),
-    baseGuardada: inicial ? JSON.stringify(inicial.input) : null,
-    validacionIntentada: false,
-    camposTocados: [],
     numeroPedido: inicial?.input.cabecera.numeroPedido ?? "",
     cliente: inicial?.input.cabecera.cliente ?? "",
-    registros: [],
+    lineas,
+    versionActiva: lineas[0]?.version ?? null,
     cargandoPedido: Boolean(inicial?.input.cabecera.numeroPedido),
+    validacionIntentada: false,
+    camposTocados: [],
     rps: {
       estado: "idle", numeroConsultado: "", pedido: null, error: null,
-      origen: null, reintento: 0, selectorAbierto: true,
+      reintento: 0, selectorAbierto: true,
     },
     accion: null,
   };
@@ -114,26 +122,24 @@ export function reducirWorkspace(
     case "PEDIDO_CAMBIADO": {
       const cambiaPedido = normalizarNumeroPedidoRps(accion.valor)
         !== normalizarNumeroPedidoRps(estado.numeroPedido);
-      const conNumero: EstadoWorkspace = {
+      if (!cambiaPedido) {
+        return {
+          ...estado,
+          numeroPedido: accion.valor,
+          lineas: estado.lineas.map((linea) => conNumeroPedido(linea, accion.valor)),
+        };
+      }
+      // Otro pedido es otro trabajo: sus líneas llegan de sus borradores y de
+      // sus registros, no se arrastran las del anterior.
+      return {
         ...estado,
         numeroPedido: accion.valor,
-        lona: conCabecera(estado.lona, { numeroPedido: accion.valor }),
-        baqueton: conCabecera(estado.baqueton, { numeroPedido: accion.valor }),
-      };
-      if (!cambiaPedido) return conNumero;
-      return {
-        ...conNumero,
         cliente: "",
-        lona: conCabecera(conNumero.lona, { cliente: "" }),
-        baqueton: conCabecera(conNumero.baqueton, { cliente: "" }),
-        registros: [],
+        lineas: [],
+        versionActiva: null,
         cargandoPedido: Boolean(normalizarNumeroPedidoRps(accion.valor)),
-        editorActivo: false,
-        id: undefined,
-        baseGuardada: null,
-        validacionIntentada: false,
-        camposTocados: [],
-        rps: { ...estado.rps, origen: null, selectorAbierto: true },
+        ...SIN_VALIDAR,
+        rps: { ...estado.rps, selectorAbierto: true },
       };
     }
 
@@ -141,67 +147,101 @@ export function reducirWorkspace(
       return {
         ...estado,
         cliente: accion.valor,
-        lona: conCabecera(estado.lona, { cliente: accion.valor }),
-        baqueton: conCabecera(estado.baqueton, { cliente: accion.valor }),
+        lineas: estado.lineas.map((linea) => conCliente(linea, accion.valor)),
       };
 
-    case "INPUT_CAMBIADO":
-      return estado.tipo === "lona"
-        ? { ...estado, lona: accion.input as LonaInput }
-        : { ...estado, baqueton: accion.input as BaquetonInput };
-
-    case "ELEMENTO_ANADIDO":
+    case "BORRADORES_RECUPERADOS": {
+      // Lo que ya se esté editando manda: los borradores llegan de un efecto y
+      // pueden aterrizar después de que el usuario haya empezado a trabajar.
+      const lineas = fusionarLineas(accion.lineas, estado.lineas);
       return {
         ...estado,
-        tipo: accion.tipoElemento,
-        lona: accion.tipoElemento === "lona" ? accion.base as LonaInput : estado.lona,
-        baqueton: accion.tipoElemento === "baqueton" ? accion.base as BaquetonInput : estado.baqueton,
-        id: undefined,
-        editorActivo: true,
-        baseGuardada: null,
-        validacionIntentada: false,
-        camposTocados: [],
-        rps: { ...estado.rps, origen: null, selectorAbierto: true },
-      };
-
-    case "REGISTRO_SELECCIONADO": {
-      const { registro } = accion;
-      return {
-        ...estado,
-        tipo: registro.tipo,
-        lona: registro.tipo === "lona" ? registro.input as LonaInput : estado.lona,
-        baqueton: registro.tipo === "baqueton" ? registro.input as BaquetonInput : estado.baqueton,
-        numeroPedido: registro.numeroPedido,
-        cliente: registro.cliente,
-        id: registro.id,
-        editorActivo: true,
-        baseGuardada: JSON.stringify(registro.input),
-        validacionIntentada: false,
-        camposTocados: [],
-        rps: { ...estado.rps, origen: null, selectorAbierto: false },
+        lineas,
+        versionActiva: estado.versionActiva ?? lineas[0]?.version ?? null,
       };
     }
 
-    case "RPS_APLICADO": {
-      const { input } = accion;
+    case "REGISTROS_CARGADOS": {
+      const lineas = fusionarLineas(lineasDesdeRegistros(accion.registros), estado.lineas);
+      const guardado = accion.registros.find((registro) => registro.cliente.trim())?.cliente;
+      const cliente = estado.cliente.trim() ? estado.cliente : (guardado ?? "");
       return {
         ...estado,
-        tipo: accion.tipoElemento,
-        lona: accion.tipoElemento === "lona" ? input as LonaInput : estado.lona,
-        baqueton: accion.tipoElemento === "baqueton" ? input as BaquetonInput : estado.baqueton,
-        numeroPedido: input.cabecera.numeroPedido,
-        cliente: input.cabecera.cliente,
-        editorActivo: true,
-        // El id lo resuelve el componente y llega en el payload. Resolverlo aquí
-        // desde `estado.registros` obligaba a sacar `registrosPedido` de las
-        // dependencias de `aplicarPedidoRps`, y eso abría una carrera: si RPS
-        // contestaba antes que el listado del pedido, el id quedaba sin resolver
-        // y al guardar se creaba un registro duplicado de la misma versión.
-        id: accion.id,
-        baseGuardada: null,
-        validacionIntentada: false,
-        camposTocados: [],
-        rps: { ...estado.rps, origen: accion.origen, selectorAbierto: false },
+        lineas: cliente === estado.cliente
+          ? lineas
+          : lineas.map((linea) => (linea.input.cabecera.cliente.trim()
+            ? linea
+            : conCliente(linea, cliente))),
+        cliente,
+        versionActiva: estado.versionActiva ?? lineas[0]?.version ?? null,
+        cargandoPedido: false,
+      };
+    }
+
+    case "REGISTROS_FALLARON":
+      return { ...estado, cargandoPedido: false };
+
+    case "LINEA_ANADIDA": {
+      const existe = estado.lineas.some((linea) => linea.version === accion.linea.version);
+      return {
+        ...estado,
+        lineas: existe
+          ? estado.lineas.map((linea) => (linea.version === accion.linea.version ? accion.linea : linea))
+          : [...estado.lineas, accion.linea],
+        versionActiva: accion.linea.version,
+        ...SIN_VALIDAR,
+        rps: { ...estado.rps, selectorAbierto: !accion.linea.origenRps },
+      };
+    }
+
+    case "LINEA_SELECCIONADA": {
+      if (accion.version === estado.versionActiva) return estado;
+      if (!estado.lineas.some((linea) => linea.version === accion.version)) return estado;
+      return {
+        ...estado,
+        versionActiva: accion.version,
+        ...SIN_VALIDAR,
+        rps: { ...estado.rps, selectorAbierto: false },
+      };
+    }
+
+    case "LINEA_ELIMINADA": {
+      const indice = estado.lineas.findIndex((linea) => linea.version === accion.version);
+      if (indice < 0) return estado;
+      const lineas = estado.lineas.filter((linea) => linea.version !== accion.version);
+      const siguienteActiva = estado.versionActiva === accion.version
+        ? (lineas[Math.max(indice - 1, 0)]?.version ?? null)
+        : estado.versionActiva;
+      return { ...estado, lineas, versionActiva: siguienteActiva, ...SIN_VALIDAR };
+    }
+
+    case "INPUT_CAMBIADO": {
+      if (!estado.versionActiva) return estado;
+      return {
+        ...estado,
+        lineas: estado.lineas.map((linea) => (linea.version === estado.versionActiva
+          ? { ...linea, input: accion.input }
+          : linea)),
+      };
+    }
+
+    case "SNAPSHOT_CAPTURADO":
+      return {
+        ...estado,
+        lineas: estado.lineas.map((linea) => (linea.version === accion.version
+          ? { ...linea, snapshotSvg: accion.svg }
+          : linea)),
+      };
+
+    case "PEDIDO_COMPLETADO": {
+      const idPorVersion = new Map(accion.registros.map((r) => [r.version, r.id]));
+      return {
+        ...estado,
+        lineas: estado.lineas.map((linea) => ({
+          ...linea,
+          id: idPorVersion.get(linea.version) ?? linea.id,
+        })),
+        ...SIN_VALIDAR,
       };
     }
 
@@ -210,24 +250,6 @@ export function reducirWorkspace(
 
     case "RPS_REINTENTADO":
       return { ...estado, rps: { ...estado.rps, reintento: estado.rps.reintento + 1 } };
-
-    case "REGISTROS_CARGADOS": {
-      const registros = remolquesUnicos(accion.registros);
-      const base: EstadoWorkspace = { ...estado, registros, cargandoPedido: false };
-      const guardado = registros.find((r) => r.cliente.trim())?.cliente;
-      if (!guardado) return base;
-      return {
-        ...base,
-        cliente: base.cliente.trim() ? base.cliente : guardado,
-        lona: base.lona.cabecera.cliente.trim() ? base.lona : conCabecera(base.lona, { cliente: guardado }),
-        baqueton: base.baqueton.cabecera.cliente.trim()
-          ? base.baqueton
-          : conCabecera(base.baqueton, { cliente: guardado }),
-      };
-    }
-
-    case "REGISTROS_FALLARON":
-      return { ...estado, registros: [], cargandoPedido: false };
 
     case "RPS_CONSULTA_INICIADA":
       return {
@@ -245,16 +267,6 @@ export function reducirWorkspace(
       return {
         ...estado,
         rps: { ...estado.rps, pedido: null, error: accion.mensaje, estado: "error" },
-      };
-
-    case "GUARDADO_OK":
-      return {
-        ...estado,
-        id: accion.registro.id,
-        baseGuardada: JSON.stringify(accion.registro.input),
-        validacionIntentada: false,
-        camposTocados: [],
-        registros: remolquesUnicos([...estado.registros, accion.registro]),
       };
 
     case "ACCION_INICIADA":
