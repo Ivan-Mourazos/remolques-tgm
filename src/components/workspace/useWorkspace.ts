@@ -70,15 +70,46 @@ export function useWorkspace(inicial?: EntradaInicial) {
   // Escritura en cola: al completar el pedido hay que cancelarla, o dejaría
   // otra vez el borrador que se acaba de limpiar.
   const guardadoPendiente = useRef<number | null>(null);
+  // Lo que esa escritura en cola va a escribir. La pausa abre tres agujeros por
+  // los que lo tecleado no llegaría nunca al navegador —navegar a otra página,
+  // cambiar de pedido y cerrar la pestaña—, así que se guarda aparte para poder
+  // volcarlo de inmediato en los tres casos.
+  const pendienteRef = useRef<{
+    numeroPedido: string;
+    lineas: LineaPedido[];
+    versionActiva: string | null;
+  } | null>(null);
+  const clavePedido = normalizarNumeroPedidoRps(numeroPedido);
   // Presentación efímera de una acción en curso: no es estado del
   // planteamiento, así que no entra en el reducer.
   const [progresoPdf, setProgresoPdf] = useState<{ hecho: number; total: number } | null>(null);
 
+  /**
+   * Escribe ya lo que la pausa tenía en cola. Es idempotente: vacía
+   * `pendienteRef` al escribir, así que llamarla dos veces no escribe dos veces.
+   * Lee del ref, no de un closure, así que quien la llame no se rancia.
+   */
+  const volcar = useCallback(() => {
+    const pendiente = pendienteRef.current;
+    if (!pendiente) return;
+    pendienteRef.current = null;
+    guardarBorradores(
+      almacen, pendiente.numeroPedido, pendiente.lineas, pendiente.versionActiva,
+      new Date().toISOString(),
+    );
+  }, [almacen]);
+
   useEffect(() => {
-    const clave = normalizarNumeroPedidoRps(numeroPedido);
-    if (!clave || recuperados.current === clave) return;
-    recuperados.current = clave;
-    const guardado = leerBorradores(almacen, numeroPedido);
+    if (recuperados.current === clavePedido) return;
+    recuperados.current = clavePedido;
+    // Con el campo del número vacío no hay nada que recuperar, pero sí que
+    // reiniciar el rastro: si no volviera a "", vaciar el campo de una vez y
+    // reescribir el mismo número saltaría la recuperación y en cambio sí
+    // correría la persistencia, con cero líneas, retirando la clave. El
+    // borrador entero desaparecería sin aviso.
+    const guardado = clavePedido
+      ? leerBorradores(almacen, numeroPedido)
+      : { lineas: [], versionActiva: null };
     if (guardado.lineas.length > 0) {
       despachar({ tipo: "BORRADORES_RECUPERADOS", lineas: guardado.lineas });
       // Quien cerró la pestaña editando la cuarta línea vuelve a la cuarta, no
@@ -88,23 +119,33 @@ export function useWorkspace(inicial?: EntradaInicial) {
         despachar({ tipo: "LINEA_SELECCIONADA", version: guardado.versionActiva });
       }
     }
-    setPedidoRecuperado(clave);
+    setPedidoRecuperado(clavePedido);
     // `versionActiva` está en las dependencias por corrección, pero la guarda
     // de arriba hace que sus cambios no repitan la recuperación.
-  }, [almacen, numeroPedido, versionActiva]);
+  }, [almacen, clavePedido, numeroPedido, versionActiva]);
 
   useEffect(() => {
-    const clave = normalizarNumeroPedidoRps(numeroPedido);
-    if (!clave || pedidoRecuperado !== clave) return;
+    // Cambiar de pedido vacía las líneas y cambia el número en la misma acción:
+    // la limpieza de abajo mata el temporizador del pedido anterior y nadie lo
+    // reprograma, así que lo que quedó en cola se escribe aquí, antes de tocar
+    // nada más. Solo si es otro pedido: con la misma clave es una tecla más y
+    // la pausa tiene que cumplirse, o volveríamos a serializar en cada pulsación.
+    const pendiente = pendienteRef.current;
+    if (pendiente && normalizarNumeroPedidoRps(pendiente.numeroPedido) !== clavePedido) {
+      volcar();
+    }
+    if (!clavePedido || pedidoRecuperado !== clavePedido) return;
     // `lineas` cambia de identidad en cada tecla y lleva dentro los SVG de
     // todas las vistas técnicas: serializarlo entero en cada pulsación bloquea
     // el hilo principal. Una pausa basta, porque lo que importa es que el
     // trabajo esté escrito antes de cerrar la pestaña, no en el mismo instante.
+    pendienteRef.current = { numeroPedido, lineas, versionActiva };
     const temporizador = window.setTimeout(() => {
       guardadoPendiente.current = null;
       const guardado = guardarBorradores(
         almacen, numeroPedido, lineas, versionActiva, new Date().toISOString(),
       );
+      pendienteRef.current = null;
       // Si el navegador no deja escribir —ni siquiera haciendo sitio— el
       // trabajo solo vive en memoria y hay que decirlo: es exactamente lo que
       // este bloque prometía evitar.
@@ -114,8 +155,29 @@ export function useWorkspace(inicial?: EntradaInicial) {
       }
     }, PAUSA_GUARDADO_MS);
     guardadoPendiente.current = temporizador;
-    return () => window.clearTimeout(temporizador);
-  }, [almacen, avisar, lineas, numeroPedido, pedidoRecuperado, versionActiva]);
+    return () => {
+      window.clearTimeout(temporizador);
+      // El ref solo apunta a temporizadores vivos; este ya no lo está. Lo que
+      // el temporizador iba a escribir sigue en `pendienteRef`, esperando a que
+      // lo vuelque quien corresponda.
+      guardadoPendiente.current = null;
+    };
+  }, [
+    almacen, avisar, clavePedido, lineas, numeroPedido, pedidoRecuperado,
+    versionActiva, volcar,
+  ]);
+
+  // Navegar a /historial o /parámetros desmonta el workspace y con él el
+  // temporizador: sin esto, lo tecleado en los últimos 600 ms se perdería.
+  useEffect(() => () => volcar(), [volcar]);
+
+  // React no ejecuta limpiezas al cerrar la pestaña. `pagehide` y no
+  // `beforeunload`: el segundo no se dispara de forma fiable en móvil ni al
+  // descargar la página hacia la caché de retroceso.
+  useEffect(() => {
+    window.addEventListener("pagehide", volcar);
+    return () => window.removeEventListener("pagehide", volcar);
+  }, [volcar]);
 
   const activa = useMemo(() => calcularLineaActiva(estado), [estado]);
   const input = activa?.input ?? null;
@@ -294,6 +356,14 @@ export function useWorkspace(inicial?: EntradaInicial) {
   }, [avisar, capturarSnapshot, confirmar, input, lineas, materialesRef, params]);
 
   const aplicarPrimeraLineaRps = useCallback(async (pedido: PedidoRps) => {
+    // Esto se dispara solo, tras la consulta automática a RPS. Lo automático no
+    // pregunta ni pisa: si la línea que produciría la importación ya existe
+    // —recuperada de un borrador y quizá corregida a mano—, no hay nada que
+    // aplicar, y menos un modal de confirmación destructiva que nadie ha pedido.
+    // Importar a mano desde el selector sigue sustituyendo, con su confirmación.
+    // La versión la fija `crearInputDesdeRps` con el índice de la línea en RPS,
+    // y esta es siempre la primera: la 10.
+    if (lineas.some((linea) => linea.version === "10")) return;
     let catalogo = materialesRef.current;
     if (catalogo.length === 0) {
       catalogo = await fetch("/api/materiales", { cache: "no-store" })
@@ -304,7 +374,7 @@ export function useWorkspace(inicial?: EntradaInicial) {
       }
     }
     await aplicarPedidoRps(pedido, pedido.lineas[0], catalogo);
-  }, [aplicarPedidoRps, materialesRef, setMateriales]);
+  }, [aplicarPedidoRps, lineas, materialesRef, setMateriales]);
 
   const pedidoRpsVisible = calcularPedidoRpsVisible(numeroPedido, rps.pedido);
   const origenRpsActivo = calcularOrigenRpsActivo(numeroPedido, activa);
@@ -411,9 +481,11 @@ export function useWorkspace(inicial?: EntradaInicial) {
       const destinos = Number(resultado.respuesta.headers.get("X-Pdf-Destinos") ?? 0);
       const anio = resultado.respuesta.headers.get("X-Pdf-Anio") ?? "el año correspondiente";
       // Ya están en la base de datos: los borradores locales sobran. Se cancela
-      // antes la escritura en cola, que si no volvería a dejarlos escritos.
+      // antes la escritura en cola —y lo que tenía preparado— que si no
+      // volvería a dejarlos escritos, ya sea al vencer o al volcarse.
       if (guardadoPendiente.current !== null) window.clearTimeout(guardadoPendiente.current);
       guardadoPendiente.current = null;
+      pendienteRef.current = null;
       limpiarBorradores(almacen, numeroPedido);
       if (destinos === 2) {
         avisar("exito", `Pedido completado. PDF archivado en ESCÁNER/PLANTEAMIENTOS y OFICINA TÉCNICA/${anio}.`);

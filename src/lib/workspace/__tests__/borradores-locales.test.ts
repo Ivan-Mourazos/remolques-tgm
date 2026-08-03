@@ -8,11 +8,12 @@ import {
 /**
  * `Storage` de mentira: el módulo recibe el almacén, así que no hace falta
  * navegador. `maxEntradas` imita la cuota: escribir una clave nueva cuando ya
- * no cabe lanza, igual que hace el navegador de verdad.
+ * no cabe lanza, igual que hace el navegador de verdad. `noSeDejaBorrar` imita
+ * la otra cara: una clave cuyo borrado revienta.
  */
 function almacenFalso(
   inicial: Record<string, string> = {},
-  { fallaAlEscribir = false, maxEntradas = Infinity } = {},
+  { fallaAlEscribir = false, maxEntradas = Infinity, noSeDejaBorrar = "" } = {},
 ): Storage {
   const datos = new Map(Object.entries(inicial));
   return {
@@ -20,7 +21,12 @@ function almacenFalso(
     clear: () => datos.clear(),
     getItem: (clave: string) => datos.get(clave) ?? null,
     key: (indice: number) => [...datos.keys()][indice] ?? null,
-    removeItem: (clave: string) => { datos.delete(clave); },
+    removeItem: (clave: string) => {
+      if (noSeDejaBorrar && clave === noSeDejaBorrar) {
+        throw new DOMException("SecurityError");
+      }
+      datos.delete(clave);
+    },
     setItem: (clave: string, valor: string) => {
       if (fallaAlEscribir) throw new DOMException("QuotaExceededError");
       if (!datos.has(clave) && datos.size >= maxEntradas) {
@@ -148,6 +154,41 @@ describe("cuando se agota la cuota", () => {
     expect(guardarBorradores(almacen, "AR2603583", [linea], null, AHORA)).toBe(true);
     expect(almacen.getItem(claveBorradores("AR2600001"))).toBeNull();
     expect(leerBorradores(almacen, "AR2600002").lineas).toEqual([linea]);
+  });
+
+  it("solo sacrifica borradores: lo que no lleva el prefijo no se toca", () => {
+    // La propiedad que impide que hacer sitio destruya datos de otro.
+    const almacen = almacenFalso({
+      "tgm:parametros": "no soy un borrador",
+      [claveBorradores("AR2600001")]: guardado("2026-07-01T00:00:00.000Z"),
+    }, { maxEntradas: 2 });
+    expect(guardarBorradores(almacen, "AR2603583", [linea], null, AHORA)).toBe(true);
+    expect(almacen.getItem("tgm:parametros")).toBe("no soy un borrador");
+    expect(almacen.getItem(claveBorradores("AR2600001"))).toBeNull();
+  });
+
+  it("sacrifica más de un borrador si con uno no basta", () => {
+    const almacen = almacenFalso({
+      [claveBorradores("AR2600001")]: guardado("2026-05-01T00:00:00.000Z"),
+      [claveBorradores("AR2600002")]: guardado("2026-06-01T00:00:00.000Z"),
+      [claveBorradores("AR2600003")]: guardado("2026-07-01T00:00:00.000Z"),
+    }, { maxEntradas: 2 });
+    expect(guardarBorradores(almacen, "AR2603583", [linea], null, AHORA)).toBe(true);
+    // Caen los dos más antiguos, de uno en uno; el más reciente sobrevive.
+    expect(almacen.getItem(claveBorradores("AR2600001"))).toBeNull();
+    expect(almacen.getItem(claveBorradores("AR2600002"))).toBeNull();
+    expect(leerBorradores(almacen, "AR2600003").lineas).toEqual([linea]);
+  });
+
+  it("un borrado que revienta no aborta la purga: sigue con el siguiente", () => {
+    const almacen = almacenFalso({
+      [claveBorradores("AR2600001")]: guardado("2026-05-01T00:00:00.000Z"),
+      [claveBorradores("AR2600002")]: guardado("2026-06-01T00:00:00.000Z"),
+    }, { maxEntradas: 2, noSeDejaBorrar: claveBorradores("AR2600001") });
+    expect(guardarBorradores(almacen, "AR2603583", [linea], null, AHORA)).toBe(true);
+    // El más antiguo no se dejó borrar, así que pagó el siguiente.
+    expect(leerBorradores(almacen, "AR2600001").lineas).toEqual([linea]);
+    expect(almacen.getItem(claveBorradores("AR2600002"))).toBeNull();
   });
 
   it("si ni vaciando los demás cabe, lo dice en vez de fingir que guardó", () => {
