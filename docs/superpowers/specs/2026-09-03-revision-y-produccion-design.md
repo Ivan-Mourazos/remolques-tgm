@@ -22,11 +22,23 @@ sino un **compañero que confirme que los datos introducidos son los del pedido*
    **Guardar para revisión**. Se guardan las líneas. **No se genera ningún PDF.**
 2. Otro compañero abre el pedido en la pestaña **Revisión**, mira los datos
    introducidos de todos los remolques y pulsa **Aprobar** o **No aprobar**.
-3. En un pedido **aprobado** aparece el botón **Pasar a producción**: ahí sí se
-   genera el PDF de los planteamientos y se archiva, con el nombre de siempre
-   —número de pedido y `-10` al final—. En un **no aprobado** se abre el pedido,
-   se corrige lo que haga falta y luego se elige: mandarlo otra vez a revisión, o
-   pasarlo a producción sin más revisiones si el arreglo era sencillo.
+3. Con el pedido ya revisado —lo apruebe o no— aparece el botón **Pasar a
+   producción**: ahí sí se genera el PDF de los planteamientos y se archiva, con
+   el nombre de siempre —número de pedido y `-10` al final—. Si no se aprobó, se
+   abre el pedido, se corrige lo que haga falta y se elige: mandarlo otra vez a
+   revisión, o pasarlo a producción sin más revisiones si el arreglo era
+   sencillo.
+
+**La puerta es la primera revisión, no la aprobación.** Un pedido que nadie ha
+mirado todavía no se puede producir. En cuanto un compañero se pronuncia por
+primera vez —aprobando o no—, la decisión de producir vuelve a ser de quien lleva
+el pedido, y ya no se le vuelve a exigir pasar por revisión: podrá hacerlo si
+quiere, no porque la app le obligue.
+
+Un pedido que está para revisión **se puede recuperar y editar** en cualquier
+momento, sin esperar a que el compañero conteste. Se abre en Planteamiento desde
+la ficha o desde el historial, se cambia lo que sea y se vuelve a guardar; sigue
+en revisión, con la fecha nueva.
 
 ## Decisiones tomadas
 
@@ -58,20 +70,21 @@ sino un **compañero que confirme que los datos introducidos son los del pedido*
 
 ```
                 Guardar para revisión
-   (workspace) ───────────────────────► EN_REVISION
-                                        │        │
-                             Aprobar    │        │  No aprobar
-                                        ▼        ▼
-                                   APROBADO   NO_APROBADO
-                                        │        │
-                                        └────┬───┘
-                                             │ Pasar a producción
-                                             ▼
-                                       EN_PRODUCCION
+   (workspace) ───────────────────────► EN_REVISION ◄──── Mandar a revisión ────┐
+                                        │        │                              │
+                             Aprobar    │        │  No aprobar                  │
+                                        ▼        ▼                              │
+                                   APROBADO   NO_APROBADO ──────────────────────┤
+                                        │        │                              │
+                                        └────┬───┘                              │
+                                             │ Pasar a producción               │
+                                             ▼                                  │
+                                       EN_PRODUCCION ── se edita y se guarda ───┘
 ```
 
-- **EN_REVISION** — esperando al compañero. *Pasar a producción* está apagado:
-  es el único punto donde el flujo obliga a esperar.
+- **EN_REVISION** — esperando al compañero. *Pasar a producción* está apagado
+  **solo si el pedido no se ha revisado nunca**; si ya hubo una decisión antes,
+  sigue disponible. El pedido se puede abrir y editar mientras tanto.
 - **APROBADO** — con *Pasar a producción* disponible. Si alguien modifica las
   líneas después de aprobar, la ficha lo dice —«aprobado, con cambios
   posteriores»— y el botón sigue disponible: la responsabilidad queda escrita.
@@ -81,7 +94,8 @@ sino un **compañero que confirme que los datos introducidos son los del pedido*
   devuelve a `EN_REVISION`, conservando el registro de lo que ya se produjo.
 - **Sin registro** — los pedidos anteriores a este bloque. Se leen como
   *histórico*: no salen en la bandeja y en el historial se marcan como tales. Su
-  PDF ya está archivado; no se inventa quién lo hizo.
+  PDF ya está archivado; no se inventa quién lo hizo, y se dan por revisados: la
+  puerta de la primera revisión es para lo que venga a partir de ahora.
 
 ## Dónde vive el estado
 
@@ -93,10 +107,18 @@ interface EstadoPedido {
   pedido: string;          // clave normalizada
   numeroPedido: string;    // tal y como se escribió
   revision: { estado: "EN_REVISION" | "APROBADO" | "NO_APROBADO"; por: string; en: string };
+  /** Última vez que alguien se pronunció. Sobrevive a volver a mandarlo a
+   *  revisión: es lo que abre la puerta de producción para siempre. */
+  ultimaDecision: { estado: "APROBADO" | "NO_APROBADO"; por: string; en: string } | null;
   produccion: { por: string; en: string; nombrePdf: string; rutas: string[] } | null;
   updatedAt: string;
 }
 ```
+
+`ultimaDecision` es el único campo que no se deduce del estado actual, y por eso
+se guarda: cuando un pedido vuelve a `EN_REVISION`, el estado deja de contar que
+ya se revisó una vez, y sin ese dato la app volvería a bloquear producción de un
+pedido que el compañero ya había mirado.
 
 Dos drivers, como `PlanteamientoStore`: `data/pedidos.json` en desarrollo y
 `dbo.PedidosRevision` en SQL Server (`Pedido` como clave primaria, `RutasJson`
@@ -105,8 +127,9 @@ como texto). La migración es una tabla nueva en `db/schema.sql`; no se toca
 
 El estado que se enseña no es el guardado a secas, sino el que calcula
 `estadoVisiblePedido(estado, registros)`: mete lo de «aprobado con cambios
-posteriores» y lo de «histórico» comparando fechas. Es una función pura y es la
-que se prueba.
+posteriores» y lo de «histórico» comparando fechas, y devuelve además si se puede
+producir y por qué no, para que el botón y su explicación salgan del mismo sitio.
+Es una función pura y es la que se prueba.
 
 ## La bandeja y la ficha
 
@@ -137,8 +160,11 @@ o un `BaquetonInput` en secciones etiqueta→valor, y de ahí beben la ficha web
 el PDF de revisión. Un campo nuevo en el formulario se añade en un sitio.
 
 **Botones de la ficha:** *Aprobar* y *No aprobar* (piden el nombre del técnico de
-la lista de Parámetros), *Imprimir ficha de revisión*, y *Abrir en Planteamiento*,
-que reutiliza el `?desde=` que ya usa el historial.
+la lista de Parámetros), *Imprimir ficha de revisión*, *Pasar a producción* —según
+la puerta de la primera revisión— y *Abrir en Planteamiento*, que reutiliza el
+`?desde=` que ya usa el historial y está disponible **en cualquier estado**,
+también mientras el pedido espera revisión: recuperarlo para cambiar algo no
+tiene por qué esperar a que el compañero conteste.
 
 ## La ficha de revisión en PDF
 
@@ -155,8 +181,10 @@ pueda quedar un PDF en la carpeta sin registro de quién lo puso ahí. El render
 el archivado que hoy están dentro de `/api/pdf` se extraen a
 `generarPdfPedido()`, y las dos rutas lo llaman.
 
-El endpoint comprueba el estado antes de escribir nada: un pedido en
-`EN_REVISION` se rechaza con «este pedido todavía está pendiente de revisión».
+El endpoint comprueba el estado antes de escribir nada: un pedido que nunca se ha
+revisado —`EN_REVISION` y sin `ultimaDecision`— se rechaza con «este pedido
+todavía está pendiente de su primera revisión». Es la única condición; una vez
+revisado, producir es decisión de quien lleva el pedido.
 
 El nombre y los destinos no cambian: `nombrePdf` sigue dando
 `<numeroPedido>-10.pdf` y `guardarPdfDuplicado` sigue escribiendo en
@@ -197,8 +225,11 @@ RUTA_PLANTEAMIENTOS y en RUTA_OFICINA_TECNICA/&lt;año&gt;.
 Vitest, sobre módulos puros, como el resto del proyecto:
 
 - **Transiciones:** guardar deja `EN_REVISION`; aprobar y no aprobar solo valen
-  desde `EN_REVISION`; producir vale desde `APROBADO` y `NO_APROBADO` y se
-  rechaza desde `EN_REVISION`; producir dos veces se rechaza.
+  desde `EN_REVISION`; producir vale desde `APROBADO` y desde `NO_APROBADO`.
+- **La puerta de la primera revisión:** producir se rechaza en un pedido
+  `EN_REVISION` sin `ultimaDecision`, y se permite en uno `EN_REVISION` que ya
+  tiene una —el caso de volver a mandarlo a revisión y no querer esperar—. Un
+  pedido sin registro (histórico) también puede producirse.
 - **`estadoVisiblePedido`:** una línea modificada después de aprobar da «aprobado
   con cambios posteriores»; un pedido sin registro da «histórico»; guardar sobre
   un producido lo devuelve a revisión.
