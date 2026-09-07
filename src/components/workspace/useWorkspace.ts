@@ -410,15 +410,6 @@ export function useWorkspace(inicial?: EntradaInicial) {
     despachar({ tipo: "CLIENTE_CAMBIADO", valor });
   }
 
-  function descargar(blob: Blob, nombre: string) {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = nombre;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
   /** Guarda todas las líneas y devuelve los registros, o null si algo falló. */
   const guardarTodas = useCallback(async (
     aGuardar: LineaPedido[],
@@ -444,7 +435,12 @@ export function useWorkspace(inicial?: EntradaInicial) {
     return guardados;
   }, [avisar]);
 
-  async function completarPedido() {
+  /**
+   * Guarda las líneas y deja el pedido esperando a un compañero. No genera
+   * ningún PDF: eso es *Pasar a producción*, y va con nombre y apellidos desde
+   * la ficha de revisión.
+   */
+  async function guardarParaRevision() {
     if (busy) return;
     const svgActual = leerSnapshot();
     capturarSnapshot(svgActual);
@@ -468,32 +464,52 @@ export function useWorkspace(inicial?: EntradaInicial) {
       }
       return;
     }
+
+    // Quien guarda es el técnico de la cabecera: no se pregunta dos veces lo mismo.
+    const por = lineas[0]?.input.cabecera.realizadoPor?.trim() ?? "";
+    if (!por) {
+      avisar("info", "Rellena «Realizado por» antes de mandar el pedido a revisión.");
+      return;
+    }
+
+    // Guardar sobre un pedido ya revisado deja los cambios sin revisar. Se
+    // puede seguir —es la escapatoria del arreglo sencillo— pero no por descuido.
+    const ficha = await fetch(`/api/pedidos/${encodeURIComponent(numeroPedido)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .catch(() => null);
+    const situacion = ficha?.visible?.situacion;
+    if (situacion === "APROBADO" || situacion === "APROBADO_CON_CAMBIOS" || situacion === "EN_PRODUCCION") {
+      const clave = await confirmar({
+        titulo: "Este pedido ya estaba revisado",
+        mensaje: `${ficha.visible.etiqueta}. Si guardas, los cambios quedan sin revisar y el pedido vuelve a la bandeja.`,
+        acciones: [
+          { clave: "guardar", etiqueta: "Guardar igualmente", tono: "peligro" },
+          { clave: "cancelar", etiqueta: "Cancelar", tono: "neutro" },
+        ],
+      });
+      if (clave !== "guardar") return;
+    }
+
     despachar({ tipo: "ACCION_INICIADA", accion: "completar" });
     try {
-      const lineasParaPdf = lineasConDibujoActual(svgActual);
-      const guardados = await guardarTodas(lineasParaPdf);
+      const aGuardar = lineasConDibujoActual(svgActual);
+      const guardados = await guardarTodas(aGuardar);
       if (!guardados) return;
       // Con el número de pedido: si mientras se guardaba se cambió de pedido,
       // el reducer sabe que estos ids no son de las líneas que hay ahora.
       despachar({ tipo: "PEDIDO_COMPLETADO", numeroPedido, registros: guardados });
-      const conIds = lineasParaPdf.map((linea) => ({
-        ...linea,
-        id: guardados.find((registro) => registro.version === linea.version)?.id ?? linea.id,
-      }));
-      const resultado = await orquestarPdf(
-        { numeroPedido, archivar: true, lineas: conIds },
-        {
-          fetch: (entrada, init) => fetch(entrada, init),
-          rasterizar: (svg) => rasterizarSvg(svg, { monocromo: SALIDA_MONOCROMA }),
-          onProgreso: (hecho, total) => setProgresoPdf({ hecho, total }),
-        },
-      );
-      if (!resultado.ok) {
-        avisar("error", `Las líneas se han guardado, pero el PDF falló: ${resultado.mensaje}`);
+
+      const respuesta = await fetch(`/api/pedidos/${encodeURIComponent(numeroPedido)}/revision`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accion: "revisar", por }),
+      });
+      if (!respuesta.ok) {
+        const detalle = (await respuesta.json().catch(() => null))?.error ?? String(respuesta.status);
+        avisar("error", `Las líneas se han guardado, pero el pedido no se marcó para revisión: ${detalle}`);
         return;
       }
-      const destinos = Number(resultado.respuesta.headers.get("X-Pdf-Destinos") ?? 0);
-      const anio = resultado.respuesta.headers.get("X-Pdf-Anio") ?? "el año correspondiente";
+
       // Ya están en la base de datos: los borradores locales sobran. Se cancela
       // antes la escritura en cola —y lo que tenía preparado— que si no
       // volvería a dejarlos escritos, ya sea al vencer o al volcarse.
@@ -501,16 +517,10 @@ export function useWorkspace(inicial?: EntradaInicial) {
       guardadoPendiente.current = null;
       pendienteRef.current = null;
       limpiarBorradores(almacen, numeroPedido);
-      if (destinos === 2) {
-        avisar("exito", `Pedido completado. PDF archivado en ESCÁNER/PLANTEAMIENTOS y OFICINA TÉCNICA/${anio}.`);
-      } else {
-        descargar(await resultado.respuesta.blob(), resultado.nombre);
-        avisar("exito", `Pedido completado y PDF descargado (${resultado.nombre}). Configura las rutas del servidor para archivarlo automáticamente.`);
-      }
+      avisar("exito", "Pedido guardado para revisión. Avisa a un compañero para que lo mire.");
     } catch {
-      avisar("error", "Error de red al completar el pedido.");
+      avisar("error", "Error de red al guardar el pedido.");
     } finally {
-      setProgresoPdf(null);
       despachar({ tipo: "ACCION_TERMINADA" });
     }
   }
@@ -609,7 +619,7 @@ export function useWorkspace(inicial?: EntradaInicial) {
     reintentarRps,
     marcarCampoTocado,
     previsualizarPdf,
-    completarPedido,
+    guardarParaRevision,
     registrarSnapshot,
   };
 }

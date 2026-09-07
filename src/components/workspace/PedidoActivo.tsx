@@ -33,7 +33,7 @@ export function PedidoActivo({
   onEliminar,
   onNuevo,
   onPreview,
-  onCompletar,
+  onGuardarRevision,
 }: {
   numeroPedido: string;
   cliente: string;
@@ -51,7 +51,7 @@ export function PedidoActivo({
   onEliminar: (version: string) => void;
   onNuevo: (tipo: TipoPlanteamiento) => void;
   onPreview: () => void;
-  onCompletar: () => void;
+  onGuardarRevision: () => void;
 }) {
   const hayPedido = Boolean(numeroPedido.trim());
   const total = lineas.length;
@@ -149,11 +149,11 @@ export function PedidoActivo({
             </button>
             <button
               type="button"
-              onClick={onCompletar}
+              onClick={onGuardarRevision}
               disabled={!hayPedido || total === 0 || ocupado}
               className="rounded-lg bg-white px-3 py-1.5 text-[11px] font-extrabold text-deep transition hover:-translate-y-px hover:bg-gold focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/20 disabled:cursor-not-allowed disabled:opacity-35"
             >
-              {accion === "completar" ? (avance ?? "Completando…") : "Completar pedido"}
+              {accion === "completar" ? (avance ?? "Guardando…") : "Guardar para revisión"}
             </button>
           </div>
         </div>

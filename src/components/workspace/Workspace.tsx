@@ -59,7 +59,7 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
         onEliminar={ws.eliminarLinea}
         onNuevo={ws.nuevaLinea}
         onPreview={ws.previsualizarPdf}
-        onCompletar={ws.completarPedido}
+        onGuardarRevision={ws.guardarParaRevision}
       />
 
       {lineaActiva ? (
