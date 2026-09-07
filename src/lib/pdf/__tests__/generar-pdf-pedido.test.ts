@@ -30,14 +30,14 @@ const deps = (extra: Partial<DependenciasPdfPedido> = {}): DependenciasPdfPedido
 });
 
 describe("generar el PDF de un pedido", () => {
-  it("nombra el fichero y calcula el año como siempre", async () => {
+  it("nombra el fichero sin puntos y calcula el año como siempre", async () => {
     const resultado = await generarPdfPedido(
       { paginas: [{ clave: "a", tipo: "lona", input: completa() }], snapshots: {}, archivar: true },
       deps(),
     );
     expect(resultado.ok).toBe(true);
     if (!resultado.ok) return;
-    expect(resultado.nombre).toBe("AR.26.0123-10.pdf");
+    expect(resultado.nombre).toBe("AR260123-10.pdf");
     expect(resultado.anio).toBe(2026);
     expect(resultado.destinos).toHaveLength(2);
   });
