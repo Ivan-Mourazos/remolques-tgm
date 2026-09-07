@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { hojaLona, textoPanos, tituloPagina } from "@/lib/pdf/datos-hoja";
+import { datosHoja, hojaBaqueton, hojaLona, textoPanos, tituloPagina } from "@/lib/pdf/datos-hoja";
+import { calcBaqueton, type BaquetonInput } from "@/lib/calc/baqueton";
+import { emptyBaqueton } from "@/components/workspace/entradas-vacias";
+import type { PlanteamientoRecord } from "@/lib/store/types";
 import { calcLona, type LonaInput } from "@/lib/calc/lona";
 import { DEFAULT_PARAMS } from "@/lib/calc/params";
 import { emptyLona } from "@/components/workspace/entradas-vacias";
@@ -80,5 +83,41 @@ describe("datos de la lona en la hoja", () => {
     expect(hojaDeLona({ ventanaAncho: 0, ventanaAlto: 0 }).grupos[1].datos[2].valores)
       .toEqual(["SÍ · MEDIDAS PENDIENTES"]);
     expect(hojaDeLona({ ventana: false }).grupos[1].datos[2].valores).toEqual(["NO"]);
+  });
+});
+
+const entradaBaqueton = (extra: Partial<BaquetonInput> = {}): BaquetonInput => ({
+  ...emptyBaqueton(),
+  cantidad: 1, largo: 300, ancho: 157, baqueton: 12,
+  clienteEspecifico: "GENERAL", rotulacion: false,
+  modoOllaos: "REPARTIDOS", material: "LONA ALPHA 1L 580", observaciones: "",
+  ...extra,
+});
+
+describe("datos del baquetón en la hoja", () => {
+  it("tiene sus tres celdas y no las de la lona", () => {
+    const input = entradaBaqueton();
+    const hoja = hojaBaqueton(input, calcBaqueton(input, DEFAULT_PARAMS));
+    expect(hoja.banda.map((celda) => celda.titulo))
+      .toEqual(["PAÑOS A CORTAR", "MEDIDA REMOLQUE", "BAQUETÓN"]);
+    expect(hoja.banda[2].notas).toEqual(["EN LÍNEA"]);
+    const etiquetas = hoja.grupos.flatMap((grupo) => grupo.datos.map((dato) => dato.etiqueta));
+    expect(etiquetas).toEqual(["CLIENTE ESPECÍFICO", "ROTULACIÓN"]);
+    expect(etiquetas).not.toContain("PERFIL");
+    expect(etiquetas).not.toContain("VENTANA");
+  });
+});
+
+describe("reparto por tipo de planteamiento", () => {
+  it("da el título y el cuerpo que le tocan a cada tipo", () => {
+    const input = entradaBaqueton();
+    const registro = {
+      id: "x", tipo: "baqueton", numeroPedido: "AR.26.04329", version: "10",
+      cliente: "TALLERES CAL", input, result: calcBaqueton(input, DEFAULT_PARAMS),
+      paramsSnapshot: DEFAULT_PARAMS, createdAt: "", updatedAt: "",
+    } as PlanteamientoRecord;
+    const hoja = datosHoja(registro, 1, 3);
+    expect(hoja.titulo).toBe("BAQUETÓN · 2 DE 3");
+    expect(hoja.banda[1].titulo).toBe("MEDIDA REMOLQUE");
   });
 });

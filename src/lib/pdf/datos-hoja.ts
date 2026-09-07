@@ -1,5 +1,6 @@
 import type { LonaInput, LonaResult } from "@/lib/calc/lona";
-import type { TipoPlanteamiento } from "@/lib/store/types";
+import type { BaquetonInput, BaquetonResult } from "@/lib/calc/baqueton";
+import type { PlanteamientoRecord, TipoPlanteamiento } from "@/lib/store/types";
 import { nombrePerfil } from "@/lib/calc/params";
 import { datosGeometriaPdf } from "@/lib/pdf/datos-geometria";
 
@@ -95,4 +96,47 @@ export function hojaLona(i: LonaInput, r: LonaResult): CuerpoHoja {
     material: oRaya(i.material),
     observaciones: oRaya(i.observaciones),
   };
+}
+
+export function hojaBaqueton(i: BaquetonInput, r: BaquetonResult): CuerpoHoja {
+  return {
+    banda: [
+      {
+        titulo: "PAÑOS A CORTAR",
+        lineas: [textoPanos(i.cantidad, r.panoUnico.largo, r.panoUnico.ancho)],
+        notas: [],
+      },
+      {
+        titulo: "MEDIDA REMOLQUE",
+        lineas: [`${fmt(r.remolqueHecho.largo)} × ${fmt(r.remolqueHecho.ancho)}`],
+        notas: [],
+      },
+      {
+        titulo: "BAQUETÓN",
+        lineas: [fmt(i.baqueton)],
+        notas: [r.baquetonTrasero ? `TRASERO ${fmt(r.baquetonTrasero)}` : "EN LÍNEA"],
+      },
+    ],
+    grupos: [
+      {
+        titulo: "ACABADOS",
+        datos: [
+          { etiqueta: "CLIENTE ESPECÍFICO", valores: [oRaya(i.clienteEspecifico)] },
+          { etiqueta: "ROTULACIÓN", valores: [siNo(i.rotulacion)] },
+        ],
+      },
+    ],
+    material: oRaya(i.material),
+    observaciones: oRaya(i.observaciones),
+  };
+}
+
+export interface DatosHoja extends CuerpoHoja { titulo: string }
+
+/** Lo único que el componente necesita saber de un registro. */
+export function datosHoja(rec: PlanteamientoRecord, indice: number, total: number): DatosHoja {
+  const cuerpo = rec.tipo === "lona"
+    ? hojaLona(rec.input as LonaInput, rec.result as LonaResult)
+    : hojaBaqueton(rec.input as BaquetonInput, rec.result as BaquetonResult);
+  return { titulo: tituloPagina(rec.tipo, indice, total), ...cuerpo };
 }
