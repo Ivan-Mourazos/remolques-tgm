@@ -45,6 +45,13 @@ Son los puntos de montaje que vea Linux, no las letras de unidad de Windows.
 La segunda recibe automáticamente el subdirectorio del año indicado por los dos
 dígitos posteriores a `AR`: `AR2603583` se archiva en `2026/`.
 
+## Despliegue Linux
+
+Configuración de PM2 en `ecosystem.config.cjs`: proceso `remolques-tgm`, una
+instancia, puerto propuesto **4500**. Los pasos de instalación, configuración
+de datos y carpetas compartidas, arranque y actualizaciones están en
+[DEPLOY.md](DEPLOY.md).
+
 ## Estructura
 
 - `src/lib/calc` — cálculo puro (lona, baquetón, ollaos, parámetros).
