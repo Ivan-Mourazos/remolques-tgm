@@ -22,3 +22,18 @@ CREATE TABLE dbo.Parametros (
   ParamsJson NVARCHAR(MAX) NOT NULL,
   UpdatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
 );
+
+-- Estado de revisión y producción, uno por pedido. Vive aparte de
+-- Planteamientos a propósito: aprobar un pedido no reescribe sus líneas.
+CREATE TABLE dbo.PedidosRevision (
+  Pedido VARCHAR(50) NOT NULL PRIMARY KEY,      -- número normalizado (AR260123)
+  NumeroPedido VARCHAR(50) NOT NULL,            -- tal y como se escribió
+  RevisionEstado VARCHAR(20) NOT NULL
+    CHECK (RevisionEstado IN ('EN_REVISION','APROBADO','NO_APROBADO')),
+  RevisionPor NVARCHAR(100) NOT NULL DEFAULT '',
+  RevisionEn DATETIME2 NOT NULL,
+  UltimaDecisionJson NVARCHAR(MAX) NULL,        -- la última vez que alguien se pronunció
+  ProduccionJson NVARCHAR(MAX) NULL,            -- quién produjo, cuándo, nombre y rutas
+  UpdatedAt DATETIME2 NOT NULL
+);
+CREATE INDEX IX_PedidosRevision_UpdatedAt ON dbo.PedidosRevision (UpdatedAt DESC);
