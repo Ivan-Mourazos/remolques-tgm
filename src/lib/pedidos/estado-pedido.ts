@@ -104,3 +104,103 @@ export function producido(
         },
   };
 }
+
+export type Situacion =
+  | "HISTORICO"
+  | "EN_REVISION"
+  | "APROBADO"
+  | "APROBADO_CON_CAMBIOS"
+  | "NO_APROBADO"
+  | "EN_PRODUCCION";
+
+export interface EstadoVisible {
+  situacion: Situacion;
+  /** Lo que se lee en la ficha y en la bandeja. */
+  etiqueta: string;
+  puedeProducir: boolean;
+  /** Por qué no; cadena vacía cuando sí se puede. */
+  impedimento: string;
+  /** Alguien tocó las líneas después de la última decisión. Lo usa la bandeja
+   *  para no seguir enseñando como pendiente un rechazo que ya se está
+   *  arreglando. */
+  conCambiosPosteriores: boolean;
+}
+
+const PENDIENTE_DE_LA_PRIMERA =
+  "Este pedido todavía está pendiente de su primera revisión.";
+
+/**
+ * El estado que se enseña no es el guardado a secas: mete lo de «aprobado con
+ * cambios posteriores» y lo de «histórico» comparando fechas, y devuelve además
+ * si se puede producir y por qué no, para que el botón y su explicación salgan
+ * del mismo sitio y no puedan contradecirse.
+ */
+export function estadoVisiblePedido(
+  estado: EstadoPedido | null,
+  registros: Array<{ updatedAt: string }>,
+): EstadoVisible {
+  // Sin registro es un pedido anterior a este bloque: su PDF ya está archivado
+  // y no se inventa quién lo hizo. Se da por revisado.
+  if (!estado) {
+    return {
+      situacion: "HISTORICO",
+      etiqueta: "Histórico · anterior a la revisión",
+      puedeProducir: true,
+      impedimento: "",
+      conCambiosPosteriores: false,
+    };
+  }
+
+  const ultimoCambio = registros.reduce(
+    (maximo, registro) => (registro.updatedAt > maximo ? registro.updatedAt : maximo),
+    "",
+  );
+  const nuncaRevisado =
+    estado.revision.estado === "EN_REVISION" && estado.ultimaDecision === null;
+  const puedeProducir = !nuncaRevisado;
+  const impedimento = nuncaRevisado ? PENDIENTE_DE_LA_PRIMERA : "";
+  // Se compara con la última vez que alguien se pronunció, no con la revisión
+  // actual: un pedido devuelto a revisión tiene la fecha recién puesta y
+  // parecería intacto siempre.
+  const conCambiosPosteriores = estado.ultimaDecision !== null
+    && ultimoCambio > estado.ultimaDecision.en;
+
+  if (estado.produccion && estado.revision.estado !== "EN_REVISION") {
+    return {
+      situacion: "EN_PRODUCCION",
+      etiqueta: `En producción · ${estado.produccion.por}`,
+      puedeProducir,
+      impedimento,
+      conCambiosPosteriores,
+    };
+  }
+  if (estado.revision.estado === "APROBADO") {
+    return {
+      situacion: conCambiosPosteriores ? "APROBADO_CON_CAMBIOS" : "APROBADO",
+      etiqueta: conCambiosPosteriores
+        ? `Aprobado por ${estado.revision.por}, con cambios posteriores`
+        : `Aprobado por ${estado.revision.por}`,
+      puedeProducir,
+      impedimento,
+      conCambiosPosteriores,
+    };
+  }
+  if (estado.revision.estado === "NO_APROBADO") {
+    return {
+      situacion: "NO_APROBADO",
+      etiqueta: `No aprobado por ${estado.revision.por}`,
+      puedeProducir,
+      impedimento,
+      conCambiosPosteriores,
+    };
+  }
+  return {
+    situacion: "EN_REVISION",
+    etiqueta: nuncaRevisado
+      ? `En revisión · guardado por ${estado.revision.por}`
+      : `En revisión otra vez · guardado por ${estado.revision.por}`,
+    puedeProducir,
+    impedimento,
+    conCambiosPosteriores,
+  };
+}
