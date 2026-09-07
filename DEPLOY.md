@@ -161,6 +161,93 @@ pm2 restart ecosystem.config.cjs --only remolques-tgm --update-env
 
 El puerto se configura en `args` del ecosystem, no en `.env.local`.
 
+## 6. Copia diaria de los datos en modo file
+
+`scripts/backup-data.sh` guarda los JSON de `data/` en `backups/` y en
+`/mnt/oftecnica/remolques-backups`. Valida los JSON, comprueba el archivo
+comprimido y compara la copia remota con la local antes de darla por buena.
+Conserva 30 días de copias completas. No copia credenciales ni los PDF de las
+carpetas compartidas; estos deben seguir incluidos en el backup del servidor
+de archivos. SQL Server necesita su propio mecanismo de backup.
+
+Se ejecuta con el mismo usuario que la app. Si esta está online, **la detiene
+brevemente para copiar sus datos** y la reanuda antes de transferir a la red.
+Si falla la lectura o compresión, intenta reanudar igualmente. Una app que ya
+estaba parada sigue parada. No se modifican los datos originales.
+
+Si `data/` aún no tiene JSON (instalación nueva sin guardar nada), el resultado
+será `SIN DATOS`; no se genera un archivo vacío que parezca un respaldo válido.
+Guardar un pedido de prueba antes de comprobar la primera copia real.
+
+Primera ejecución, en una pausa de uso:
+
+```bash
+cd /webs/remolques-tgm
+git pull --ff-only
+mkdir -p logs
+bash scripts/backup-data.sh
+ls -lh backups/remolques-tgm-*.tar.gz /mnt/oftecnica/remolques-backups/remolques-tgm-*.tar.gz
+```
+
+La instalación comprobada usa root para PM2 y Node bajo nvm. El cron debe
+guardar el PATH real para encontrar tanto Node como PM2. Estos comandos
+instalan una tarea específica sin reemplazar los cron de las otras webs:
+
+```bash
+cd /webs/remolques-tgm
+node_dir=$(dirname "$(command -v node)")
+pm2_dir=$(dirname "$(command -v pm2)")
+printf 'SHELL=/bin/bash\nPATH=%s:%s:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\n30 2 * * * root /bin/bash /webs/remolques-tgm/scripts/backup-data.sh >> /webs/remolques-tgm/logs/backup.log 2>&1\n' "$node_dir" "$pm2_dir" > /etc/cron.d/remolques-tgm-backup
+chmod 644 /etc/cron.d/remolques-tgm-backup
+systemctl is-active cron
+cat /etc/cron.d/remolques-tgm-backup
+```
+
+Si cron no está activo, activarlo con `systemctl enable --now cron` (en
+distribuciones con servicio `crond`, adaptar el nombre). Se ejecuta a las
+**02:30 de la hora local del servidor**. Al cambiar la versión de Node de nvm,
+repetir la instalación del cron para actualizar el PATH. Estos cambios de
+scripts no necesitan recompilar Next.js.
+
+Comprobación manual con el PATH reducido del cron:
+
+```bash
+env PATH="$node_dir:$pm2_dir:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" /bin/bash /webs/remolques-tgm/scripts/backup-data.sh >> /webs/remolques-tgm/logs/backup.log 2>&1
+tail -n 30 /webs/remolques-tgm/logs/backup.log
+```
+
+El éxito termina con `OK: copia terminada`. Revisar periódicamente el log y
+la fecha de las copias; este cron no configura avisos automáticos. Si la red
+falla, queda una copia local y se registra error, sin rotar las anteriores.
+
+Para probar la recuperación sin tocar los datos activos, elegir una copia
+completa real y descomprimirla en un directorio de prueba:
+
+```bash
+copia=/mnt/oftecnica/remolques-backups/remolques-tgm-FECHA.tar.gz
+prueba=$(mktemp -d /tmp/remolques-restauracion.XXXXXXXX)
+tar -xzf "$copia" -C "$prueba"
+node -e 'const fs=require("node:fs");const path=require("node:path");const dir=path.join(process.argv[1],"data");const files=fs.readdirSync(dir).filter(f=>f.endsWith(".json"));if(!files.length)throw new Error("Copia sin datos");for(const f of files){JSON.parse(fs.readFileSync(path.join(dir,f),"utf8"));console.log("JSON válido:",f)}' "$prueba"
+```
+
+Para una recuperación real, con esa copia ya verificada y en una pausa de uso:
+
+```bash
+(
+set -e
+cd /webs/remolques-tgm
+pm2 stop remolques-tgm
+# Conservar los datos actuales para poder deshacer la recuperación.
+mkdir -p backups
+rescate=$(mktemp -d "$PWD/backups/antes-restauracion.XXXXXXXX")
+if [ -d data ]; then mv -- data "$rescate/data"; fi
+cp -a -- "$prueba/data" ./data && pm2 restart remolques-tgm
+)
+```
+
+Si falla algún paso, conservar las carpetas y corregir el error antes de
+reanudar. Comprobar el historial y los parámetros en la web tras restaurar.
+
 Referencias: [ecosystem de PM2](https://pm2.keymetrics.io/docs/usage/application-declaration/),
 [arranque de PM2 con Linux](https://pm2.keymetrics.io/docs/usage/startup/)
 y la guía `node_modules/next/dist/docs/01-app/02-guides/self-hosting.md`

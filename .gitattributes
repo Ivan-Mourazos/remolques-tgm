@@ -1,0 +1,2 @@
+# Los scripts de Linux necesitan LF incluso al editar desde Windows.
+*.sh text eol=lf
