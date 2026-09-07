@@ -1,14 +1,5 @@
 export type OpcionFormulario = { value: string; label: string };
 
-export const TECNICOS: OpcionFormulario[] = [
-  { value: "", label: "Sin asignar" },
-  { value: "IVAN", label: "Iván" },
-  { value: "ADRIAN", label: "Adrián" },
-  { value: "JAIME", label: "Jaime" },
-  { value: "TAMARA", label: "Tamara" },
-  { value: "ALBERTO", label: "Alberto" },
-  { value: "ANGEL", label: "Ángel" },
-];
 
 export const MODOS_OLLAOS: OpcionFormulario[] = [
   { value: "REPARTIDOS", label: "Repartidos automáticamente" },
@@ -35,4 +26,10 @@ export function opcionesConEtiqueta(valores: string[]): OpcionFormulario[] {
     value,
     label: etiquetasConocidas[value] ?? capitalizar(value),
   }));
+}
+
+/** «Sin asignar» va primero: un desplegable que arranca en un nombre concreto
+ *  convierte en decisión lo que nadie ha decidido. */
+export function opcionesTecnicos(tecnicos: string[]): OpcionFormulario[] {
+  return [{ value: "", label: "Sin asignar" }, ...opcionesConEtiqueta(tecnicos)];
 }

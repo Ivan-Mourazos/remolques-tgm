@@ -5,7 +5,7 @@ import { ajusteContorno, DEFAULT_PARAMS, PERFILES, type CalcParams } from "@/lib
 import { contornoCalculado } from "@/lib/geometry/contorno";
 import { excelRound } from "@/lib/calc/redondeo";
 import { CampoMaterial, CampoNum, CampoSelect, CampoSiNo, CampoTexto, Grupo, PasoFormulario } from "@/components/workspace/campos";
-import { MODOS_OLLAOS, opcionesConEtiqueta, TECNICOS } from "@/components/workspace/opciones-formulario";
+import { MODOS_OLLAOS, opcionesConEtiqueta, opcionesTecnicos } from "@/components/workspace/opciones-formulario";
 
 const fmt = (n: number) => n.toLocaleString("es-ES", { maximumFractionDigits: 1 });
 const PERFILES_VISIBLES = PERFILES.map((perfil) => ({
@@ -61,8 +61,8 @@ export function FormularioLona({
     >
       <Grupo titulo="Datos del remolque" columnas={3} compacto>
         <CampoTexto name="ordenFabricacion" label="O.F." value={input.cabecera.ordenFabricacion ?? ""} onChange={(v) => setCab("ordenFabricacion", v)} />
-        <CampoSelect name="realizadoPor" label="Realizado por" value={input.cabecera.realizadoPor} opciones={TECNICOS} onChange={(v) => setCab("realizadoPor", v)} />
-        <CampoSelect name="revision" label="Revisión" value={input.cabecera.revision} opciones={TECNICOS} onChange={(v) => setCab("revision", v)} />
+        <CampoSelect name="realizadoPor" label="Realizado por" value={input.cabecera.realizadoPor} opciones={opcionesTecnicos((params ?? DEFAULT_PARAMS).tecnicos)} onChange={(v) => setCab("realizadoPor", v)} />
+        <CampoSelect name="revision" label="Revisión" value={input.cabecera.revision} opciones={opcionesTecnicos((params ?? DEFAULT_PARAMS).tecnicos)} onChange={(v) => setCab("revision", v)} />
       </Grupo>
 
       <div className="relative space-y-2 rounded-2xl border border-line bg-surface/95 p-2.5 shadow-[0_12px_32px_rgb(14_45_49/0.055)] backdrop-blur-sm focus-within:z-40">

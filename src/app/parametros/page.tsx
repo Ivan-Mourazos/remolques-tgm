@@ -63,6 +63,20 @@ export default function ParametrosPage() {
         <CampoNum name="primerOllao" label="Primer ollao" value={p.primerOllao} onChange={(v) => setConst("primerOllao", v)} />
       </div>
       </section>
+      <section className="mb-4 rounded-2xl border border-line bg-surface/95 p-4 shadow-[0_10px_28px_rgb(14_45_49/0.045)]">
+        <h2 className="mb-1 text-sm font-extrabold text-ink-2">Técnicos</h2>
+        <p className="mb-3 text-xs text-muted-2">
+          Uno por línea. Es la lista de «Realizado por» y la de quien aprueba y pasa a producción.
+        </p>
+        <textarea
+          className="min-h-32 w-full rounded-xl border border-line bg-surface px-3 py-2 font-mono text-xs text-ink focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold/30"
+          value={p.tecnicos.join("\n")}
+          onChange={(e) => setP({
+            ...p,
+            tecnicos: e.target.value.split("\n").map((t) => t.trim()).filter(Boolean),
+          })}
+        />
+      </section>
       <section className="rounded-2xl border border-line bg-surface/95 p-4 shadow-[0_10px_28px_rgb(14_45_49/0.045)]">
       <h2 className="mb-3 text-sm font-extrabold text-ink-2">Tipos de recogida · demasías</h2>
       <div className="mb-4 overflow-x-auto rounded-xl">

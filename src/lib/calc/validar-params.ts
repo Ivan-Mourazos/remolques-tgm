@@ -22,6 +22,11 @@ export function normalizarParams(bruto: unknown): CalcParams {
   if (Array.isArray(p.clientesBaqueton) && p.clientesBaqueton.length > 0) {
     resultado.clientesBaqueton = p.clientesBaqueton as ClienteBaqueton[];
   }
+  if (Array.isArray(p.tecnicos) && p.tecnicos.length > 0) {
+    resultado.tecnicos = (p.tecnicos as unknown[]).filter(
+      (t): t is string => typeof t === "string",
+    );
+  }
   return resultado;
 }
 
@@ -42,6 +47,12 @@ export function validarParams(
   }
   if (esNumero(p.maxPosicionesOllaos) && p.maxPosicionesOllaos < 1) {
     errores.push("«maxPosicionesOllaos» debe ser al menos 1");
+  }
+  const tecnicos = p.tecnicos;
+  if (!Array.isArray(tecnicos) || tecnicos.length === 0) {
+    errores.push("«tecnicos» debe tener al menos un técnico");
+  } else if (tecnicos.some((t) => typeof t !== "string" || t.trim() === "")) {
+    errores.push("cada técnico debe tener nombre");
   }
   const recogidas = p.recogidas;
   if (!Array.isArray(recogidas) || recogidas.length === 0) {

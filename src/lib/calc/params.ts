@@ -36,6 +36,10 @@ export interface CalcParams {
   baquetonDemasiaCostura: number;
   baquetonDemasiaFinal: number;
   clientesBaqueton: ClienteBaqueton[];
+  /** Quién puede figurar como técnico: en la cabecera, al aprobar y al producir.
+   *  Vive aquí y no a mano en el formulario porque tres sitios usan la misma
+   *  lista y una de ellas decide quién firma una revisión. */
+  tecnicos: string[];
 }
 
 export const PERFILES = [
@@ -109,6 +113,7 @@ export const DEFAULT_PARAMS: CalcParams = {
   baquetonDemasiaAnchoCostura: 7,
   baquetonDemasiaCostura: 2,
   baquetonDemasiaFinal: 1,
+  tecnicos: ["IVAN", "ADRIAN", "JAIME", "TAMARA", "ALBERTO", "ANGEL"],
   clientesBaqueton: [
     {
       nombre: "GENERAL",

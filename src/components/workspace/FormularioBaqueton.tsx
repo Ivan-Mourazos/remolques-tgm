@@ -3,7 +3,7 @@ import type { BaquetonInput } from "@/lib/calc/baqueton";
 import type { Material } from "@/lib/calc/materiales-seed";
 import { DEFAULT_PARAMS, type CalcParams } from "@/lib/calc/params";
 import { CampoMaterial, CampoNum, CampoSelect, CampoSiNo, CampoTexto, Grupo, PasoFormulario } from "@/components/workspace/campos";
-import { MODOS_OLLAOS, opcionesConEtiqueta, TECNICOS } from "@/components/workspace/opciones-formulario";
+import { MODOS_OLLAOS, opcionesConEtiqueta, opcionesTecnicos } from "@/components/workspace/opciones-formulario";
 
 export function FormularioBaqueton({
   input, materiales, params, errores = {}, onChange, onCampoTocado,
@@ -29,8 +29,8 @@ export function FormularioBaqueton({
     >
       <Grupo titulo="Datos del baquetón" columnas={3} compacto>
         <CampoTexto name="ordenFabricacion" label="O.F." value={input.cabecera.ordenFabricacion ?? ""} onChange={(v) => setCab("ordenFabricacion", v)} />
-        <CampoSelect name="realizadoPor" label="Realizado por" value={input.cabecera.realizadoPor} opciones={TECNICOS} onChange={(v) => setCab("realizadoPor", v)} />
-        <CampoSelect name="revision" label="Revisión" value={input.cabecera.revision} opciones={TECNICOS} onChange={(v) => setCab("revision", v)} />
+        <CampoSelect name="realizadoPor" label="Realizado por" value={input.cabecera.realizadoPor} opciones={opcionesTecnicos((params ?? DEFAULT_PARAMS).tecnicos)} onChange={(v) => setCab("realizadoPor", v)} />
+        <CampoSelect name="revision" label="Revisión" value={input.cabecera.revision} opciones={opcionesTecnicos((params ?? DEFAULT_PARAMS).tecnicos)} onChange={(v) => setCab("revision", v)} />
       </Grupo>
       <div className="relative space-y-2 rounded-2xl border border-line bg-surface/95 p-2.5 shadow-[0_12px_32px_rgb(14_45_49/0.055)] backdrop-blur-sm focus-within:z-40">
         <PasoFormulario numero={1} titulo="Medidas · cm" columnas={4}>
