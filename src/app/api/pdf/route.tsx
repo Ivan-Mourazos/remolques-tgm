@@ -1,83 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { getStore } from "@/lib/store";
-import { nombrePdf } from "@/lib/pdf/ruta-pdf";
-import { anioDelPlanteamiento, guardarPdfDuplicado } from "@/lib/pdf/archivo-pdf";
+import { guardarPdfDuplicado } from "@/lib/pdf/archivo-pdf";
 import { PlanteamientoPdf } from "@/lib/pdf/PlanteamientoPdf";
 import { getLogoTgmDataUri } from "@/lib/assets/logo-tgm";
-import { buildRecord } from "@/app/api/planteamientos/build-record";
-import type { PlanteamientoRecord, TipoPlanteamiento } from "@/lib/store/types";
-import type { LonaInput } from "@/lib/calc/lona";
-import type { BaquetonInput } from "@/lib/calc/baqueton";
-import { remolquesUnicos } from "@/lib/pedidos/agrupar-pedido";
-import { errorPlanteamientoIncompleto, planteamientoGenerable } from "@/lib/pedidos/validar-planteamiento";
+import {
+  generarPdfPedido, type PaginaPedidoPdf, type ResultadoGenerar,
+} from "@/lib/pdf/generar-pdf-pedido";
 
 export const runtime = "nodejs";
 
 // Genera un único PDF por pedido y, en Linux de producción, archiva los mismos
 // bytes en la carpeta general y en la carpeta del año correspondiente.
 export async function POST(req: NextRequest) {
-  let paginasPedidas: Array<{
-    clave: string; id?: string; tipo: TipoPlanteamiento; input: LonaInput | BaquetonInput;
-  }>;
+  let paginas: PaginaPedidoPdf[];
   let snapshots: Record<string, string | null>;
   let archivar: boolean;
   try {
     const body = await req.json();
-    paginasPedidas = Array.isArray(body.paginas) ? body.paginas : [];
+    paginas = Array.isArray(body.paginas) ? body.paginas : [];
     snapshots = body.snapshots ?? {};
     archivar = body.archivar === true;
   } catch {
     return NextResponse.json({ error: "Cuerpo de petición inválido" }, { status: 400 });
   }
-  const store = getStore();
-  const params = await store.getParams();
-  const ahora = new Date().toISOString();
-  // Cada página llega con su input: las líneas del pedido son borradores hasta
-  // que se completa. De las guardadas se recupera su fecha de creación para que
-  // el orden del PDF sea el de siempre.
-  const recs: PlanteamientoRecord[] = [];
-  for (const pagina of paginasPedidas) {
-    const errorValidacion = errorPlanteamientoIncompleto(pagina.input);
-    if (errorValidacion) return NextResponse.json({ error: errorValidacion }, { status: 400 });
-    const existente = pagina.id ? await store.get(pagina.id) : null;
-    const base = buildRecord(pagina.tipo, pagina.input, params, pagina.id, null);
-    recs.push({
-      ...base,
-      id: pagina.clave,
-      createdAt: existente?.createdAt ?? ahora,
-      updatedAt: ahora,
-    });
-  }
-  const paginas = remolquesUnicos(recs).filter((registro) => planteamientoGenerable(registro.input));
-  const omitidos = recs.length - paginas.length;
-  if (paginas.length === 0) return NextResponse.json({ error: "No hay planteamientos completos para generar" }, { status: 400 });
 
-  const doc = (
-    <PlanteamientoPdf
-      paginas={paginas.map((rec) => ({ rec, png: snapshots[rec.id] ?? null }))}
-      logoTgm={getLogoTgmDataUri()}
-    />
-  );
-
+  let resultado: ResultadoGenerar;
   try {
-    const buffer = await renderToBuffer(doc);
-    const nombre = nombrePdf(paginas[0].numeroPedido);
-    const anio = anioDelPlanteamiento(
-      paginas[0].numeroPedido,
-      paginas[0].input.cabecera.fecha,
-    );
-    const destinos = archivar
-      ? await guardarPdfDuplicado(new Uint8Array(buffer), nombre, anio)
-      : [];
-    return new NextResponse(new Uint8Array(buffer), {
-      headers: {
-        "Content-Type": "application/pdf",
-        "X-Nombre-Pdf": nombre,
-        "X-Pdf-Destinos": String(destinos.length),
-        "X-Pdf-Anio": String(anio),
-        "X-Pdf-Omitidos": String(omitidos),
-      },
+    resultado = await generarPdfPedido({ paginas, snapshots, archivar }, {
+      store: getStore(),
+      render: async (pags, logo) => new Uint8Array(
+        await renderToBuffer(<PlanteamientoPdf paginas={pags} logoTgm={logo} />),
+      ),
+      archivar: (bytes, nombre, anio) => guardarPdfDuplicado(bytes, nombre, anio),
+      logo: getLogoTgmDataUri(),
+      ahora: new Date().toISOString(),
     });
   } catch (e) {
     return NextResponse.json(
@@ -85,4 +42,15 @@ export async function POST(req: NextRequest) {
       { status: 500 },
     );
   }
+  if (!resultado.ok) return NextResponse.json({ error: resultado.mensaje }, { status: 400 });
+
+  return new NextResponse(resultado.bytes, {
+    headers: {
+      "Content-Type": "application/pdf",
+      "X-Nombre-Pdf": resultado.nombre,
+      "X-Pdf-Destinos": String(resultado.destinos.length),
+      "X-Pdf-Anio": String(resultado.anio),
+      "X-Pdf-Omitidos": String(resultado.omitidos),
+    },
+  });
 }
