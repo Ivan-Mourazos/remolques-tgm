@@ -1,0 +1,6 @@
+Inter, de Rasmus Andersson (https://rsms.me/inter/).
+Licencia SIL Open Font License 1.1: https://openfontlicense.org/
+
+Descargada de Google Fonts (pesos 400, 600 y 700) e incrustada en el repo a
+proposito: la hoja de taller se genera en el servidor y no puede depender de
+que haya internet ni de las fuentes que tenga instalada la maquina.

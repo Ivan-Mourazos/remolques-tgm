@@ -93,7 +93,8 @@ tiene tres hojas en la mano sabe cuál es cuál y si le falta alguna.
 ## Tipografía
 
 **Inter**, incrustada en el repo en tres pesos (Regular 400, SemiBold 600, Bold
-700) bajo `src/lib/assets/fuentes/`. Licencia SIL; son ficheros, no una
+700) bajo `public/fuentes/`, que es donde ya vive el logo y es lo que se
+despliega seguro. Licencia SIL; son ficheros, no una
 dependencia npm nueva. Se eligió por los números: a 8 pt su 1, su 7 y su 0 no se
 confunden entre sí, que es lo único que importa en una hoja de medidas.
 
@@ -130,7 +131,7 @@ números. Sin fondos grandes de fondo gris, que ensucian al fotocopiar.
 |---|---|
 | `src/lib/pdf/datos-hoja.ts` | nuevo: celdas de la banda de corte, grupos etiqueta→valor, título de página, plural de paños |
 | `src/lib/pdf/fuentes.ts` | nuevo: registro idempotente de Inter con caída a Helvetica |
-| `src/lib/assets/fuentes/*.ttf` | nuevo: Inter Regular, SemiBold y Bold |
+| `public/fuentes/*.ttf` | nuevo: Inter Regular, SemiBold y Bold |
 | `src/lib/pdf/PlanteamientoPdf.tsx` | reescrito: solo pinta |
 | `src/app/api/pdf/route.tsx` | sin cambios |
 
