@@ -2,68 +2,106 @@ import {
   Document, Page, Text, View, Image, StyleSheet,
 } from "@react-pdf/renderer";
 import type { PlanteamientoRecord } from "@/lib/store/types";
-import type { LonaInput, LonaResult } from "@/lib/calc/lona";
-import type { BaquetonInput, BaquetonResult } from "@/lib/calc/baqueton";
-import { nombrePerfil } from "@/lib/calc/params";
-import { datosGeometriaPdf } from "@/lib/pdf/datos-geometria";
+import type { LonaResult } from "@/lib/calc/lona";
+import type { BaquetonResult } from "@/lib/calc/baqueton";
+import { datosHoja } from "@/lib/pdf/datos-hoja";
+import { registrarFuentes } from "@/lib/pdf/fuentes";
+
+// Se resuelve al importar el módulo, que en esta app solo pasa en el servidor.
+const FAMILIA = registrarFuentes();
+
+const TINTA = "#1a1a1a";
+const GRIS = "#6b6b6b";
+const FILETE = "#c9c9c9";
+
+// La banda de corte no reparte su ancho a partes iguales: los paños son tres
+// líneas de texto y el contorno es un número.
+const ANCHOS_CELDA = [2.4, 1.5, 1];
 
 const s = StyleSheet.create({
-  page: { padding: 10, fontSize: 8.5, fontFamily: "Helvetica", color: "#171717" },
-  marco: { border: "1 solid #171717" },
-  cabecera: { height: 66, flexDirection: "row" },
-  logo: {
-    width: 122, borderRight: "1 solid #171717", alignItems: "center", justifyContent: "center",
+  page: {
+    paddingHorizontal: 20, paddingVertical: 16,
+    fontSize: 8, fontFamily: FAMILIA, color: TINTA,
   },
-  logoImagen: { width: 78, height: 58, objectFit: "contain" },
-  logoMarca: { fontSize: 24, fontFamily: "Helvetica-Bold", color: "#f3a000" },
-  logoSub: { marginTop: 1, fontSize: 6.5, fontFamily: "Helvetica-Bold" },
-  cabCentro: { flex: 1 },
-  cabDerecha: { width: 192, borderLeft: "1 solid #171717" },
-  cabFila: { minHeight: 22, flexDirection: "row", borderBottom: "0.6 solid #171717" },
-  cabFilaUltima: { borderBottom: 0 },
-  cabEtiqueta: {
-    width: 78, padding: 4.5, fontSize: 7.8, fontStyle: "italic", color: "#404040",
-    borderRight: "0.6 solid #171717",
+
+  cabecera: { flexDirection: "row", paddingBottom: 8, borderBottom: `1 solid ${TINTA}` },
+  logo: { width: 96, justifyContent: "center" },
+  logoImagen: { width: 82, height: 46, objectFit: "contain" },
+  logoMarca: { fontSize: 22, fontWeight: 700, color: "#f3a000" },
+  logoSub: { marginTop: 1, fontSize: 6.5, fontWeight: 600 },
+  cabCliente: { flex: 1, paddingLeft: 12 },
+  cabPedido: { width: 210 },
+  cabValorGrande: { fontSize: 12, fontWeight: 700, marginBottom: 3 },
+  cabSecundarios: { flexDirection: "row" },
+  cabDato: { flexDirection: "row", marginRight: 18 },
+  cabDatoEtiqueta: {
+    fontSize: 6.5, fontWeight: 600, letterSpacing: 0.6, color: GRIS, marginRight: 4,
   },
-  cabValor: { flex: 1, padding: 4.5, fontSize: 9, fontFamily: "Helvetica-Bold" },
-  banda: {
-    height: 28, alignItems: "center", justifyContent: "center",
-    borderTop: "1 solid #171717", borderBottom: "1 solid #171717",
+  cabDatoValor: { fontSize: 8.5, fontWeight: 600 },
+
+  identificacion: { paddingVertical: 4, borderBottom: `0.5 solid ${FILETE}` },
+  identificacionTexto: {
+    fontSize: 8, fontWeight: 700, letterSpacing: 1.4, textAlign: "center",
   },
-  bandaTexto: { fontSize: 10, fontFamily: "Helvetica-Bold" },
-  cuerpo: { minHeight: 300, flexDirection: "row", padding: 8 },
-  // La columna cede ancho al dibujo, que es lo que piden los operarios.
-  datos: { width: 200, paddingRight: 8, justifyContent: "flex-start" },
-  // Sin fondo, borde ni esquinas redondeadas: una hoja de taller no lleva
-  // tarjetas, y ese gris de fondo se comía contraste al imprimir.
-  dibujo: {
-    flex: 1, minHeight: 215, alignItems: "center", justifyContent: "center", padding: 2,
-  },
-  // Altura acotada: con flex la imagen crecía sin límite y empujaba la tabla
-  // de ollaos fuera de la página. El dibujo (1560×440) está limitado por
-  // ancho, así que su tamaño real lo decide el ancho que cede la columna.
-  foto: { width: "100%", height: 300, objectFit: "contain" },
+
+  // Rótulo de grupo: pesa poco y ordena mucho.
+  rotulo: { fontSize: 6.5, fontWeight: 600, letterSpacing: 0.8, color: GRIS, marginBottom: 3 },
+
+  bandaCorte: { flexDirection: "row", paddingVertical: 8, borderBottom: `0.5 solid ${FILETE}` },
+  celda: { paddingRight: 10 },
+  celdaConFilete: { borderLeft: `0.5 solid ${FILETE}`, paddingLeft: 12 },
+  celdaLinea: { fontSize: 12, fontWeight: 700, marginBottom: 1.5 },
+  celdaNota: { fontSize: 7.5, color: GRIS, marginTop: 1 },
+
+  // La única banda elástica: si las observaciones crecen, el dibujo cede alto.
+  cuerpo: { flexDirection: "row", flexGrow: 1, flexShrink: 1, flexBasis: 236, paddingVertical: 8 },
+  columna: { width: 230, paddingRight: 12, borderRight: `0.5 solid ${FILETE}` },
+  grupo: { marginBottom: 12 },
+  filaDato: { flexDirection: "row", marginBottom: 3.5 },
+  etiqueta: { width: 88, fontSize: 7.5, color: GRIS, paddingTop: 1 },
+  valores: { flex: 1 },
+  valor: { fontSize: 9.5, fontWeight: 600, lineHeight: 1.15 },
+  dibujo: { flex: 1, alignItems: "center", justifyContent: "center", paddingLeft: 12 },
+  foto: { width: "100%", height: "100%", objectFit: "contain" },
   sinPlano: { color: "#a3a3a3" },
-  filaDato: { flexDirection: "row", marginBottom: 4 },
-  // Sin subrayado: la jerarquía la da el peso, no la máquina de escribir.
-  etiqueta: { width: 80, fontSize: 8, fontFamily: "Helvetica-Bold" },
-  valor: { flex: 1, fontSize: 8.8, fontFamily: "Helvetica-Bold", lineHeight: 1.2 },
-  bloque: { flexDirection: "row", marginBottom: 5 },
-  bloqueValores: { flex: 1 },
-  valorLinea: { fontSize: 8.8, fontFamily: "Helvetica-Bold", marginBottom: 2.5 },
-  separacion: { height: 5 },
-  tablaTitulo: { marginTop: 8, marginBottom: 2, fontSize: 8.4, fontFamily: "Helvetica-Bold" },
-  tabla: { border: "0.8 solid #171717" },
-  tr: { minHeight: 18, flexDirection: "row", borderBottom: "0.6 solid #171717" },
-  trUltima: { borderBottom: 0 },
-  th: {
-    flex: 1, padding: 3, backgroundColor: "#d4d4d4", fontFamily: "Helvetica-Bold",
-    fontSize: 7.2, textAlign: "center", borderRight: "0.6 solid #171717",
+
+  pie: {
+    paddingVertical: 6,
+    borderTop: `0.5 solid ${FILETE}`, borderBottom: `0.5 solid ${FILETE}`,
   },
-  thNombre: { flex: 7.5, textAlign: "left" },
-  td: { flex: 1, padding: 3, fontSize: 7.2, textAlign: "center", borderRight: "0.6 solid #171717" },
-  tdNombre: { flex: 7.5, padding: 3, fontSize: 7.2, fontFamily: "Helvetica-Bold", borderRight: "0.6 solid #171717" },
-  total: { borderRight: 0, fontFamily: "Helvetica-Bold" },
+  filaPie: { flexDirection: "row", marginBottom: 3 },
+  etiquetaPie: {
+    width: 88, fontSize: 6.5, fontWeight: 600, letterSpacing: 0.8, color: GRIS, paddingTop: 2,
+  },
+  valorPie: { flex: 1, fontSize: 9.5, fontWeight: 600 },
+  // Regular, no negrita: el texto largo en negrita se lee peor.
+  observaciones: { flex: 1, fontSize: 9.5, lineHeight: 1.35 },
+
+  tablaTitulo: {
+    marginTop: 8, marginBottom: 3,
+    fontSize: 6.5, fontWeight: 600, letterSpacing: 0.8, color: GRIS,
+  },
+  tabla: { borderTop: `0.5 solid ${TINTA}`, borderBottom: `0.5 solid ${TINTA}` },
+  tr: {
+    minHeight: 15, flexDirection: "row",
+    borderBottom: `0.5 solid ${FILETE}`, alignItems: "center",
+  },
+  trUltima: { borderBottom: 0 },
+  trCabecera: { borderBottom: `0.5 solid ${TINTA}` },
+  th: {
+    flex: 1, paddingVertical: 3, fontSize: 6.5, fontWeight: 600, color: GRIS,
+    textAlign: "center", borderRight: `0.5 solid ${FILETE}`,
+  },
+  thNombre: { flex: 7.5, textAlign: "left", paddingLeft: 3 },
+  td: {
+    flex: 1, paddingVertical: 3, fontSize: 8, textAlign: "center",
+    borderRight: `0.5 solid ${FILETE}`,
+  },
+  tdNombre: {
+    flex: 7.5, paddingVertical: 3, paddingLeft: 3, fontSize: 7.5, fontWeight: 600,
+    borderRight: `0.5 solid ${FILETE}`,
+  },
+  sinFilete: { borderRight: 0 },
 });
 
 const fmt = (n: number) => n.toLocaleString("es-ES", { maximumFractionDigits: 2 });
@@ -72,23 +110,11 @@ const fechaEs = (fecha: string) => {
   return m ? `${m[3]}/${m[2]}/${m[1]}` : fecha;
 };
 
-function CabFila({ etiqueta, valor, ultima = false }: { etiqueta: string; valor: string; ultima?: boolean }) {
+function CabDato({ etiqueta, valor }: { etiqueta: string; valor: string }) {
   return (
-    <View style={[s.cabFila, ...(ultima ? [s.cabFilaUltima] : [])]}>
-      <Text style={s.cabEtiqueta}>{etiqueta}</Text>
-      <Text style={s.cabValor}>{valor || "-"}</Text>
-    </View>
-  );
-}
-
-/** «Sin elegir» no es un «NO»: imprimirlo como tal sería inventar la decisión. */
-const siNo = (valor: boolean | null | undefined) => (valor == null ? "-" : valor ? "SÍ" : "NO");
-
-function Dato({ etiqueta, valor }: { etiqueta: string; valor: string }) {
-  return (
-    <View style={s.filaDato}>
-      <Text style={s.etiqueta}>{etiqueta}</Text>
-      <Text style={s.valor}>{valor || "-"}</Text>
+    <View style={s.cabDato}>
+      <Text style={s.cabDatoEtiqueta}>{etiqueta}</Text>
+      <Text style={s.cabDatoValor}>{valor || "—"}</Text>
     </View>
   );
 }
@@ -107,14 +133,14 @@ function Reparto({ reparto, modo, primerOllao }: {
     <>
       <Text style={s.tablaTitulo}>
         {modo === "REPARTIDOS"
-          ? `REPARTIDOS · PRIMER Y ÚLTIMO OLLAO A ${fmt(primerOllao)} CM DEL BORDE`
-          : modo}
+          ? `OLLAOS · REPARTIDOS · PRIMER Y ÚLTIMO OLLAO A ${fmt(primerOllao)} CM DEL BORDE`
+          : `OLLAOS · ${modo || "SIN ELEGIR"}`}
       </Text>
       <View style={s.tabla}>
-        <View style={s.tr}>
+        <View style={[s.tr, s.trCabecera]}>
           <Text style={[s.th, s.thNombre]} />
           {Array.from({ length: 12 }, (_, i) => <Text key={i} style={s.th}>{i + 1}</Text>)}
-          <Text style={[s.th, s.total]}>TOTAL</Text>
+          <Text style={[s.th, s.sinFilete]}>TOTAL</Text>
         </View>
         {filas.map(([nombre, posiciones], fila) => (
           <View key={nombre} style={[s.tr, ...(fila === filas.length - 1 ? [s.trUltima] : [])]}>
@@ -122,7 +148,7 @@ function Reparto({ reparto, modo, primerOllao }: {
             {Array.from({ length: 12 }, (_, i) => (
               <Text key={i} style={s.td}>{posiciones[i] == null ? "" : fmt(posiciones[i])}</Text>
             ))}
-            <Text style={[s.td, s.total]}>{posiciones.length}</Text>
+            <Text style={[s.td, s.sinFilete]}>{posiciones.length}</Text>
           </View>
         ))}
       </View>
@@ -130,144 +156,135 @@ function Reparto({ reparto, modo, primerOllao }: {
   );
 }
 
-function DatosLona({ rec }: { rec: PlanteamientoRecord }) {
-  const i = rec.input as LonaInput;
-  const r = rec.result as LonaResult;
-  // vacío (0) = igual que delante
-  const altoAtras = i.altoAtras > 0 ? i.altoAtras : i.altoDelante;
-  const panos = [
-    `${i.cantidad} PAÑO DE ${fmt(r.panoDelantero.ancho)} x ${fmt(r.panoDelantero.alto)}`,
-    `${i.cantidad} PAÑO DE ${fmt(r.panoTrasero.ancho)} x ${fmt(r.panoTrasero.alto)}`,
-    ...(r.panoContorno ? [`${i.cantidad} PAÑO DE ${fmt(r.panoContorno.ancho)} x ${fmt(r.panoContorno.alto)}`] : []),
-  ];
-  return (
-    <>
-      <View style={s.bloque}>
-        <Text style={s.etiqueta}>PAÑOS A CORTAR:</Text>
-        <View style={s.bloqueValores}>
-          {panos.map((pano) => <Text key={pano} style={s.valorLinea}>{pano}</Text>)}
-        </View>
-      </View>
-      <Dato etiqueta="MEDIDA LONA HECHA" valor={`${fmt(r.lonaHecha.largo)} X ${fmt(r.lonaHecha.ancho)}`} />
-      {(i.anchoAtras ?? 0) > 0 && i.anchoAtras !== i.ancho && (
-        <Dato etiqueta="" valor={`ANCHO DELANTE ${fmt(i.ancho)} / DETRÁS ${fmt(i.anchoAtras!)}`} />
-      )}
-      <Dato etiqueta="" valor={altoAtras !== i.altoDelante
-        ? `ALTO DELANTE ${fmt(i.altoDelante)} / DETRÁS ${fmt(altoAtras)}`
-        : `ALTO ${fmt(i.altoDelante)}`} />
-      <Dato etiqueta="CONTORNO DE CORTE" valor={r.contornoAjustado ? fmt(r.contornoAjustado) : "PENDIENTE"} />
-      {/* Fin del primer grupo (qué cortar); empieza cómo es el remolque. */}
-      <View style={s.separacion} />
-      <Dato etiqueta="PERFIL" valor={i.tipoPerfil ? nombrePerfil(i.tipoPerfil) : ""} />
-      <View style={s.bloque}>
-        <Text style={s.etiqueta}>GEOMETRÍA:</Text>
-        <View style={s.bloqueValores}>
-          {datosGeometriaPdf(i).map((dato) => <Text key={dato} style={s.valorLinea}>{dato}</Text>)}
-        </View>
-      </View>
-      <Dato etiqueta="RECOGE DELANTE" valor={r.recogeDelanteTexto} />
-      <Dato etiqueta="RECOGE ATRÁS" valor={r.recogeAtrasTexto} />
-      <Dato etiqueta="VENTANA" valor={i.ventana == null
-        ? "-"
-        : i.ventana
-          ? (i.ventanaAncho ?? 0) > 0 && (i.ventanaAlto ?? 0) > 0
-            ? `SÍ · ${fmt(i.ventanaAncho!)} X ${fmt(i.ventanaAlto!)} CM`
-            : "SÍ · MEDIDAS PENDIENTES"
-          : "NO"} />
-      <Dato etiqueta="ROTULACIÓN:" valor={siNo(i.rotulacion)} />
-      <Dato etiqueta="OLLAOS:" valor={i.modoOllaos} />
-      {/* Fin del segundo grupo (cómo es); empieza con qué se hace. */}
-      <View style={s.separacion} />
-      <Dato etiqueta="MATERIAL" valor={i.material} />
-      {i.observaciones ? <Dato etiqueta="OBSERVACIONES" valor={i.observaciones} /> : null}
-    </>
-  );
-}
-
-function DatosBaqueton({ rec }: { rec: PlanteamientoRecord }) {
-  const i = rec.input as BaquetonInput;
-  const r = rec.result as BaquetonResult;
-  return (
-    <>
-      <View style={s.bloque}>
-        <Text style={s.etiqueta}>PAÑOS A CORTAR:</Text>
-        <Text style={s.valor}>{i.cantidad} PAÑO DE {fmt(r.panoUnico.largo)} x {fmt(r.panoUnico.ancho)}</Text>
-      </View>
-      <Dato etiqueta="MEDIDA REMOLQUE" valor={`${fmt(r.remolqueHecho.largo)} X ${fmt(r.remolqueHecho.ancho)}`} />
-      <Dato etiqueta="BAQUETÓN" valor={`${fmt(i.baqueton)}${r.baquetonTrasero ? ` / TRASERO ${fmt(r.baquetonTrasero)}` : " EN LÍNEA"}`} />
-      <Dato etiqueta="CLIENTE ESPECÍFICO" valor={i.clienteEspecifico} />
-      <View style={s.separacion} />
-      <Dato etiqueta="ROTULACIÓN:" valor={siNo(i.rotulacion)} />
-      <Dato etiqueta="OLLAOS:" valor={i.modoOllaos} />
-      <View style={s.separacion} />
-      <Dato etiqueta="MATERIAL" valor={i.material} />
-      {i.observaciones ? <Dato etiqueta="OBSERVACIONES" valor={i.observaciones} /> : null}
-    </>
-  );
-}
-
-function PaginaPlanteamiento({ rec, png, logoTgm }: {
-  rec: PlanteamientoRecord; png: string | null; logoTgm?: string | null;
+function PaginaPlanteamiento({ rec, png, logoTgm, indice, total }: {
+  rec: PlanteamientoRecord;
+  png: string | null;
+  logoTgm?: string | null;
+  indice: number;
+  total: number;
 }) {
-  const input = rec.input;
+  const cabecera = rec.input.cabecera;
   const resultado = rec.result as LonaResult | BaquetonResult;
+  const hoja = datosHoja(rec, indice, total);
   return (
     <Page size="A4" orientation="landscape" style={s.page}>
-      <View style={s.marco}>
-        <View style={s.cabecera}>
-          <View style={s.logo}>
-            {logoTgm ? (
-              /* eslint-disable-next-line jsx-a11y/alt-text */
-              <Image src={logoTgm} style={s.logoImagen} />
-            ) : (
-              <>
-                <Text style={s.logoMarca}>TGM</Text>
-                <Text style={s.logoSub}>TOLDOS GÓMEZ</Text>
-              </>
-            )}
-          </View>
-          <View style={s.cabCentro}>
-            <CabFila etiqueta="CLIENTE:" valor={input.cabecera.cliente} />
-            <CabFila etiqueta="REVISIÓN:" valor={input.cabecera.revision} />
-            <CabFila etiqueta="REALIZADO" valor={input.cabecera.realizadoPor} ultima />
-          </View>
-          <View style={s.cabDerecha}>
-            <CabFila etiqueta="Nº PEDIDO:" valor={input.cabecera.numeroPedido} />
-            <CabFila etiqueta="O.F.:" valor={input.cabecera.ordenFabricacion ?? ""} />
-            <CabFila etiqueta="FECHA:" valor={fechaEs(input.cabecera.fecha)} ultima />
+      <View style={s.cabecera}>
+        <View style={s.logo}>
+          {logoTgm ? (
+            /* eslint-disable-next-line jsx-a11y/alt-text */
+            <Image src={logoTgm} style={s.logoImagen} />
+          ) : (
+            <>
+              <Text style={s.logoMarca}>TGM</Text>
+              <Text style={s.logoSub}>TOLDOS GÓMEZ</Text>
+            </>
+          )}
+        </View>
+        <View style={s.cabCliente}>
+          <Text style={s.rotulo}>CLIENTE</Text>
+          <Text style={s.cabValorGrande}>{cabecera.cliente || "—"}</Text>
+          <View style={s.cabSecundarios}>
+            <CabDato etiqueta="REVISIÓN" valor={cabecera.revision} />
+            <CabDato etiqueta="REALIZADO" valor={cabecera.realizadoPor} />
           </View>
         </View>
-        <View style={s.banda}><Text style={s.bandaTexto}>REMOLQUES</Text></View>
-        <View style={s.cuerpo}>
-          <View style={s.datos}>
-            {rec.tipo === "lona" ? <DatosLona rec={rec} /> : <DatosBaqueton rec={rec} />}
-          </View>
-          <View style={s.dibujo}>
-            {png ? (
-              /* eslint-disable-next-line jsx-a11y/alt-text */
-              <Image src={png} style={s.foto} />
-            ) : <Text style={s.sinPlano}>(sin vista técnica)</Text>}
+        <View style={s.cabPedido}>
+          <Text style={s.rotulo}>Nº PEDIDO</Text>
+          <Text style={s.cabValorGrande}>{cabecera.numeroPedido || "—"}</Text>
+          <View style={s.cabSecundarios}>
+            <CabDato etiqueta="O.F." valor={cabecera.ordenFabricacion ?? ""} />
+            <CabDato etiqueta="FECHA" valor={fechaEs(cabecera.fecha)} />
           </View>
         </View>
       </View>
+
+      <View style={s.identificacion}>
+        <Text style={s.identificacionTexto}>{hoja.titulo}</Text>
+      </View>
+
+      <View style={s.bandaCorte}>
+        {hoja.banda.map((celda, indiceCelda) => (
+          <View
+            key={celda.titulo}
+            style={[
+              s.celda,
+              { flex: ANCHOS_CELDA[indiceCelda] ?? 1 },
+              ...(indiceCelda > 0 ? [s.celdaConFilete] : []),
+            ]}
+          >
+            <Text style={s.rotulo}>{celda.titulo}</Text>
+            {celda.lineas.map((linea, i) => (
+              <Text key={i} style={s.celdaLinea}>{linea}</Text>
+            ))}
+            {celda.notas.map((nota, i) => (
+              <Text key={i} style={s.celdaNota}>{nota}</Text>
+            ))}
+          </View>
+        ))}
+      </View>
+
+      <View style={s.cuerpo}>
+        <View style={s.columna}>
+          {hoja.grupos.map((grupo) => (
+            <View key={grupo.titulo} style={s.grupo}>
+              <Text style={s.rotulo}>{grupo.titulo}</Text>
+              {grupo.datos.map((dato) => (
+                <View key={dato.etiqueta} style={s.filaDato}>
+                  <Text style={s.etiqueta}>{dato.etiqueta}</Text>
+                  <View style={s.valores}>
+                    {dato.valores.map((valor, i) => (
+                      <Text key={i} style={s.valor}>{valor}</Text>
+                    ))}
+                  </View>
+                </View>
+              ))}
+            </View>
+          ))}
+        </View>
+        <View style={s.dibujo}>
+          {png ? (
+            /* eslint-disable-next-line jsx-a11y/alt-text */
+            <Image src={png} style={s.foto} />
+          ) : <Text style={s.sinPlano}>(sin vista técnica)</Text>}
+        </View>
+      </View>
+
+      <View style={s.pie}>
+        <View style={s.filaPie}>
+          <Text style={s.etiquetaPie}>MATERIAL</Text>
+          <Text style={s.valorPie}>{hoja.material}</Text>
+        </View>
+        <View style={s.filaPie}>
+          <Text style={s.etiquetaPie}>OBSERVACIONES</Text>
+          <Text style={s.observaciones}>{hoja.observaciones}</Text>
+        </View>
+      </View>
+
       <Reparto
         reparto={resultado.reparto}
-        modo={input.modoOllaos}
-        primerOllao={input.primerOllao ?? rec.paramsSnapshot?.primerOllao ?? 2.5}
+        modo={rec.input.modoOllaos}
+        primerOllao={rec.input.primerOllao ?? rec.paramsSnapshot?.primerOllao ?? 2.5}
       />
     </Page>
   );
 }
 
-/** Hoja de taller: una página por remolque (versión) del pedido. */
+/** Hoja de taller: una página por remolque o baquetón del pedido. */
 export function PlanteamientoPdf({ paginas, logoTgm }: {
   paginas: Array<{ rec: PlanteamientoRecord; png: string | null }>;
   logoTgm?: string | null;
 }) {
   return (
     <Document>
-      {paginas.map(({ rec, png }) => (
-        <PaginaPlanteamiento key={rec.id} rec={rec} png={png} logoTgm={logoTgm} />
+      {paginas.map(({ rec, png }, indice) => (
+        <PaginaPlanteamiento
+          key={rec.id}
+          rec={rec}
+          png={png}
+          logoTgm={logoTgm}
+          indice={indice}
+          total={paginas.length}
+        />
       ))}
     </Document>
   );
