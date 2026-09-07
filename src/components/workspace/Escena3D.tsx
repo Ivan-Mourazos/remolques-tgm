@@ -116,7 +116,16 @@ const COLOR_COTA = "#565656";
 const COLOR_TEXTO_COTA = "#1f1f1f";
 const COLOR_GUIA = "#9a9a9a";
 const COLOR_RECOGIDA = "#1f1f1f";
-const ANCHO_PANEL = 780;
+/* El panel se ajusta al dibujo, no al revés. Medido sobre quince formas
+   —incluido el remolque más ancho que la escala admite, que es el que más se
+   estira a la derecha— el contenido va de x 43 a x 665, así que 700 deja 20 pt
+   de aire a cada lado. Antes eran 780 y ese margen sobrante se pagaba en la
+   hoja de taller: el par de vistas es una imagen muy apaisada y en el PDF la
+   limita el ancho, de modo que cada punto de blanco de más encogía el
+   remolque impreso. */
+const ANCHO_PANEL = 700;
+const ALTO_PANEL = 440;
+export const PANEL = { ancho: ANCHO_PANEL, alto: ALTO_PANEL };
 
 /* La tipografía del dibujo se separa de la de la aplicación. Sin poder añadir
    una fuente, la distinción se consigue con familia, espaciado y cifras
@@ -233,7 +242,9 @@ function SimboloRecogida({ costura, tipo }: { costura: Costura; tipo: string }) 
   return null;
 }
 
-interface OpcionesVista {
+/** Exportada, con calcularVista, para el test que comprueba que el dibujo
+ *  cabe en el panel: el margen es ahora estrecho y a mano no se ve. */
+export interface OpcionesVista {
   modo: "lona" | "baqueton";
   tipoPerfil: TipoPerfil;
   largo: number;
@@ -265,7 +276,7 @@ const puntoEnCuadratica = (a: Punto, control: Punto, b: Punto, t: number): Punto
   y: (1 - t) ** 2 * a.y + 2 * t * (1 - t) * control.y + t ** 2 * b.y,
 });
 
-function calcularVista(o: OpcionesVista) {
+export function calcularVista(o: OpcionesVista) {
   const perfil = o.modo === "baqueton" ? "TIPO 01" : o.tipoPerfil;
   const opts = (ancho: number, alto: number) => ({
     ancho,
@@ -295,7 +306,7 @@ function calcularVista(o: OpcionesVista) {
   const escala = Math.min(340 / Math.max(o.anchoNear, o.anchoFar, 1), 225 / maxY);
   const profundidadX = Math.min(220, Math.max(120, o.largo * escala * 0.48));
   const profundidadY = Math.min(100, Math.max(64, o.largo * escala * 0.24));
-  const origenX = 100;
+  const origenX = 85;
   const baseY = 344;
   const proyecta = (puntos: Array<[number, number]>, dx: number, dy: number) =>
     puntos.map(([x, y]) => ({
@@ -861,9 +872,9 @@ export function Escena3D(props: Escena3DProps) {
       {vistas ? (
         <svg
           ref={svgRef}
-          viewBox="0 0 1560 440"
-          width={1560}
-          height={440}
+          viewBox={`0 0 ${ANCHO_PANEL * 2} ${ALTO_PANEL}`}
+          width={ANCHO_PANEL * 2}
+          height={ALTO_PANEL}
           className="block h-auto w-full"
           role="img"
           aria-label={`Perspectiva técnica de ${props.modo === "lona" ? "lona de remolque" : "baquetón"}: largo ${fmt(props.largo)}, ancho ${fmt(props.ancho)}`}
@@ -877,7 +888,7 @@ export function Escena3D(props: Escena3DProps) {
               <path d="M 7 0 L 0 3.5 L 7 7 z" fill={COLOR_COTA} />
             </marker>
           </defs>
-          <rect width="1560" height="440" fill="#ffffff" />
+          <rect width={ANCHO_PANEL * 2} height={ALTO_PANEL} fill="#ffffff" />
           <PanelVista
             d={vistas.delantera}
             titulo="VISTA DELANTERA"
