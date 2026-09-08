@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import styles from "./revision.module.css";
 import type { FichaPedido as DatosFicha } from "@/lib/revision/ficha-pedido";
 import type { CalcParams } from "@/lib/calc/params";
 import { rasterizarSvg } from "@/lib/svg/rasterizar";
@@ -133,68 +134,74 @@ export function FichaPedido({ pedido }: { pedido: string }) {
   if (!ficha) return <p className="text-sm text-muted-2">Cargando…</p>;
 
   return (
-    <div className="min-w-0 max-w-7xl">
-      <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-gold-2">Revisión</p>
-      <h1 className="mb-1 mt-0.5 text-[26px] font-extrabold tracking-[-0.045em] text-ink">
-        {ficha.numeroPedido}
-      </h1>
-      <p className="mb-1 text-sm text-ink-2">{ficha.cliente || "—"}</p>
-      <p className="mb-4 text-sm font-bold text-gold-2">{ficha.visible.etiqueta}</p>
+    <div className={`${styles.frame} min-w-0`}>
+      <header className={styles.pageHeader}>
+        <div className={styles.identity}>
+          <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-gold-2">Revisión</p>
+          <h1 className="mb-1 mt-0.5 text-[26px] font-extrabold tracking-[-0.045em] text-ink">
+            {ficha.numeroPedido}
+          </h1>
+          <p className="mb-1 text-sm text-ink-2">{ficha.cliente || "—"}</p>
+          <p className="mb-4 text-sm font-bold text-gold-2">{ficha.visible.etiqueta}</p>
 
-      <div className="mb-5 flex flex-wrap items-center gap-2 rounded-2xl border border-line bg-surface/95 p-3">
-        <label className="text-xs font-bold text-muted" htmlFor="quien">Soy</label>
-        <select
-          id="quien"
-          value={quien}
-          onChange={(e) => setQuien(e.target.value)}
-          className="rounded-lg border border-line bg-surface px-2 py-1.5 text-sm text-ink"
-        >
-          <option value="">Elige tu nombre</option>
-          {tecnicos.map((tecnico) => <option key={tecnico} value={tecnico}>{tecnico}</option>)}
-        </select>
-
-        <button
-          type="button"
-          onClick={() => decidir("aprobar")}
-          disabled={ocupado || ficha.visible.situacion === "HISTORICO"}
-          className="rounded-lg bg-ink px-3 py-1.5 text-xs font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-35"
-        >
-          Aprobar
-        </button>
-        <button
-          type="button"
-          onClick={() => decidir("no-aprobar")}
-          disabled={ocupado || ficha.visible.situacion === "HISTORICO"}
-          className="rounded-lg border border-line px-3 py-1.5 text-xs font-extrabold text-ink disabled:cursor-not-allowed disabled:opacity-35"
-        >
-          No aprobar
-        </button>
-        <button
-          type="button"
-          onClick={() => producir(false)}
-          disabled={ocupado || !ficha.visible.puedeProducir}
-          title={ficha.visible.impedimento || undefined}
-          className="rounded-lg bg-gold px-3 py-1.5 text-xs font-extrabold text-deep disabled:cursor-not-allowed disabled:opacity-35"
-        >
-          Pasar a producción
-        </button>
-        {ficha.lineas[0] && (
-          <Link
-            href={`/planteamiento?desde=${encodeURIComponent(ficha.lineas[0].id)}`}
-            className="rounded-lg border border-line px-3 py-1.5 text-xs font-extrabold text-ink"
+        </div>
+        <div className={`${styles.actions} mb-5 flex flex-wrap items-center gap-2 rounded-2xl border border-line bg-surface/95 p-3`}>
+          <label className="text-xs font-bold text-muted" htmlFor="quien">Soy</label>
+          <select
+            id="quien"
+            value={quien}
+            onChange={(e) => setQuien(e.target.value)}
+            className="rounded-lg border border-line bg-surface px-2 py-1.5 text-sm text-ink"
           >
-            Abrir en Planteamiento
-          </Link>
+            <option value="">Elige tu nombre</option>
+            {tecnicos.map((tecnico) => <option key={tecnico} value={tecnico}>{tecnico}</option>)}
+          </select>
+
+          <button
+            type="button"
+            onClick={() => decidir("aprobar")}
+            disabled={ocupado || ficha.visible.situacion === "HISTORICO"}
+            className="rounded-lg bg-ink px-3 py-1.5 text-xs font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-35"
+          >
+            Aprobar
+          </button>
+          <button
+            type="button"
+            onClick={() => decidir("no-aprobar")}
+            disabled={ocupado || ficha.visible.situacion === "HISTORICO"}
+            className="rounded-lg border border-line px-3 py-1.5 text-xs font-extrabold text-ink disabled:cursor-not-allowed disabled:opacity-35"
+          >
+            No aprobar
+          </button>
+          <button
+            type="button"
+            onClick={() => producir(false)}
+            disabled={ocupado || !ficha.visible.puedeProducir}
+            title={ficha.visible.impedimento || undefined}
+            className="rounded-lg bg-gold px-3 py-1.5 text-xs font-extrabold text-deep disabled:cursor-not-allowed disabled:opacity-35"
+          >
+            Pasar a producción
+          </button>
+          {ficha.lineas[0] && (
+            <Link
+              href={`/planteamiento?desde=${encodeURIComponent(ficha.lineas[0].id)}`}
+              className="rounded-lg border border-line px-3 py-1.5 text-xs font-extrabold text-ink"
+            >
+              Abrir en Planteamiento
+            </Link>
+          )}
+        </div>
+
+        {ficha.visible.impedimento && (
+          <div className={`${styles.notice} mb-4`}><Aviso severidad="info" texto={ficha.visible.impedimento} /></div>
         )}
+
+      </header>
+      <div className={styles.list} role="region" aria-label="Fichas del pedido" tabIndex={0}>
+        {ficha.lineas.map((linea) => (
+          <DetalleLineaRevision key={linea.id} linea={linea} />
+        ))}
       </div>
-
-      {ficha.visible.impedimento && (
-        <div className="mb-4"><Aviso severidad="info" texto={ficha.visible.impedimento} /></div>
-      )}
-
-      {ficha.lineas.map((linea) => (
-        <DetalleLineaRevision key={linea.id} linea={linea} />
-      ))}
     </div>
   );
 }

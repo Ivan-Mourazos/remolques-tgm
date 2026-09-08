@@ -1,0 +1,240 @@
+.frame {
+  min-width: 0;
+}
+
+.list {
+  min-width: 0;
+}
+
+.list:focus-visible {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 2px;
+}
+
+/* En escritorio, los controles ocupan su altura real y las fichas reciben
+   el resto del viewport. El dibujo cede espacio antes que los datos. */
+@media (min-width: 1200px) and (min-height: 650px) {
+  .frame {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 8px;
+    height: calc(100dvh - 32px);
+  }
+
+  .frame .pageHeader {
+    display: grid;
+    grid-template-columns: minmax(210px, 1fr) auto;
+    align-items: center;
+    gap: 6px 12px;
+  }
+
+  .identity > p {
+    margin: 0;
+    font-size: 11px;
+    line-height: 16px;
+  }
+
+  .identity > h1 {
+    display: inline;
+    margin: 0;
+    font-size: 22px;
+    line-height: 26px;
+  }
+
+  .identity > p:first-child {
+    display: inline;
+    margin-right: 8px;
+  }
+
+  .frame .actions {
+    margin: 0;
+    padding: 8px;
+    gap: 6px;
+  }
+
+  .frame .notice {
+    grid-column: 1 / -1;
+    margin: 0;
+  }
+
+  .frame .list {
+    position: relative;
+    height: 100%;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+    scroll-snap-type: y proximity;
+  }
+
+  .list .card {
+    display: grid;
+    grid-template-rows: auto minmax(min-content, 1fr);
+    height: 100%;
+    min-height: min-content;
+    margin-bottom: 8px;
+    scroll-snap-align: start;
+  }
+
+  .list .card:last-child {
+    margin-bottom: 0;
+  }
+
+  .card .cardHeader {
+    padding: 6px 12px;
+  }
+
+  .cardHeader > h2 {
+    font-size: 15px;
+    line-height: 20px;
+  }
+
+  .card .body {
+    display: grid;
+    grid-template-rows: minmax(100px, 1fr) auto auto auto;
+    gap: 6px;
+    min-height: min-content;
+    padding: 8px;
+  }
+
+  .card .body > * {
+    margin-block: 0;
+  }
+
+  .card .withoutDrawing {
+    grid-template-rows: auto auto auto;
+    align-content: start;
+  }
+
+  .body .drawing {
+    position: relative;
+    min-height: 100px;
+  }
+
+  .body .drawing > svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .body .sections {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .body .baqueton {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .sections .dataSection {
+    grid-column: auto;
+  }
+
+  .dataSection > h3 {
+    padding: 6px 8px;
+    font-size: 10px;
+    line-height: 14px;
+    letter-spacing: 0.04em;
+  }
+
+  .dataSection > dl {
+    padding-inline: 8px;
+  }
+
+  .dataSection > dl > div {
+    padding-block: 3px;
+    column-gap: 6px;
+  }
+
+  .dataSection dt {
+    font-size: 11px;
+    line-height: 16px;
+  }
+
+  .dataSection dd {
+    font-size: 12px;
+    line-height: 16px;
+  }
+
+  .ollaos .tableHeading {
+    padding: 5px 10px;
+  }
+
+  .tableHeading > h3 {
+    font-size: 12px;
+    line-height: 16px;
+  }
+
+  .tableHeading > p {
+    font-size: 11px;
+    line-height: 16px;
+  }
+
+  .table th,
+  .table td {
+    min-width: 40px;
+    padding: 4px 6px;
+    font-size: 12px;
+    line-height: 16px;
+  }
+
+  .table thead th {
+    font-size: 10px;
+    line-height: 14px;
+  }
+
+  .table th:first-child {
+    min-width: 174px;
+    padding-left: 10px;
+  }
+
+  .table tbody th > span {
+    display: inline;
+    margin: 0;
+  }
+
+  .table tbody th > span + span {
+    margin-left: 6px;
+    font-size: 10px;
+  }
+
+  .body .cut {
+    padding: 6px 10px;
+  }
+
+  .cut > h3 {
+    margin-bottom: 4px;
+    font-size: 10px;
+    line-height: 14px;
+  }
+
+  .cut h4 {
+    margin-bottom: 2px;
+    font-size: 10px;
+    line-height: 14px;
+  }
+
+  .cut p {
+    font-size: 12px;
+    line-height: 16px;
+  }
+}
+
+@media (min-width: 1600px) and (min-height: 900px) {
+  .dataSection > dl > div {
+    padding-block: 4px;
+  }
+
+  .dataSection dt {
+    font-size: 12px;
+    line-height: 20px;
+  }
+
+  .dataSection dd,
+  .table th,
+  .table td,
+  .cut p {
+    font-size: 14px;
+    line-height: 20px;
+  }
+}

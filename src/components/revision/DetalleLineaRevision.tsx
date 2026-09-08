@@ -1,4 +1,5 @@
 import type { LineaFicha } from "@/lib/revision/ficha-pedido";
+import styles from "./revision.module.css";
 
 const lados = [
   { clave: "laterales", nombre: "Laterales", sentido: "Atrás → delante" },
@@ -12,8 +13,8 @@ function TablaOllaosRevision({ reparto }: { reparto: LineaFicha["reparto"] }) {
   const columnas = Math.max(1, ...lados.map(({ clave }) => reparto[clave].length));
 
   return (
-    <section className="min-w-0 overflow-hidden rounded-xl border border-line bg-surface">
-      <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-line bg-surface-2 px-4 py-3">
+    <section className={`${styles.ollaos} min-w-0 overflow-hidden rounded-xl border border-line bg-surface`}>
+      <div className={`${styles.tableHeading} flex flex-wrap items-baseline justify-between gap-2 border-b border-line bg-surface-2 px-4 py-3`}>
         <h3 className="text-sm font-extrabold text-ink">Ollaos</h3>
         <p className="text-xs font-medium text-ink-2">Posiciones desde el borde · cm</p>
       </div>
@@ -23,7 +24,7 @@ function TablaOllaosRevision({ reparto }: { reparto: LineaFicha["reparto"] }) {
         tabIndex={0}
         className="overflow-x-auto focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gold"
       >
-        <table className="w-full border-collapse text-sm tabular-nums">
+        <table className={`${styles.table} w-full border-collapse text-sm tabular-nums`}>
           <caption className="sr-only">Posiciones de los ollaos en centímetros y total por lado</caption>
           <thead>
             <tr className="bg-surface-2/60 text-ink-2">
@@ -58,26 +59,26 @@ function TablaOllaosRevision({ reparto }: { reparto: LineaFicha["reparto"] }) {
 
 export function DetalleLineaRevision({ linea }: { linea: LineaFicha }) {
   return (
-    <section className="mb-6 min-w-0 overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_10px_28px_rgb(14_45_49/0.045)]">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-surface-2 px-4 py-4 sm:px-5">
+    <section className={`${styles.card} mb-6 min-w-0 overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_10px_28px_rgb(14_45_49/0.045)]`}>
+      <div className={`${styles.cardHeader} flex flex-wrap items-center justify-between gap-2 border-b border-line bg-surface-2 px-4 py-4 sm:px-5`}>
         <h2 className="text-lg font-extrabold tracking-tight text-ink">{linea.nombre}</h2>
         <span className="text-xs font-semibold text-ink-2">Ficha de revisión · Medidas en cm</span>
       </div>
 
-      <div className="space-y-5 p-3 sm:p-5">
+      <div className={`${styles.body} ${!linea.snapshotSvg ? styles.withoutDrawing : ""} space-y-5 p-3 sm:p-5`}>
         {linea.snapshotSvg && (
           <div
-            className="overflow-hidden rounded-xl border border-line bg-white [&>svg]:h-auto [&>svg]:w-full"
+            className={`${styles.drawing} overflow-hidden rounded-xl border border-line bg-white [&>svg]:h-auto [&>svg]:w-full`}
             // SVG generado por la aplicación y guardado con el planteamiento.
             dangerouslySetInnerHTML={{ __html: linea.snapshotSvg }}
           />
         )}
 
-        <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className={`${styles.sections} ${linea.tipo === "baqueton" ? styles.baqueton : ""} grid grid-cols-1 items-start gap-4 md:grid-cols-2 xl:grid-cols-3`}>
           {linea.secciones.map((seccion) => {
             const material = seccion.titulo === "Material y observaciones";
             return (
-              <section key={seccion.titulo} className={`min-w-0 overflow-hidden rounded-xl border border-line ${material ? (linea.tipo === "baqueton" ? "md:col-span-2 xl:col-span-1" : "md:col-span-2") : ""}`}>
+              <section key={seccion.titulo} className={`${styles.dataSection} min-w-0 overflow-hidden rounded-xl border border-line ${material ? (linea.tipo === "baqueton" ? "md:col-span-2 xl:col-span-1" : "md:col-span-2") : ""}`}>
                 <h3 className="border-b border-line bg-surface-2 px-4 py-3 text-xs font-extrabold uppercase tracking-[0.08em] text-ink-2">
                   {seccion.titulo}{seccion.titulo === "Medidas" || seccion.titulo === "Perfil" ? " · cm" : ""}
                 </h3>
@@ -98,7 +99,7 @@ export function DetalleLineaRevision({ linea }: { linea: LineaFicha }) {
 
         <TablaOllaosRevision reparto={linea.reparto} />
 
-        <section className="rounded-xl border border-line bg-surface-2/60 p-4">
+        <section className={`${styles.cut} rounded-xl border border-line bg-surface-2/60 p-4`}>
           <h3 className="mb-3 text-xs font-extrabold uppercase tracking-[0.08em] text-ink-2">Corte y confección · cm</h3>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             {linea.corte.map((celda) => (
