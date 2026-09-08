@@ -38,7 +38,7 @@ const etiquetas = (secciones: ReturnType<typeof seccionesRevision>) =>
 describe("secciones de revisión de una lona", () => {
   it("agrupa como el formulario", () => {
     expect(lona().map((s) => s.titulo))
-      .toEqual(["Pedido", "Medidas", "Perfil", "Acabados", "Ollaos", "Material y observaciones"]);
+      .toEqual(["Pedido", "Medidas", "Perfil", "Acabados", "Material y observaciones"]);
   });
 
   it("saca del perfil solo lo que ese tipo usa", () => {
@@ -71,14 +71,10 @@ describe("secciones de revisión de una lona", () => {
     expect(valor(vacia, "Observaciones")).toBe("—");
   });
 
-  it("solo lista las posiciones cuando los ollaos son a medida", () => {
-    expect(etiquetas(lona())).not.toContain("Posiciones laterales");
-    const aMedida = lona({
-      modoOllaos: "SEGUN SE INDICA",
-      ollaosManuales: { laterales: [2.5, 50, 100], atras: [2.5, 80], delante: [2.5] },
-    });
-    expect(valor(aMedida, "Posiciones laterales")).toBe("2,5 · 50 · 100");
-    expect(valor(aMedida, "Posiciones delante")).toBe("2,5");
+  it("omite el revisor de cada remolque porque se elige en el pedido", () => {
+    const cabecera = { ...emptyLona().cabecera, revision: "ADRIAN" };
+    expect(etiquetas(lona({ cabecera }))).not.toContain("Revisión");
+    expect(etiquetas(baqueton({ cabecera }))).not.toContain("Revisión");
   });
 
   it("da la ventana con sus medidas cuando las tiene", () => {
@@ -92,7 +88,7 @@ describe("secciones de revisión de un baquetón", () => {
   it("no arrastra ni un campo de lona", () => {
     const secciones = baqueton();
     expect(secciones.map((s) => s.titulo))
-      .toEqual(["Pedido", "Medidas", "Ollaos", "Material y observaciones"]);
+      .toEqual(["Pedido", "Medidas", "Material y observaciones"]);
     const todas = etiquetas(secciones);
     expect(todas).toContain("Baquetón");
     expect(todas).toContain("Cliente específico");

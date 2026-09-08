@@ -27,10 +27,9 @@ export function FormularioBaqueton({
         if (campo) onCampoTocado?.(campo);
       }}
     >
-      <Grupo titulo="Datos del baquetón" columnas={3} compacto>
+      <Grupo titulo="Datos del baquetón" columnas={2} compacto>
         <CampoTexto name="ordenFabricacion" label="O.F." value={input.cabecera.ordenFabricacion ?? ""} onChange={(v) => setCab("ordenFabricacion", v)} />
         <CampoSelect name="realizadoPor" label="Realizado por" value={input.cabecera.realizadoPor} opciones={opcionesTecnicos((params ?? DEFAULT_PARAMS).tecnicos)} onChange={(v) => setCab("realizadoPor", v)} />
-        <CampoSelect name="revision" label="Revisión" value={input.cabecera.revision} opciones={opcionesTecnicos((params ?? DEFAULT_PARAMS).tecnicos)} onChange={(v) => setCab("revision", v)} />
       </Grupo>
       <div className="relative space-y-2 rounded-2xl border border-line bg-surface/95 p-2.5 shadow-[0_12px_32px_rgb(14_45_49/0.055)] backdrop-blur-sm focus-within:z-40">
         <PasoFormulario numero={1} titulo="Medidas · cm" columnas={4}>

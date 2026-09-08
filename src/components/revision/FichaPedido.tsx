@@ -5,6 +5,7 @@ import type { FichaPedido as DatosFicha } from "@/lib/revision/ficha-pedido";
 import type { CalcParams } from "@/lib/calc/params";
 import { rasterizarSvg } from "@/lib/svg/rasterizar";
 import { SALIDA_MONOCROMA } from "@/lib/pdf/salida";
+import { DetalleLineaRevision } from "@/components/revision/DetalleLineaRevision";
 import { Aviso } from "@/components/feedback/Aviso";
 import { useAvisos, useConfirmar } from "@/components/feedback/useFeedback";
 
@@ -132,7 +133,7 @@ export function FichaPedido({ pedido }: { pedido: string }) {
   if (!ficha) return <p className="text-sm text-muted-2">Cargando…</p>;
 
   return (
-    <div className="max-w-5xl">
+    <div className="min-w-0 max-w-7xl">
       <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-gold-2">Revisión</p>
       <h1 className="mb-1 mt-0.5 text-[26px] font-extrabold tracking-[-0.045em] text-ink">
         {ficha.numeroPedido}
@@ -192,49 +193,7 @@ export function FichaPedido({ pedido }: { pedido: string }) {
       )}
 
       {ficha.lineas.map((linea) => (
-        <section
-          key={linea.id}
-          className="mb-4 rounded-2xl border border-line bg-surface/95 p-4 shadow-[0_10px_28px_rgb(14_45_49/0.045)]"
-        >
-          <h2 className="mb-3 text-sm font-extrabold text-ink-2">{linea.nombre}</h2>
-
-          {linea.snapshotSvg && (
-            <div
-              className="mb-4 overflow-hidden rounded-xl border border-line [&>svg]:h-auto [&>svg]:w-full"
-              // El dibujo ya está guardado como SVG en el registro, generado por
-              // esta misma aplicación: no hay que recalcularlo ni volver a
-              // montar la escena.
-              dangerouslySetInnerHTML={{ __html: linea.snapshotSvg }}
-            />
-          )}
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {linea.secciones.map((seccion) => (
-              <div key={seccion.titulo}>
-                <p className="mb-1 text-[10px] font-extrabold uppercase tracking-[0.13em] text-muted">
-                  {seccion.titulo}
-                </p>
-                <dl className="text-xs">
-                  {seccion.campos.map((campo) => (
-                    <div key={campo.etiqueta} className="flex justify-between gap-3 border-b border-line/60 py-1 last:border-0">
-                      <dt className="text-muted-2">{campo.etiqueta}</dt>
-                      <dd className="text-right font-bold text-ink">{campo.valor}</dd>
-                    </div>
-                  ))}
-                </dl>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-3 flex flex-wrap gap-4 border-t border-line pt-3 text-[11px] text-muted-2">
-            {linea.corte.map((celda) => (
-              <div key={celda.titulo}>
-                <p className="font-extrabold uppercase tracking-wide">{celda.titulo}</p>
-                {celda.lineas.map((texto) => <p key={texto}>{texto}</p>)}
-              </div>
-            ))}
-          </div>
-        </section>
+        <DetalleLineaRevision key={linea.id} linea={linea} />
       ))}
     </div>
   );

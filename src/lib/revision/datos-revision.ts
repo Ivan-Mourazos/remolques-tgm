@@ -19,9 +19,6 @@ const numCero = (n: number | null | undefined): string => (
 );
 const texto = (v: string | null | undefined): string => (v?.trim() ? v : RAYA);
 const siNo = (v: boolean | null | undefined): string => (v == null ? RAYA : v ? "Sí" : "No");
-const lista = (posiciones: number[]): string => (
-  posiciones.length === 0 ? RAYA : posiciones.map((p) => numCero(p)).join(" · ")
-);
 
 function ventana(i: LonaInput): string {
   if (i.ventana == null) return RAYA;
@@ -38,34 +35,12 @@ function seccionPedido(cabecera: CabeceraInput, version: string): SeccionRevisio
       { etiqueta: "Nº de pedido", valor: texto(cabecera.numeroPedido) },
       { etiqueta: "Remolque", valor: texto(version) },
       { etiqueta: "Cliente", valor: texto(cabecera.cliente) },
-      { etiqueta: "Revisión", valor: texto(cabecera.revision) },
       { etiqueta: "Realizado por", valor: texto(cabecera.realizadoPor) },
       { etiqueta: "Fecha", valor: texto(cabecera.fecha) },
       { etiqueta: "Fecha de salida", valor: texto(cabecera.fechaSalida) },
       { etiqueta: "O.F.", valor: texto(cabecera.ordenFabricacion) },
     ],
   };
-}
-
-/** El modo manda: el paso y el primer ollao no significan nada a medida, y las
- *  posiciones no significan nada repartidas. */
-function seccionOllaos(i: LonaInput | BaquetonInput): SeccionRevision {
-  const campos: CampoRevision[] = [
-    { etiqueta: "Modo", valor: texto(i.modoOllaos) },
-  ];
-  if (i.modoOllaos === "SEGUN SE INDICA") {
-    campos.push(
-      { etiqueta: "Posiciones laterales", valor: lista(i.ollaosManuales.laterales) },
-      { etiqueta: "Posiciones atrás", valor: lista(i.ollaosManuales.atras) },
-      { etiqueta: "Posiciones delante", valor: lista(i.ollaosManuales.delante) },
-    );
-  } else {
-    campos.push(
-      { etiqueta: "Paso", valor: num(i.pasoOllaos) },
-      { etiqueta: "Primer ollao", valor: num(i.primerOllao) },
-    );
-  }
-  return { titulo: "Ollaos", campos };
 }
 
 function seccionMaterial(i: LonaInput | BaquetonInput): SeccionRevision {
@@ -130,7 +105,6 @@ function seccionesLona(i: LonaInput, version: string): SeccionRevision[] {
         { etiqueta: "Rotulación", valor: siNo(i.rotulacion) },
       ],
     },
-    seccionOllaos(i),
     seccionMaterial(i),
   ];
 }
@@ -149,16 +123,12 @@ function seccionesBaqueton(i: BaquetonInput, version: string): SeccionRevision[]
         { etiqueta: "Rotulación", valor: siNo(i.rotulacion) },
       ],
     },
-    seccionOllaos(i),
     seccionMaterial(i),
   ];
 }
 
-/**
- * Los datos tal y como se teclearon, agrupados igual que el formulario. Una
- * sola lista para la ficha web y para la ficha en papel: un campo nuevo se
- * añade en un sitio y aparece en los dos.
- */
+/** Datos introducidos para la ficha; las posiciones de ollaos viajan aparte
+ *  en el reparto guardado, y el revisor se identifica a nivel de pedido. */
 export function seccionesRevision(linea: {
   tipo: TipoPlanteamiento;
   input: LonaInput | BaquetonInput;

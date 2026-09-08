@@ -14,6 +14,8 @@ export interface LineaFicha {
   nombre: string;
   /** Los datos tal y como se teclearon. */
   secciones: SeccionRevision[];
+  /** Posiciones efectivas guardadas, tanto repartidas como a medida. */
+  reparto: PlanteamientoRecord["result"]["reparto"];
   /** Las medidas de corte, como dato secundario: es lo calculado, no lo tecleado. */
   corte: Celda[];
   /** El dibujo guardado: no hace falta recalcularlo ni montar la escena 3D. */
@@ -48,6 +50,7 @@ export function construirFicha(
       secciones: seccionesRevision({
         tipo: registro.tipo, input: registro.input, version: registro.version,
       }),
+      reparto: registro.result.reparto,
       corte: datosHoja(registro, indice, lineas.length).banda,
       snapshotSvg: registro.snapshotSvg ?? null,
     })),

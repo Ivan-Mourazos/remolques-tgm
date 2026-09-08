@@ -2,8 +2,9 @@ import { describe, expect, it } from "vitest";
 import { construirFicha } from "@/lib/revision/ficha-pedido";
 import { guardadoParaRevision } from "@/lib/pedidos/estado-pedido";
 import { calcLona, type LonaInput } from "@/lib/calc/lona";
+import { calcBaqueton } from "@/lib/calc/baqueton";
 import { DEFAULT_PARAMS } from "@/lib/calc/params";
-import { emptyLona } from "@/components/workspace/entradas-vacias";
+import { emptyLona, emptyBaqueton } from "@/components/workspace/entradas-vacias";
 import type { PlanteamientoRecord } from "@/lib/store/types";
 
 const input = (): LonaInput => ({
@@ -47,6 +48,41 @@ describe("la ficha de un pedido", () => {
     expect(ficha.lineas[0].corte.map((celda) => celda.titulo))
       .toEqual(["PAÑOS A CORTAR", "MEDIDA LONA HECHA", "CONTORNO DE CORTE"]);
   });
+
+  it.each(["REPARTIDOS", "SEGUN SE INDICA"] as const)(
+    "incluye el reparto guardado de la lona en modo %s sin recalcularlo",
+    (modoOllaos) => {
+      const rec = registro("10", "2026-09-01T08:00:00.000Z");
+      rec.input.modoOllaos = modoOllaos;
+      // Incluye el borde cero, lados distintos y más de doce posiciones.
+      // El resultado guardado debe prevalecer sobre las entradas y parámetros.
+      rec.result.reparto = {
+        laterales: Array.from({ length: 14 }, (_, i) => i * 20),
+        atras: [0, 42.5, 120], delante: [2.5, 60, 154.5],
+      };
+      const linea = construirFicha(null, [rec]).lineas[0];
+      expect(linea.reparto).toEqual(rec.result.reparto);
+      expect(linea.secciones.map((s) => s.titulo)).not.toContain("Ollaos");
+    },
+  );
+
+  it.each(["REPARTIDOS", "SEGUN SE INDICA"] as const)(
+    "incluye las posiciones del baquetón en modo %s",
+    (modoOllaos) => {
+      const i = {
+        ...emptyBaqueton(), cantidad: 1, largo: 300, ancho: 157, baqueton: 12,
+        modoOllaos, pasoOllaos: 38,
+        ollaosManuales: { laterales: [0, 100, 200], atras: [2.5, 75], delante: [2.5] },
+      };
+      const rec = {
+        ...registro("10", "2026-09-01T08:00:00.000Z"),
+        tipo: "baqueton" as const, input: i, result: calcBaqueton(i, DEFAULT_PARAMS),
+      };
+      const reparto = construirFicha(null, [rec]).lineas[0].reparto;
+      expect(reparto).toEqual(rec.result.reparto);
+      expect(reparto.laterales.length).toBeGreaterThan(0);
+    },
+  );
 
   it("un pedido sin estado es un histórico y lo dice", () => {
     const ficha = construirFicha(null, [registro("10", "2026-09-01T08:00:00.000Z")]);
