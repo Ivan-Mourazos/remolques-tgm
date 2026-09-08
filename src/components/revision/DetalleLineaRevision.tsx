@@ -78,7 +78,7 @@ export function DetalleLineaRevision({ linea }: { linea: LineaFicha }) {
           {linea.secciones.map((seccion) => {
             const material = seccion.titulo === "Material y observaciones";
             return (
-              <section key={seccion.titulo} className={`${styles.dataSection} min-w-0 overflow-hidden rounded-xl border border-line ${material ? (linea.tipo === "baqueton" ? "md:col-span-2 xl:col-span-1" : "md:col-span-2") : ""}`}>
+              <section key={seccion.titulo} className={`${styles.dataSection} ${seccion.titulo === "Medidas" ? styles.measurements : ""} min-w-0 overflow-hidden rounded-xl border border-line ${material ? (linea.tipo === "baqueton" ? "md:col-span-2 xl:col-span-1" : "md:col-span-2") : ""}`}>
                 <h3 className="border-b border-line bg-surface-2 px-4 py-3 text-xs font-extrabold uppercase tracking-[0.08em] text-ink-2">
                   {seccion.titulo}{seccion.titulo === "Medidas" || seccion.titulo === "Perfil" ? " · cm" : ""}
                 </h3>

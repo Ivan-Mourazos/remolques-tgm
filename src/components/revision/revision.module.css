@@ -142,7 +142,7 @@
   }
 
   .dataSection > dl > div {
-    padding-block: 3px;
+    padding-block: 2px;
     column-gap: 6px;
   }
 
@@ -154,6 +154,24 @@
   .dataSection dd {
     font-size: 12px;
     line-height: 16px;
+  }
+
+  .measurements > dl {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 12px;
+  }
+
+  .measurements > dl > div {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+    padding-block: 3px;
+  }
+
+  .measurements dd {
+    text-align: left;
   }
 
   .ollaos .tableHeading {
@@ -221,20 +239,16 @@
 }
 
 @media (min-width: 1600px) and (min-height: 900px) {
-  .dataSection > dl > div {
-    padding-block: 4px;
-  }
-
   .dataSection dt {
     font-size: 12px;
-    line-height: 20px;
+    line-height: 16px;
   }
 
   .dataSection dd,
   .table th,
   .table td,
   .cut p {
-    font-size: 14px;
-    line-height: 20px;
+    font-size: 13px;
+    line-height: 18px;
   }
 }
