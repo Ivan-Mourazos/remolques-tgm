@@ -98,7 +98,7 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
           </div>
           <div className="flex flex-col gap-4">
             {lineaActiva.tipo === "lona" ? (
-              <Escena3D modo="lona" largo={lona.largo} ancho={lona.ancho} anchoAtras={lona.anchoAtras}
+              <Escena3D modo="lona" medidasHechas={resLona.lonaHecha} largo={lona.largo} ancho={lona.ancho} anchoAtras={lona.anchoAtras}
                 altoDelante={lona.altoDelante} altoAtras={lona.altoAtras}
                 aguas={lona.aguas} radioCumbrera={lona.radioCumbrera} radioHombro={lona.radioHombro}
                 radioEsquina={lona.radioEsquina} chaflan={lona.chaflan}
@@ -113,7 +113,7 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
                 onObservacionesChange={(observaciones) => ws.cambiarInput({ ...lona, observaciones })}
                 onSnapshotReady={ws.registrarSnapshot} />
             ) : (
-              <Escena3D modo="baqueton" largo={baq.largo} ancho={baq.ancho}
+              <Escena3D modo="baqueton" medidasHechas={resBaq.remolqueHecho} largo={baq.largo} ancho={baq.ancho}
                 altoDelante={0} altoAtras={0} tipoPerfil="TIPO 01"
                 baqueton={baq.baqueton} material={baq.material}
                 ollaos={resBaq.reparto}

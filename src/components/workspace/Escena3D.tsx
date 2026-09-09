@@ -18,6 +18,8 @@ type Punto = Punto2D;
 
 export interface Escena3DProps {
   modo: "lona" | "baqueton";
+  /** Medidas finales calculadas para las cotas; el perfil conserva sus medidas de entrada. */
+  medidasHechas: { largo: number; ancho: number; anchoAtras?: number };
   largo: number;
   ancho: number;
   /** Ancho trasero si el remolque va sesgado; 0 o ausente = igual al delantero. */
@@ -798,6 +800,8 @@ export function Escena3D(props: Escena3DProps) {
   const perfilDibujado: TipoPerfil = props.tipoPerfil || "TIPO 01";
 
   const anchoAtras = (props.anchoAtras ?? 0) > 0 ? props.anchoAtras! : props.ancho;
+  const cotas = props.medidasHechas;
+  const cotaAnchoAtras = cotas.anchoAtras ?? cotas.ancho;
   const bastilla = props.modo === "lona" && (props.bastillaEnfundar ?? false);
   const vistas = useMemo(() => {
     if (!valido) return null;
@@ -867,7 +871,7 @@ export function Escena3D(props: Escena3DProps) {
           Vista Técnica
         </p>
         <span className="mx-3 h-4 w-px bg-line" aria-hidden="true" />
-        <p className="text-sm font-bold text-ink sm:text-base">Perspectiva fija · cotas en cm</p>
+        <p className="text-sm font-bold text-ink sm:text-base">Cotas de lona hecha · cm</p>
       </div>
       {vistas ? (
         <svg
@@ -877,9 +881,9 @@ export function Escena3D(props: Escena3DProps) {
           height={ALTO_PANEL}
           className="block h-auto w-full"
           role="img"
-          aria-label={`Perspectiva técnica de ${props.modo === "lona" ? "lona de remolque" : "baquetón"}: largo ${fmt(props.largo)}, ancho ${fmt(props.ancho)}`}
+          aria-label={`Perspectiva técnica de ${props.modo === "lona" ? "lona de remolque" : "baquetón"}: largo ${fmt(cotas.largo)}, ancho ${fmt(cotas.ancho)}`}
         >
-          <title>Perspectiva técnica acotada (vistas delantera y trasera)</title>
+          <title>Perspectiva técnica con cotas de lona hecha (vistas delantera y trasera)</title>
           <defs>
             {/* Solo queda lo que un plano necesita: la flecha de cota. Las
                 tarjetas, la sombra y los degradados eran interfaz, no dibujo,
@@ -893,10 +897,10 @@ export function Escena3D(props: Escena3DProps) {
             d={vistas.delantera}
             titulo="VISTA DELANTERA"
             etiquetaAlto={props.modo === "baqueton" ? "BAQUETÓN" : "ALTO DEL."}
-            etiquetaAncho={anchoAtras !== props.ancho ? "ANCHO DEL." : "ANCHO"}
+            etiquetaAncho={cotaAnchoAtras !== cotas.ancho ? "ANCHO DEL." : "ANCHO"}
             altoNear={altoDelante}
-            ancho={props.ancho}
-            largo={props.largo}
+            ancho={cotas.ancho}
+            largo={cotas.largo}
             mostrarLargo
             mostrarAguas={mostrarAguas}
             aguas={props.aguas ?? 0}
@@ -910,10 +914,10 @@ export function Escena3D(props: Escena3DProps) {
               d={vistas.trasera}
               titulo="VISTA TRASERA"
               etiquetaAlto={props.modo === "baqueton" ? "BAQUETÓN" : "ALTO TRAS."}
-              etiquetaAncho={anchoAtras !== props.ancho ? "ANCHO TRAS." : "ANCHO"}
+              etiquetaAncho={cotaAnchoAtras !== cotas.ancho ? "ANCHO TRAS." : "ANCHO"}
               altoNear={altoAtras}
-              ancho={anchoAtras}
-              largo={props.largo}
+              ancho={cotaAnchoAtras}
+              largo={cotas.largo}
               mostrarLargo={false}
               mostrarAguas={false}
               aguas={props.aguas ?? 0}
