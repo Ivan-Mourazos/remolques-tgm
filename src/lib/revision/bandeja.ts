@@ -15,15 +15,7 @@ export interface EntradaBandeja {
   etiqueta: string;
 }
 
-/** Lo que espera respuesta va primero; dentro de cada grupo, lo más reciente. */
-const ORDEN: Partial<Record<Situacion, number>> = { EN_REVISION: 0, NO_APROBADO: 1 };
-
-/**
- * Los pedidos que le tocan a alguien: los que esperan una primera respuesta y
- * los rechazos que nadie ha empezado a arreglar. Un rechazo con las líneas ya
- * tocadas no está esperando a nadie —quien lleva el pedido está con él— y
- * dejarlo en la bandeja solo enseñaría a no mirarla.
- */
+/** Pedidos pendientes de guardar el PDF, con independencia de las decisiones antiguas. */
 export function construirBandeja(
   estados: EstadoPedido[],
   registros: PlanteamientoRecord[],
@@ -39,10 +31,7 @@ export function construirBandeja(
       const lineas = remolquesUnicos(porPedido.get(estado.pedido) ?? []);
       return { estado, lineas, visible: estadoVisiblePedido(estado, lineas) };
     })
-    .filter(({ visible }) => (
-      visible.situacion === "EN_REVISION"
-      || (visible.situacion === "NO_APROBADO" && !visible.conCambiosPosteriores)
-    ))
+    .filter(({ visible }) => visible.situacion !== "GUARDADO")
     .map(({ estado, lineas, visible }) => ({
       pedido: estado.pedido,
       numeroPedido: estado.numeroPedido,
@@ -53,8 +42,5 @@ export function construirBandeja(
       situacion: visible.situacion,
       etiqueta: visible.etiqueta,
     }))
-    .sort((a, b) => (
-      (ORDEN[a.situacion] ?? 9) - (ORDEN[b.situacion] ?? 9)
-      || b.guardadoEn.localeCompare(a.guardadoEn)
-    ));
+    .sort((a, b) => b.guardadoEn.localeCompare(a.guardadoEn));
 }

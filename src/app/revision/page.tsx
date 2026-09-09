@@ -22,7 +22,7 @@ export default function RevisionPage() {
       <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-gold-2">Oficina técnica</p>
       <h1 className="mb-1 mt-0.5 text-[26px] font-extrabold tracking-[-0.045em] text-ink">Pedidos por revisar</h1>
       <p className="mb-4 text-sm text-muted-2">
-        Mira los datos introducidos y decide. Un pedido que nadie ha revisado todavía no puede pasar a producción.
+        Comprueba los datos y guarda el planteamiento con el nombre del revisor. Las aprobaciones y devoluciones se gestionan en Coordina.
       </p>
 
       {estado === "error" && <Aviso severidad="error" texto="No se pudo cargar la bandeja." />}

@@ -114,73 +114,31 @@ describe("pasar a producción", () => {
   });
 });
 
-describe("el estado que se enseña", () => {
-  const linea = (updatedAt: string) => [{ updatedAt }];
-
-  it("un pedido sin registro pero con líneas guardadas es un histórico, y se puede producir", () => {
-    const visible = estadoVisiblePedido(null, linea("2026-01-05T08:00:00.000Z"));
-    expect(visible.situacion).toBe("HISTORICO");
-    expect(visible.puedeProducir).toBe(true);
+describe("el estado del archivo que se enseña", () => {
+  it("permite guardar un pedido pendiente sin aprobarlo", () => {
+    const visible = estadoVisiblePedido(enRevision(), [{ updatedAt: "2026-09-01T08:00:00.000Z" }]);
+    expect(visible.situacion).toBe("EN_REVISION");
+    expect(visible.puedeGuardar).toBe(true);
     expect(visible.impedimento).toBe("");
   });
-
-  it("un pedido que nadie ha mirado no se puede producir, y dice por qué", () => {
-    const visible = estadoVisiblePedido(enRevision(), linea("2026-09-01T08:00:00.000Z"));
-    expect(visible.situacion).toBe("EN_REVISION");
-    expect(visible.puedeProducir).toBe(false);
-    expect(visible.impedimento).toContain("primera revisión");
+  it("no da por archivado un pedido antiguo sin rutas", () => {
+    const estado = enRevision();
+    estado.produccion = { por: "IVAN", en: "2026-09-03T08:00:00.000Z", nombrePdf: "x.pdf", rutas: [] };
+    expect(estadoVisiblePedido(estado, [{ updatedAt: estado.revision.en }]).situacion).toBe("EN_REVISION");
   });
-
-  it("una línea tocada después de aprobar avisa, pero no cierra la puerta", () => {
-    const aprobado = decidido(enRevision(), {
-      estado: "APROBADO", por: "JAIME", en: "2026-09-02T08:00:00.000Z",
+  it("muestra el revisor del archivo y detecta cambios posteriores", () => {
+    const estado = enRevision();
+    estado.produccion = { por: "JAIME", en: "2026-09-03T08:00:00.000Z", nombrePdf: "AR260123-10.pdf", rutas: ["/a.pdf", "/b.pdf"] };
+    expect(estadoVisiblePedido(estado, [{ updatedAt: estado.revision.en }])).toMatchObject({
+      situacion: "GUARDADO", etiqueta: "Planteamiento guardado · JAIME",
     });
-    if (!aprobado.ok) throw new Error("debería haber aprobado");
-
-    const limpio = estadoVisiblePedido(aprobado.estado, linea("2026-09-02T07:00:00.000Z"));
-    expect(limpio.situacion).toBe("APROBADO");
-
-    const tocado = estadoVisiblePedido(aprobado.estado, linea("2026-09-02T09:00:00.000Z"));
-    expect(tocado.situacion).toBe("APROBADO_CON_CAMBIOS");
-    expect(tocado.etiqueta).toContain("cambios posteriores");
-    expect(tocado.puedeProducir).toBe(true);
+    expect(estadoVisiblePedido(estado, [{ updatedAt: "2026-09-04T08:00:00.000Z" }])).toMatchObject({
+      situacion: "EN_REVISION", conCambiosPosteriores: true,
+    });
+    const reenviado = guardadoParaRevision(estado, { numeroPedido: estado.numeroPedido, por: "IVAN", en: "2026-09-05T08:00:00.000Z" });
+    expect(estadoVisiblePedido(reenviado, [{ updatedAt: estado.revision.en }]).situacion).toBe("EN_REVISION");
   });
-
-  it("un pedido ya producido lo dice, y se puede volver a producir", () => {
-    const aprobado = decidido(enRevision(), {
-      estado: "APROBADO", por: "JAIME", en: "2026-09-02T08:00:00.000Z",
-    });
-    if (!aprobado.ok) throw new Error("debería haber aprobado");
-    const enProduccion = producido(aprobado.estado, {
-      numeroPedido: "AR.26.0123", por: "IVAN", en: "2026-09-03T08:00:00.000Z",
-      nombrePdf: "AR.26.0123-10.pdf", rutas: ["/a/x.pdf"],
-    });
-    if (!enProduccion.ok) throw new Error("debería haber producido");
-    const visible = estadoVisiblePedido(enProduccion.estado, linea("2026-09-02T07:00:00.000Z"));
-    expect(visible.situacion).toBe("EN_PRODUCCION");
-    expect(visible.puedeProducir).toBe(true);
-  });
-
-  it("un no aprobado se puede producir sin volver a pasar por revisión", () => {
-    const rechazado = decidido(enRevision(), {
-      estado: "NO_APROBADO", por: "JAIME", en: "2026-09-02T08:00:00.000Z",
-    });
-    if (!rechazado.ok) throw new Error("debería haber decidido");
-    const visible = estadoVisiblePedido(rechazado.estado, linea("2026-09-01T08:00:00.000Z"));
-    expect(visible.situacion).toBe("NO_APROBADO");
-    expect(visible.puedeProducir).toBe(true);
-  });
-
-  it("un pedido en revisión que ya se miró antes sí se puede producir", () => {
-    const rechazado = decidido(enRevision(), {
-      estado: "NO_APROBADO", por: "JAIME", en: "2026-09-02T08:00:00.000Z",
-    });
-    if (!rechazado.ok) throw new Error("debería haber decidido");
-    const devuelto = guardadoParaRevision(rechazado.estado, {
-      numeroPedido: "AR.26.0123", por: "IVAN", en: "2026-09-02T10:00:00.000Z",
-    });
-    const visible = estadoVisiblePedido(devuelto, linea("2026-09-02T10:00:00.000Z"));
-    expect(visible.situacion).toBe("EN_REVISION");
-    expect(visible.puedeProducir).toBe(true);
+  it("no permite guardar un pedido sin líneas", () => {
+    expect(estadoVisiblePedido(null, []).puedeGuardar).toBe(false);
   });
 });

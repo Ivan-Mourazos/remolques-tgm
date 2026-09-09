@@ -156,10 +156,11 @@ function Reparto({ reparto, modo, primerOllao }: {
   );
 }
 
-function PaginaPlanteamiento({ rec, png, logoTgm, indice, total }: {
+function PaginaPlanteamiento({ rec, png, logoTgm, revisor, indice, total }: {
   rec: PlanteamientoRecord;
   png: string | null;
   logoTgm?: string | null;
+  revisor?: string;
   indice: number;
   total: number;
 }) {
@@ -184,13 +185,13 @@ function PaginaPlanteamiento({ rec, png, logoTgm, indice, total }: {
           <Text style={s.rotulo}>CLIENTE</Text>
           <Text style={s.cabValorGrande}>{cabecera.cliente || "—"}</Text>
           <View style={s.cabSecundarios}>
-            <CabDato etiqueta="REVISIÓN" valor={cabecera.revision} />
-            <CabDato etiqueta="REALIZADO" valor={cabecera.realizadoPor} />
+            <CabDato etiqueta="REALIZADO POR" valor={cabecera.realizadoPor} />
           </View>
+          <View style={{ marginTop: 4 }}><CabDato etiqueta="REVISADO POR" valor={revisor ?? ""} /></View>
         </View>
         <View style={s.cabPedido}>
           <Text style={s.rotulo}>Nº PEDIDO</Text>
-          <Text style={s.cabValorGrande}>{cabecera.numeroPedido || "—"}</Text>
+          <Text style={s.cabValorGrande}>{cabecera.numeroPedido.toUpperCase() || "—"}</Text>
           <View style={s.cabSecundarios}>
             <CabDato etiqueta="O.F." valor={cabecera.ordenFabricacion ?? ""} />
             <CabDato etiqueta="FECHA" valor={fechaEs(cabecera.fecha)} />
@@ -270,9 +271,10 @@ function PaginaPlanteamiento({ rec, png, logoTgm, indice, total }: {
 }
 
 /** Hoja de taller: una página por remolque o baquetón del pedido. */
-export function PlanteamientoPdf({ paginas, logoTgm }: {
+export function PlanteamientoPdf({ paginas, logoTgm, revisor }: {
   paginas: Array<{ rec: PlanteamientoRecord; png: string | null }>;
   logoTgm?: string | null;
+  revisor?: string;
 }) {
   return (
     <Document>
@@ -282,6 +284,7 @@ export function PlanteamientoPdf({ paginas, logoTgm }: {
           rec={rec}
           png={png}
           logoTgm={logoTgm}
+          revisor={revisor}
           indice={indice}
           total={paginas.length}
         />

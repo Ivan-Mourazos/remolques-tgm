@@ -437,7 +437,7 @@ export function useWorkspace(inicial?: EntradaInicial) {
 
   /**
    * Guarda las líneas y deja el pedido esperando a un compañero. No genera
-   * ningún PDF: eso es *Pasar a producción*, y va con nombre y apellidos desde
+   * ningún PDF: se archiva con *Guardar planteamiento* y el nombre del revisor desde
    * la ficha de revisión.
    */
   async function guardarParaRevision() {
@@ -478,9 +478,9 @@ export function useWorkspace(inicial?: EntradaInicial) {
       .then((r) => (r.ok ? r.json() : null))
       .catch(() => null);
     const situacion = ficha?.visible?.situacion;
-    if (situacion === "APROBADO" || situacion === "APROBADO_CON_CAMBIOS" || situacion === "EN_PRODUCCION") {
+    if (situacion === "GUARDADO") {
       const clave = await confirmar({
-        titulo: "Este pedido ya estaba revisado",
+        titulo: "Este planteamiento ya está archivado",
         mensaje: `${ficha.visible.etiqueta}. Si guardas, los cambios quedan sin revisar y el pedido vuelve a la bandeja.`,
         acciones: [
           { clave: "guardar", etiqueta: "Guardar igualmente", tono: "peligro" },

@@ -20,7 +20,10 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     paginas = Array.isArray(body.paginas) ? body.paginas : [];
     snapshots = body.snapshots ?? {};
-    archivar = body.archivar === true;
+    if (body.archivar === true) {
+      return NextResponse.json({ error: "Para archivar el PDF, selecciona el revisor y usa Guardar planteamiento en Revisión." }, { status: 400 });
+    }
+    archivar = false;
   } catch {
     return NextResponse.json({ error: "Cuerpo de petición inválido" }, { status: 400 });
   }

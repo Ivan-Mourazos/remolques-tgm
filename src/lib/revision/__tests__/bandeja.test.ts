@@ -40,7 +40,7 @@ describe("la bandeja de revisión", () => {
     expect(bandeja[0].cliente).toBe("TALLERES CAL");
   });
 
-  it("pone primero lo que espera respuesta y después los rechazos sin tocar", () => {
+  it("ordena los pendientes por fecha, independientemente de decisiones antiguas", () => {
     const bandeja = construirBandeja(
       [
         noAprobado("AR.26.0002", "2026-09-03T08:00:00.000Z"),
@@ -51,25 +51,25 @@ describe("la bandeja de revisión", () => {
         registro("AR.26.0002", "2026-09-03T08:00:00.000Z"),
       ],
     );
-    expect(bandeja.map((e) => e.pedido)).toEqual(["AR260001", "AR260002"]);
+    expect(bandeja.map((e) => e.pedido)).toEqual(["AR260002", "AR260001"]);
   });
 
-  it("saca de la bandeja un rechazo que ya se está arreglando", () => {
+  it("mantiene las correcciones pendientes de archivar", () => {
     const bandeja = construirBandeja(
       [noAprobado("AR.26.0002", "2026-09-03T08:00:00.000Z")],
       // La línea se tocó después del rechazo: alguien está con ello.
       [registro("AR.26.0002", "2026-09-04T08:00:00.000Z")],
     );
-    expect(bandeja).toEqual([]);
+    expect(bandeja).toHaveLength(1);
   });
 
-  it("no lista lo aprobado ni lo que ya está en producción", () => {
+  it("incluye los aprobados antiguos cuyo PDF no se archivó", () => {
     const aprobado = decidido(enRevision("AR.26.0003", "2026-09-01T08:00:00.000Z"), {
       estado: "APROBADO", por: "JAIME", en: "2026-09-02T08:00:00.000Z",
     });
     if (!aprobado.ok) throw new Error("debería haber aprobado");
     expect(construirBandeja([aprobado.estado], [registro("AR.26.0003", "2026-09-01T08:00:00.000Z")]))
-      .toEqual([]);
+      .toHaveLength(1);
   });
 
   it("no se cae con un estado cuyo pedido ya no tiene líneas", () => {

@@ -94,8 +94,15 @@ compartido esperado y que se monta también tras reiniciar el servidor.
 Un directorio local vacío no equivale a un recurso de red montado.
 
 La app añade el año del pedido al segundo destino: `AR2603583` produce
-`2026/AR2603583-10.pdf`. Sin las dos variables configuradas, solo se descarga
-el PDF en el navegador. Con una sola variable, la generación devuelve error.
+`2026/AR2603583.pdf`. En PLANTEAMIENTOS se guarda `AR2603583-10.pdf`.
+El pedido se normaliza a mayúsculas y sin puntos en ambos nombres.
+Las dos carpetas raíz deben existir y tener permiso de escritura. Si falta
+alguna ruta o falla una copia, Guardar planteamiento devuelve un error y no
+registra el archivo como completado. La vista previa sigue disponible sin rutas.
+
+En Revisión, seleccionar **Revisado por** junto a **Guardar planteamiento**.
+El nombre se imprime en todas las páginas del PDF y queda registrado al
+completarse ambas copias. Las aprobaciones y devoluciones se hacen en Coordina.
 
 ## 4. Compilar y arrancar
 
