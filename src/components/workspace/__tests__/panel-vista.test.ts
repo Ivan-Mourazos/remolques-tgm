@@ -98,10 +98,18 @@ describe("el dibujo cabe en su panel", () => {
 
 describe("caída trasera del baquetón de Pedro López", () => {
   it.each([[22, 32], [32, 22]])("mantiene la cubierta nivelada con caras de %s y %s cm", (altoNear, altoFar) => {
-    const opciones = { ...base, modo: "baqueton" as const, altoNear, altoFar, conVentana: false };
+    const opciones = { ...base, modo: "baqueton" as const, altoNear, altoFar, altoLateral: 22, conVentana: false };
     const vista = calcularVista(opciones);
     const uniforme = calcularVista({ ...opciones, altoFar: altoNear });
     const escala = (vista.frente[0].y - vista.frente[1].y) / altoNear;
+    // Ambos extremos del lateral miden 22; solo el paño trasero mide 32.
+    expect(vista.lateralNear.y - vista.frente.at(-2)!.y).toBeCloseTo(22 * escala);
+    expect(vista.lateralFar.y - vista.fondo.at(-2)!.y).toBeCloseTo(22 * escala);
+    expect(vista.lateralNear.y - vista.lateralFar.y)
+      .toBeCloseTo(vista.frente[1].y - vista.fondo[1].y);
+    expect(vista.frente[0].y - vista.lateralNear.y).toBeCloseTo((altoNear - 22) * escala);
+    expect(vista.fondo[0].y - vista.lateralFar.y).toBeCloseTo((altoFar - 22) * escala);
+    expect(vista.panoFondo !== null).toBe(altoFar > 22);
     expect(vista.fondo[1].y).toBeCloseTo(uniforme.fondo[1].y);
     expect(vista.fondo[0].y - uniforme.fondo[0].y).toBeCloseTo((altoFar - altoNear) * escala);
     expect(vista.fondo[0].y - vista.fondo[1].y).toBeCloseTo(altoFar * escala);

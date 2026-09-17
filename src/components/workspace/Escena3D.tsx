@@ -256,6 +256,8 @@ export interface OpcionesVista {
   anchoFar: number;
   altoNear: number;
   altoFar: number;
+  /** Caída uniforme de ambos laterales del baquetón. */
+  altoLateral?: number;
   aguas: number;
   radioCumbrera: number;
   radioHombro: number;
@@ -322,6 +324,21 @@ export function calcularVista(o: OpcionesVista) {
   // En el baquetón la cubierta queda nivelada: el exceso trasero cae hacia abajo.
   const ajusteBaseFar = o.modo === "baqueton" ? (o.altoNear - o.altoFar) * escala : 0;
   const fondo = proyecta(far, profundidadX + ((o.anchoNear - o.anchoFar) / 2) * escala, profundidadY + ajusteBaseFar);
+  // El paño trasero puede sobresalir; sus esquinas inferiores no son las
+  // del lateral. El lateral conserva su caída en toda la longitud.
+  const altoLateral = o.altoLateral ?? Math.min(o.altoNear, o.altoFar);
+  const lateralNear = o.modo === "baqueton"
+    ? { x: frente.at(-1)!.x, y: frente.at(-2)!.y + altoLateral * escala }
+    : frente.at(-1)!;
+  const lateralFar = o.modo === "baqueton"
+    ? { x: fondo.at(-1)!.x, y: fondo.at(-2)!.y + altoLateral * escala }
+    : fondo.at(-1)!;
+  const perfilLateral = (puntos: Punto[], base: Punto) => puntos.map((p, i) =>
+    i === 0 || i === puntos.length - 1 ? { x: p.x, y: base.y } : p);
+  const frenteLateral = perfilLateral(frente, lateralNear);
+  const fondoLateral = perfilLateral(fondo, lateralFar);
+  const panoFondo = o.modo === "baqueton" && o.altoFar > altoLateral
+    ? puntosSvg(fondo) : null;
   const indicePicoFrente = near.reduce(
     (mejor, [, y], indice) => y > near[mejor][1] ? indice : mejor,
     0,
@@ -342,9 +359,9 @@ export function calcularVista(o: OpcionesVista) {
   // dirección opuesta a la cámara. Después, la cara cercana opaca recorta
   // cualquier tramo restante que se proyecte dentro de su contorno.
   const aristasLongitudinales = forma.aristas
-    .filter((indice) => aristaLongitudinalVisible(frente, fondo, indice))
+    .filter((indice) => aristaLongitudinalVisible(frenteLateral, fondoLateral, indice))
     .flatMap((indice) => (
-      recortarFueraDePoligono({ desde: frente[indice], hasta: fondo[indice] }, frente)
+      recortarFueraDePoligono({ desde: frenteLateral[indice], hasta: fondoLateral[indice] }, frente)
     ));
   const contornoFrente = caminoPerfil(frente);
   const hombroDerecho = frente.at(-2)!;
@@ -401,11 +418,11 @@ export function calcularVista(o: OpcionesVista) {
   const bordeLibre = o.modo === "lona" && !o.conBastilla;
   const baseIzq = frente[0];
   const baseDcha = frente.at(-1)!;
-  const fondoBase = fondo.at(-1)!;
+  const fondoBase = lateralFar;
   const ctrlFrente = bordeLibre && o.ollaosNear.length === 0
     ? controlDescuelgue(baseIzq, baseDcha) : null;
   const ctrlLateral = bordeLibre && o.ollaosLaterales.length === 0
-    ? controlDescuelgue(baseDcha, fondoBase) : null;
+    ? controlDescuelgue(lateralNear, fondoBase) : null;
   // Cierre del paño cercano para el relleno, y trazos de silueta del dobladillo.
   const cierrePinche = ctrlFrente
     ? ` Q ${puntoSvg(ctrlFrente)} ${puntoSvg(baseIzq)} Z`
@@ -414,10 +431,10 @@ export function calcularVista(o: OpcionesVista) {
     ? `M ${puntoSvg(baseIzq)} Q ${puntoSvg(ctrlFrente)} ${puntoSvg(baseDcha)}`
     : `M ${puntoSvg(baseIzq)} L ${puntoSvg(baseDcha)}`;
   const bordeInferiorLateral = ctrlLateral
-    ? `M ${puntoSvg(baseDcha)} Q ${puntoSvg(ctrlLateral)} ${puntoSvg(fondoBase)}`
-    : `M ${puntoSvg(baseDcha)} L ${puntoSvg(fondoBase)}`;
+    ? `M ${puntoSvg(lateralNear)} Q ${puntoSvg(ctrlLateral)} ${puntoSvg(fondoBase)}`
+    : `M ${puntoSvg(lateralNear)} L ${puntoSvg(fondoBase)}`;
   // La cara lateral como camino, para que su borde inferior siga el descuelgue.
-  const lateralCamino = `M ${puntoSvg(frente.at(-2)!)} L ${puntoSvg(baseDcha)}`
+  const lateralCamino = `M ${puntoSvg(frente.at(-2)!)} L ${puntoSvg(lateralNear)}`
     + (ctrlLateral ? ` Q ${puntoSvg(ctrlLateral)} ${puntoSvg(fondoBase)}` : ` L ${puntoSvg(fondoBase)}`)
     + ` L ${puntoSvg(fondo.at(-2)!)} Z`;
   // Pliegues: la tela comprimida junto a las esquinas tensadas. Dos trazos
@@ -456,13 +473,13 @@ export function calcularVista(o: OpcionesVista) {
           : interpola(desde, hasta, p / medida)
       ))
       : [];
-  const lateralDesde = o.lateralesDesdeFar ? fondoBase : baseDcha;
-  const lateralHasta = o.lateralesDesdeFar ? baseDcha : fondoBase;
+  const lateralDesde = o.lateralesDesdeFar ? fondoBase : lateralNear;
+  const lateralHasta = o.lateralesDesdeFar ? lateralNear : fondoBase;
   // Normal del borde lateral, apuntando hacia dentro de la lona.
-  const largoLateral = Math.hypot(fondoBase.x - baseDcha.x, fondoBase.y - baseDcha.y);
+  const largoLateral = Math.hypot(fondoBase.x - lateralNear.x, fondoBase.y - lateralNear.y);
   const normalLateral = {
-    x: ((fondoBase.y - baseDcha.y) / largoLateral) * 6,
-    y: (-(fondoBase.x - baseDcha.x) / largoLateral) * 6,
+    x: ((fondoBase.y - lateralNear.y) / largoLateral) * 6,
+    y: (-(fondoBase.x - lateralNear.x) / largoLateral) * 6,
   };
   const insetOllao = radioOllao + 2.5;
   // Los ollaos van por dentro de la lona, no sobre el borde, y siguen el
@@ -529,7 +546,7 @@ export function calcularVista(o: OpcionesVista) {
   const xCotaAguas = frente.at(-1)!.x + 34;
   const largoPerspectiva = Math.hypot(profundidadX, profundidadY) || 1;
   return {
-    frente, fondo, aristasLongitudinales, contornoFrente,
+    frente, fondo, lateralNear, lateralFar, panoFondo, aristasLongitudinales, contornoFrente,
     cierrePinche, bordeInferiorFrente, bordeInferiorLateral, lateralCamino,
     pliegues, radioOllao,
     cubierta, tieneCumbrera, ventana, marcasOllaos, costuraIzq, costuraDcha,
@@ -538,8 +555,8 @@ export function calcularVista(o: OpcionesVista) {
     anchoHasta: { x: frente.at(-1)!.x, y: baseY + 35 },
     altoDesde: { x: frente[0].x - 42, y: baseY },
     altoHasta: { x: frente[0].x - 42, y: baseY - o.altoNear * escala },
-    largoDesde: { x: frente.at(-1)!.x + 20, y: frente.at(-1)!.y + 15 },
-    largoHasta: { x: fondo.at(-1)!.x + 20, y: fondo.at(-1)!.y + 15 },
+    largoDesde: { x: lateralNear.x + 20, y: lateralNear.y + 15 },
+    largoHasta: { x: lateralFar.x + 20, y: lateralFar.y + 15 },
     largoTextoDx: (profundidadY / largoPerspectiva) * 15,
     largoTextoDy: (profundidadX / largoPerspectiva) * 15,
     // Redondeado: atan2 puede diferir en el último bit entre Node y navegador
@@ -591,6 +608,10 @@ function PanelVista({
           la luz. El volumen sale de ese contraste, no de degradados que el
           paso a gris se comería. */}
       <g>
+        {d.panoFondo && (
+          <polygon points={d.panoFondo} fill={colores.frontal}
+            stroke={COLOR_SILUETA} strokeWidth={TRAZO_SILUETA} strokeLinejoin="round" />
+        )}
         {/* El pinche (paño delantero o trasero) cubre la cara cercana. */}
         <path d={`${d.contornoFrente}${d.cierrePinche}`} fill={colores.frontal} stroke="none" />
         {d.cubierta.map((franja, indice) => (
@@ -811,6 +832,7 @@ export function Escena3D(props: Escena3DProps) {
     if (!valido) return null;
     const base = {
       modo: props.modo,
+      altoLateral: props.baqueton,
       tipoPerfil: perfilDibujado,
       largo: props.largo,
       aguas: props.aguas ?? 0,
@@ -848,7 +870,7 @@ export function Escena3D(props: Escena3DProps) {
     });
     return { delantera, trasera };
   }, [
-    valido, props.modo, perfilDibujado, props.ancho, props.largo,
+    valido, props.modo, props.baqueton, perfilDibujado, props.ancho, props.largo,
     props.aguas, props.radioCumbrera, props.radioHombro, props.radioEsquina, props.chaflan,
     props.radioChaflanAbajo, props.radioChaflanArriba,
     props.ventana, props.ventanaAncho, props.ventanaAlto, props.ollaos, altoDelante, altoAtras, anchoAtras,
