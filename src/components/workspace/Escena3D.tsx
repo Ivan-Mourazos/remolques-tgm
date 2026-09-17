@@ -53,6 +53,8 @@ export interface Escena3DProps {
   observaciones?: string;
   onObservacionesChange?: (value: string) => void;
   baqueton?: number;
+  /** Caída trasera calculada según el cliente; null = igual al baquetón. */
+  baquetonTrasero?: number | null;
   /** Reparto de ollaos (cm desde el origen de cada tramo) para marcarlos en el dibujo. */
   ollaos?: { laterales: number[]; atras: number[]; delante: number[] };
   /** Entrega una función que devuelve el SVG serializado de la vista (o null). */
@@ -317,7 +319,9 @@ export function calcularVista(o: OpcionesVista) {
     }));
   const frente = proyecta(near, 0, 0);
   // El sesgado es simétrico: la cara del fondo se centra respecto a la cercana.
-  const fondo = proyecta(far, profundidadX + ((o.anchoNear - o.anchoFar) / 2) * escala, profundidadY);
+  // En el baquetón la cubierta queda nivelada: el exceso trasero cae hacia abajo.
+  const ajusteBaseFar = o.modo === "baqueton" ? (o.altoNear - o.altoFar) * escala : 0;
+  const fondo = proyecta(far, profundidadX + ((o.anchoNear - o.anchoFar) / 2) * escala, profundidadY + ajusteBaseFar);
   const indicePicoFrente = near.reduce(
     (mejor, [, y], indice) => y > near[mejor][1] ? indice : mejor,
     0,
@@ -785,9 +789,9 @@ export function Escena3D(props: Escena3DProps) {
   const onSnapshotReady = props.onSnapshotReady;
   const altoDelante = props.modo === "baqueton" ? (props.baqueton ?? 0) : props.altoDelante;
   const altoAtras = props.modo === "baqueton"
-    ? (props.baqueton ?? 0)
+    ? (props.baquetonTrasero ?? props.baqueton ?? 0)
     : (props.altoAtras > 0 ? props.altoAtras : props.altoDelante);
-  // Un baquetón siempre se dibuja recto; una lona necesita que se haya elegido
+  // Un baquetón usa perfil rectangular; una lona necesita que se haya elegido
   // el perfil, y que estén las medidas que ese perfil pide.
   const geometriaPerfilCompleta = props.modo === "baqueton"
     || props.tipoPerfil !== ""
@@ -913,7 +917,7 @@ export function Escena3D(props: Escena3DProps) {
             <PanelVista
               d={vistas.trasera}
               titulo="VISTA TRASERA"
-              etiquetaAlto={props.modo === "baqueton" ? "BAQUETÓN" : "ALTO TRAS."}
+              etiquetaAlto={props.modo === "baqueton" ? "BAQUETÓN TRAS." : "ALTO TRAS."}
               etiquetaAncho={cotaAnchoAtras !== cotas.ancho ? "ANCHO TRAS." : "ANCHO"}
               altoNear={altoAtras}
               ancho={cotaAnchoAtras}

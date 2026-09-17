@@ -95,3 +95,15 @@ describe("el dibujo cabe en su panel", () => {
     expect(derecha).toBeLessThan(60);
   });
 });
+
+describe("caída trasera del baquetón de Pedro López", () => {
+  it.each([[22, 32], [32, 22]])("mantiene la cubierta nivelada con caras de %s y %s cm", (altoNear, altoFar) => {
+    const opciones = { ...base, modo: "baqueton" as const, altoNear, altoFar, conVentana: false };
+    const vista = calcularVista(opciones);
+    const uniforme = calcularVista({ ...opciones, altoFar: altoNear });
+    const escala = (vista.frente[0].y - vista.frente[1].y) / altoNear;
+    expect(vista.fondo[1].y).toBeCloseTo(uniforme.fondo[1].y);
+    expect(vista.fondo[0].y - uniforme.fondo[0].y).toBeCloseTo((altoFar - altoNear) * escala);
+    expect(vista.fondo[0].y - vista.fondo[1].y).toBeCloseTo(altoFar * escala);
+  });
+});
