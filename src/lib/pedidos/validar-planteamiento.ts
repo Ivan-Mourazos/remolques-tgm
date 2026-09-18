@@ -22,6 +22,9 @@ export function erroresPlanteamiento(input: LonaInput | BaquetonInput): ErrorPla
 
   if ("baqueton" in input) {
     agregar(!positivo(input.baqueton), "baqueton", "Introduce la medida del baquetón.");
+    for (const campo of ["baquetonDelante", "baquetonDetras"] as const) {
+      agregar(input[campo] != null && !positivo(input[campo]), campo, "Introduce una caída de lona mayor que cero.");
+    }
   } else {
     agregar(!positivo(input.altoDelante), "altoDelante", "Introduce el alto delantero.");
     // Las decisiones propias de la lona, con el mismo criterio: mientras no se

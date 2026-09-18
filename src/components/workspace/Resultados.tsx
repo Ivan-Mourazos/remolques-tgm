@@ -241,7 +241,8 @@ export function ResultadosBaqueton({
         <Dato label="Remolque hecho" valor={`${fmt(res.remolqueHecho.largo)} × ${fmt(res.remolqueHecho.ancho)}`} />
         <Dato label="Baquetón + costura" valor={fmt(res.baquetonCostura)} />
         <Dato label="Esquinas del./tras." valor={`${fmt(res.esquinaDelante)} / ${fmt(res.esquinaDetras)}`} />
-        <Dato label="Baquetón" valor={res.baquetonTrasero ? `Trasero ${fmt(res.baquetonTrasero)}` : "EN LÍNEA"} />
+        <Dato label="Delante" valor={res.baquetonDelantero != null ? `${fmt(res.baquetonDelantero)} · NO EN LÍNEA` : "EN LÍNEA"} />
+        <Dato label="Detrás" valor={res.baquetonTrasero != null ? `${fmt(res.baquetonTrasero)} · NO EN LÍNEA` : "EN LÍNEA"} />
         <Dato label="Superficie" valor={`${fmt(res.superficieM2)} m²/ud`} />
       </Resumen>
       <Ollaos modo={modoOllaos} reparto={res.reparto} primerOllao={primerOllao} error={errorOllaos} onChange={onOllaosChange} />

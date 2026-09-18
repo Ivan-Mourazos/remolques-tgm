@@ -95,6 +95,11 @@ const entradaBaqueton = (extra: Partial<BaquetonInput> = {}): BaquetonInput => (
 });
 
 describe("datos del baquetón en la hoja", () => {
+  it("identifica las dos caídas independientes en la hoja de taller", () => {
+    const input = entradaBaqueton({ baquetonDelante: 18, baquetonDetras: 25 });
+    const hoja = hojaBaqueton(input, calcBaqueton(input, DEFAULT_PARAMS));
+    expect(hoja.banda[2].notas).toEqual(["DELANTERO 18 · NO EN LÍNEA", "TRASERO 25 · NO EN LÍNEA"]);
+  });
   it("tiene sus tres celdas y no las de la lona", () => {
     const input = entradaBaqueton();
     const hoja = hojaBaqueton(input, calcBaqueton(input, DEFAULT_PARAMS));

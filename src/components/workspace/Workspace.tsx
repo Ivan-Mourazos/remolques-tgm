@@ -115,7 +115,7 @@ export function Workspace({ inicial }: { inicial?: WorkspaceInicial }) {
             ) : (
               <Escena3D modo="baqueton" medidasHechas={resBaq.remolqueHecho} largo={baq.largo} ancho={baq.ancho}
                 altoDelante={0} altoAtras={0} tipoPerfil="TIPO 01"
-                baqueton={baq.baqueton} baquetonTrasero={resBaq.baquetonTrasero} material={baq.material}
+                baqueton={baq.baqueton} baquetonDelantero={resBaq.baquetonDelantero} baquetonTrasero={resBaq.baquetonTrasero} material={baq.material}
                 ollaos={resBaq.reparto}
                 observaciones={baq.observaciones}
                 onObservacionesChange={(observaciones) => ws.cambiarInput({ ...baq, observaciones })}

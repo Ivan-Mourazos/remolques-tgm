@@ -188,6 +188,7 @@ function datosBaqueton(ws: Worksheet, rec: PlanteamientoRecord, material?: Mater
   campoPar(ws, 16, ["Remolque hecho", `${num(r.remolqueHecho.largo)} × ${num(r.remolqueHecho.ancho)}`], ["Baquetón + costura", num(r.baquetonCostura)]);
   campoPar(ws, 17, ["Esquina delante", num(r.esquinaDelante)], ["Esquina detrás", num(r.esquinaDetras)]);
   campoPar(ws, 18, ["Baquetón trasero", r.baquetonTrasero ?? "EN LÍNEA"], ["Superficie", `${num(r.superficieM2)} m²/ud`]);
+  campoPar(ws, 10, ["Baquetón delantero", r.baquetonDelantero == null ? "EN LÍNEA" : `${num(r.baquetonDelantero)} · NO EN LÍNEA`], ["Baquetón trasero", r.baquetonTrasero == null ? "EN LÍNEA" : `${num(r.baquetonTrasero)} · NO EN LÍNEA`]);
   campoAncho(ws, 19, "Notas", r.notas.join(" · ") || "-");
   campoPar(ws, 20, ["Metros de tela", num(r.metrosTela)], ["Medidas", "cm"]);
   for (let row = 21; row <= 23; row += 1) campoAncho(ws, row, "", "");

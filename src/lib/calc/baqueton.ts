@@ -7,6 +7,9 @@ export interface BaquetonInput {
   cabecera: CabeceraInput;
   cantidad: number; largo: number; ancho: number; baqueton: number;
   clienteEspecifico: string;
+  /** Ausente = según cliente; null = en línea con el lateral; número = caída propia. */
+  baquetonDelante?: number | null;
+  baquetonDetras?: number | null;
   modoOllaos: "REPARTIDOS" | "SEGUN SE INDICA" | "";
   pasoOllaos: number;
   /** Distancia del primer y último ollao al borde; por defecto la de los parámetros. */
@@ -23,6 +26,7 @@ export interface BaquetonResult {
   baquetonCostura: number;
   esquinaDelante: number; esquinaDetras: number;
   baquetonTrasero: number | null;
+  baquetonDelantero?: number | null;
   superficieM2: number;
   ollaos: OllaosResult;
   reparto: { laterales: number[]; atras: number[]; delante: number[] };
@@ -34,9 +38,14 @@ const r1 = (v: number) => excelRound(v, 1);
 
 export function calcBaqueton(input: BaquetonInput, params: CalcParams): BaquetonResult {
   const cli = findClienteBaqueton(params, input.clienteEspecifico);
+  const delante = input.baquetonDelante ?? input.baqueton;
+  const detrasDefecto = input.baqueton + cli.extraBaquetonTrasero;
+  const detras = input.baquetonDetras === undefined ? detrasDefecto : (input.baquetonDetras ?? input.baqueton);
+  const ajusteDelante = delante - input.baqueton;
+  const ajusteDetras = detras - detrasDefecto;
 
   const panoUnico = {
-    largo: r1(input.largo + 2 * input.baqueton + params.baquetonDemasiaLargoCostura + cli.extraLargoCostura),
+    largo: r1(input.largo + 2 * input.baqueton + params.baquetonDemasiaLargoCostura + cli.extraLargoCostura + ajusteDelante + ajusteDetras),
     ancho: r1(input.ancho + 2 * input.baqueton + params.baquetonDemasiaAnchoCostura + cli.extraAnchoCostura),
   };
   const baquetonCostura = r1(input.baqueton + params.baquetonDemasiaCostura);
@@ -63,9 +72,10 @@ export function calcBaqueton(input: BaquetonInput, params: CalcParams): Baqueton
 
   return {
     panoUnico, remolqueHecho, baquetonCostura,
-    esquinaDelante: r1(baquetonCostura + cli.extraBaquetonLargoDelante),
-    esquinaDetras: r1(baquetonCostura + cli.extraBaquetonLargoDetras),
-    baquetonTrasero: cli.extraBaquetonTrasero > 0 ? r1(input.baqueton + cli.extraBaquetonTrasero) : null,
+    esquinaDelante: r1(baquetonCostura + cli.extraBaquetonLargoDelante + ajusteDelante),
+    esquinaDetras: r1(baquetonCostura + cli.extraBaquetonLargoDetras + ajusteDetras),
+    baquetonDelantero: delante !== input.baqueton ? r1(delante) : null,
+    baquetonTrasero: detras !== input.baqueton ? r1(detras) : null,
     superficieM2: excelRound((panoUnico.largo * panoUnico.ancho) / 10000, 4),
     ollaos, reparto,
     metrosTela: excelRound((input.cantidad * panoUnico.largo) / 100, 2),

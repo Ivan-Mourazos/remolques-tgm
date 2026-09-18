@@ -44,6 +44,35 @@ describe("calcBaqueton — caso real AR2602796", () => {
 });
 
 describe("calcBaqueton — clientes específicos", () => {
+  it("permite caídas independientes más largas o cortas que el lateral", () => {
+    const res = calcBaqueton({ ...base, baquetonDelante: 30, baquetonDetras: 18 }, DEFAULT_PARAMS);
+    expect(res.panoUnico).toEqual({ largo: 236, ancho: 172 });
+    expect(res.esquinaDelante).toBe(32);
+    expect(res.esquinaDetras).toBe(20);
+    expect(res.baquetonDelantero).toBe(30);
+    expect(res.baquetonTrasero).toBe(18);
+    expect(res.remolqueHecho).toEqual({ largo: 182, ancho: 122 });
+    expect(res.metrosTela).toBe(2.36);
+  });
+  it("permite poner Pedro López en línea conservando sus demasías de costura", () => {
+    const res = calcBaqueton({ ...base, clienteEspecifico: "HIJOS DE PEDRO LOPEZ", baquetonDetras: null }, DEFAULT_PARAMS);
+    expect(res.panoUnico).toEqual({ largo: 233, ancho: 174 });
+    expect(res.esquinaDetras).toBe(25);
+    expect(res.baquetonTrasero).toBeNull();
+  });
+  it("sustituye la caída de Pedro López sin sumar dos veces su extra", () => {
+    const res = calcBaqueton({ ...base, clienteEspecifico: "HIJOS DE PEDRO LOPEZ", baquetonDetras: 40 }, DEFAULT_PARAMS);
+    expect(res.panoUnico.largo).toBe(251);
+    expect(res.esquinaDetras).toBe(43);
+    expect(res.baquetonTrasero).toBe(40);
+  });
+  it("mantiene en línea al variar el lateral y conserva las medidas al guardar", () => {
+    const input = JSON.parse(JSON.stringify({ ...base, baqueton: 25, baquetonDelante: null, baquetonDetras: 32 }));
+    const res = calcBaqueton(input, DEFAULT_PARAMS);
+    expect(res.baquetonDelantero).toBeNull();
+    expect(res.baquetonTrasero).toBe(32);
+    expect(res.panoUnico.largo).toBe(245);
+  });
   it("HIJOS DE PEDRO LOPEZ: +11/+2 costura, esquinas 25/35, baquetón trasero 32", () => {
     const res = calcBaqueton({ ...base, clienteEspecifico: "HIJOS DE PEDRO LOPEZ" }, DEFAULT_PARAMS);
     expect(res.panoUnico).toEqual({ largo: 243, ancho: 174 });

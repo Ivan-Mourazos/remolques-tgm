@@ -55,6 +55,7 @@ export interface Escena3DProps {
   baqueton?: number;
   /** Caída trasera calculada según el cliente; null = igual al baquetón. */
   baquetonTrasero?: number | null;
+  baquetonDelantero?: number | null;
   /** Reparto de ollaos (cm desde el origen de cada tramo) para marcarlos en el dibujo. */
   ollaos?: { laterales: number[]; atras: number[]; delante: number[] };
   /** Entrega una función que devuelve el SVG serializado de la vista (o null). */
@@ -808,7 +809,7 @@ export function Escena3D(props: Escena3DProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const colores = useMemo(() => coloresMaterial(props.material ?? ""), [props.material]);
   const onSnapshotReady = props.onSnapshotReady;
-  const altoDelante = props.modo === "baqueton" ? (props.baqueton ?? 0) : props.altoDelante;
+  const altoDelante = props.modo === "baqueton" ? (props.baquetonDelantero ?? props.baqueton ?? 0) : props.altoDelante;
   const altoAtras = props.modo === "baqueton"
     ? (props.baquetonTrasero ?? props.baqueton ?? 0)
     : (props.altoAtras > 0 ? props.altoAtras : props.altoDelante);

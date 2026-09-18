@@ -114,7 +114,10 @@ export function hojaBaqueton(i: BaquetonInput, r: BaquetonResult): CuerpoHoja {
       {
         titulo: "BAQUETÓN",
         lineas: [fmt(i.baqueton)],
-        notas: [r.baquetonTrasero ? `TRASERO ${fmt(r.baquetonTrasero)}` : "EN LÍNEA"],
+        notas: r.baquetonDelantero == null && r.baquetonTrasero == null ? ["EN LÍNEA"] : [
+          r.baquetonDelantero != null ? `DELANTERO ${fmt(r.baquetonDelantero)} · NO EN LÍNEA` : "DELANTE EN LÍNEA",
+          r.baquetonTrasero != null ? `TRASERO ${fmt(r.baquetonTrasero)} · NO EN LÍNEA` : "DETRÁS EN LÍNEA",
+        ],
       },
     ],
     grupos: [

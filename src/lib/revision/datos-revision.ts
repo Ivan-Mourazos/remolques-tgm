@@ -119,6 +119,10 @@ function seccionesBaqueton(i: BaquetonInput, version: string): SeccionRevision[]
         { etiqueta: "Largo", valor: num(i.largo) },
         { etiqueta: "Ancho", valor: num(i.ancho) },
         { etiqueta: "Baquetón", valor: num(i.baqueton) },
+        ...(["baquetonDelante", "baquetonDetras"] as const).flatMap((campo) => i[campo] === undefined ? [] : [{
+          etiqueta: campo === "baquetonDelante" ? "Lona delante" : "Lona detrás",
+          valor: i[campo] === null || i[campo] === i.baqueton ? "En línea con lateral" : `${num(i[campo])} cm · No en línea`,
+        }]),
         { etiqueta: "Cliente específico", valor: texto(i.clienteEspecifico) },
         { etiqueta: "Rotulación", valor: siNo(i.rotulacion) },
       ],

@@ -39,6 +39,18 @@ export function FormularioBaqueton({
           <CampoNum name="baqueton" error={errores.baqueton} label="Baquetón" value={input.baqueton} onChange={(v) => set("baqueton", v)} />
         </PasoFormulario>
         <PasoFormulario numero={2} titulo="Ajustes finales" columnas={4} ultimo>
+          {(["baquetonDelante", "baquetonDetras"] as const).map((campo) => (
+            <div key={campo} className="col-span-2 grid grid-cols-2 gap-2">
+              <CampoSelect name={`${campo}Modo`} label={campo === "baquetonDelante" ? "Lona delante" : "Lona detrás"}
+                span={2} value={input[campo] === undefined ? "CLIENTE" : input[campo] === null ? "LINEA" : "MEDIDA"}
+                opciones={[{ value: "CLIENTE", label: "Según cliente" }, { value: "LINEA", label: "En línea con lateral" }, { value: "MEDIDA", label: "Medida diferente" }]}
+                onChange={(v) => set(campo, v === "CLIENTE" ? undefined : v === "LINEA" ? null : input.baqueton)} />
+              {input[campo] != null ? (
+                <CampoNum name={campo} label="Caída de lona · cm" value={input[campo]} error={errores[campo]}
+                  onChange={(v) => set(campo, v)} />
+              ) : null}
+            </div>
+          ))}
           <CampoSelect name="clienteEspecifico" label="Cliente específico" span={2} value={input.clienteEspecifico} opciones={CLIENTES}
             onChange={(v) => set("clienteEspecifico", v)} />
           <CampoMaterial compacto span={2} value={input.material} opciones={materiales} error={errores.material}
